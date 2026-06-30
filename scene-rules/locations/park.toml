@@ -5,78 +5,35 @@ display_name = "Park"
 type = "outdoor_public"
 
 [hard_constraints]
-# ✅ Разрешенные стили (Character Profile)
-allowed_outfit_styles = ["casual_shirt_skirt", "sportswear"]
-
-# ✅ Разрешенные стили одежды для Луны
-
 # 🛑 BLACKLIST: Что НЕЛЬЗЯ носить в парке
-# Мы не пишем allowed_..., потому что разрешена почти любая уличная одежда
 excludes_outfit_categories = [
-    "02_clothing/underwear/",              # Нижнее белье
-    "02_clothing/full_body/pajamas.txt",   # Пижама
-    "02_clothing/full_body/swimsuits.txt", # Купальник (если это не бассейн в парке)
-    "02_clothing/full_body/loungewear.txt" # Домашняя одежда
+    "02_clothing/underwear/",
+    "02_clothing/full_body/pajamas.txt",
+    "02_clothing/full_body/swimsuits.txt",
+    "02_clothing/full_body/loungewear.txt"
 ]
 
-# 🛑 Запрещенные действия (нелогичные для парка)
-excludes_actions = [
-    "sleeping",        # Спать на траве можно, но это редкость
-    "cooking",         # Готовить в парке — странно
-    "showering",       # Нет душа
-    "brushing_teeth"   # Нет ванной
-]
+# 🛑 Запрещенные действия
+excludes_actions = ["sleeping", "cooking", "showering", "brushing_teeth"]
 
 # 🛑 Запрещенный реквизит
-excludes_prop_categories = [
-    "09_props/furniture.txt"  # Мебель (кроме скамеек, которые указаны в prefers)
-]
+excludes_prop_categories = ["09_props/furniture.txt"]
 
 [soft_constraints]
 # ⚖️ Типичные действия для парка
-prefers_actions = [
-    "walking",
-    "sitting_on_bench",
-    "reading",
-    "looking_at_trees",
-    "feeding_birds",
-    "picnic",
-    "playing_with_pet",
-    "jogging",
-    "cycling",
-    "taking_photos",
-    "daydreaming"
-]
+prefers_actions = ["walking", "sitting_on_bench", "reading", "looking_at_trees", "feeding_birds", "picnic", "playing_with_pet", "jogging", "cycling", "taking_photos", "daydreaming"]
 
 # 💡 Освещение: естественное, солнечное, с тенями от деревьев
-prefers_lighting_sources = [
-    "sunlight", "dappled_sunlight", "golden_hour", 
-    "sunset", "sunrise", "overcast_light"
-]
-prefers_lighting_quality = [
-    "natural_lighting", "soft_lighting", 
-    "dappled_light", "warm_lighting"
-]
+prefers_lighting_sources = ["sunlight", "dappled_sunlight", "golden_hour", "sunset", "sunrise", "overcast_light"]
+prefers_lighting_quality = ["natural_lighting", "soft_lighting", "dappled_light", "warm_lighting"]
 
 # 🌳 Природные элементы и парковая мебель
-prefers_nature = [
-    "tree", "cherry_blossom_tree", "maple_tree", 
-    "grass", "flower", "bush", "fallen_leaves", 
-    "pond", "bench", "path", "fountain"
-]
-prefers_props = [
-    "bench", "picnic_blanket", "basket", "book", 
-    "camera", "bicycle", "kite", "ball"
-]
+prefers_nature = ["tree", "cherry_blossom_tree", "maple_tree", "grass", "flower", "bush", "fallen_leaves", "pond", "bench", "path", "fountain"]
+prefers_props = ["bench", "picnic_blanket", "basket", "book", "camera", "bicycle", "kite", "ball"]
 
-[weather_rules]
-# Парк доступен в любую погоду, но некоторые действия зависят от неё
-preferred_weather = ["clear", "cloudy", "light_rain", "autumn_leaves"]
-# Если дождь — зонтик становится обязательным
-if_weather_is_rain = { requires_prop = "umbrella" }
+[weather_rules.if_weather_is_rain]
+requires_prop = "umbrella"
 
 [visibility_modifiers]
-# В парке обычно видны все части тела (полный рост)
 reveals_features = ["face", "upper_body", "lower_body", "feet_footwear"]
-# Если сидит на скамейке — ноги могут быть частично скрыты
 conceals_if_sitting_on_bench = ["feet_footwear"]

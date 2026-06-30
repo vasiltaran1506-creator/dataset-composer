@@ -5,23 +5,10 @@ display_name = "Cafe"
 type = "indoor_public"
 
 [hard_constraints]
-# ✅ Разрешенные стили (Character Profile)
-allowed_outfit_styles = ["casual_shirt_skirt", "sportswear"]
-
-# ✅ Разрешенные стили одежды для Луны
-
 # ✅ WHITELIST для действий (в кафе ограниченный набор действий)
 allowed_actions = [
-    "drinking_coffee",
-    "drinking_tea",
-    "eating_pastry",
-    "reading",
-    "studying",
-    "writing",
-    "using_laptop",
-    "chatting",
-    "looking_out_window",
-    "daydreaming"
+    "drinking_coffee", "drinking_tea", "eating_pastry", "reading", "studying",
+    "writing", "using_laptop", "chatting", "looking_out_window", "daydreaming"
 ]
 
 # 🛑 BLACKLIST для одежды
@@ -30,52 +17,25 @@ excludes_outfit_categories = [
     "02_clothing/full_body/pajamas.txt",
     "02_clothing/full_body/swimsuits.txt",
     "02_clothing/full_body/loungewear.txt",
-    "02_clothing/topwear/coats.txt"  # В кафе обычно снимают верхнюю одежду
+    "02_clothing/topwear/coats.txt"
 ]
 
 # 🛑 Запрещенные действия
-excludes_actions = [
-    "sleeping",
-    "running",
-    "exercising",
-    "cooking"  # Посетители не готовят
-]
+excludes_actions = ["sleeping", "running", "exercising", "cooking"]
 
 [soft_constraints]
-# ⚖️ Предпочитаемая одежда для кафе
-[soft_constraints.prefers_outfit_categories_weights]
-"02_clothing/topwear/shirts.txt" = 0.3
-"02_clothing/topwear/blouses.txt" = 0.25
-"02_clothing/topwear/sweaters.txt" = 0.25
-"02_clothing/full_body/dresses.txt" = 0.2
-
 # 💡 Освещение: теплое, уютное, кафе-атмосфера
-prefers_lighting_sources = [
-    "window_light", "warm_lamp", "pendant_light", 
-    "candlelight", "soft_overhead_light"
-]
-prefers_lighting_quality = [
-    "warm_lighting", "soft_lighting", 
-    "cozy_lighting", "cinematic_lighting"
-]
+prefers_lighting_sources = ["window_light", "warm_lamp", "pendant_light", "candlelight", "soft_overhead_light"]
+prefers_lighting_quality = ["warm_lighting", "soft_lighting", "cozy_lighting", "cinematic_lighting"]
 
 # ☕ Реквизит кафе
-prefers_furniture = [
-    "cafe_table", "wooden_chair", "armchair", 
-    "sofa", "bookshelf", "counter"
-]
-prefers_props = [
-    "coffee_cup", "teacup", "latte_art", "pastry", 
-    "cake_slice", "croissant", "laptop", "book", 
-    "notebook", "pen", "smartphone"
-]
+prefers_furniture = ["cafe_table", "wooden_chair", "armchair", "sofa", "bookshelf", "counter"]
+prefers_props = ["coffee_cup", "teacup", "latte_art", "pastry", "cake_slice", "croissant", "laptop", "book", "notebook", "pen", "smartphone"]
 
 [visibility_modifiers]
-# В кафе часто видны руки (держат чашку) и верхняя часть тела
 reveals_features = ["face", "upper_body", "hands"]
-# Если сидит за столом — ноги скрыты
 conceals_if_sitting_at_table = ["lower_body", "feet_footwear"]
 
 [time_of_day]
 prefers = ["morning", "afternoon", "evening"]
-avoids = ["night"]  # Кафе обычно закрыты ночью
+avoids = ["night"]

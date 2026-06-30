@@ -5,13 +5,11 @@ display_name = "Bathroom"
 type = "indoor_private"
 
 [hard_constraints]
-# ✅ Разрешенные стили (Character Profile)
-allowed_outfit_styles = ["bikini", "pajamas", "loungewear"]
-
-# ✅ Разрешенные стили одежды для Луны
-
 # ✅ WHITELIST: Только то, в чем можно находиться в ванной
-# Примечание: В будущем можно добавить категорию "towels" и "robes"
+allowed_outfit_categories = [
+    "02_clothing/underwear/",
+    "02_clothing/full_body/swimsuits.txt"
+]
 
 # 🛑 BLACKLIST: Уличная одежда в ванной невозможна
 excludes_outfit_categories = [
@@ -19,47 +17,26 @@ excludes_outfit_categories = [
     "02_clothing/bottomwear/",
     "02_clothing/full_body/dresses.txt",
     "02_clothing/full_body/uniforms.txt",
-    "02_clothing/footwear/" # В ванной обычно босиком или в тапочках
+    "02_clothing/footwear/"
 ]
 
 # ✅ WHITELIST действий
 allowed_actions = [
-    "brushing_teeth",
-    "washing_face",
-    "washing_hands",
-    "taking_bath",
-    "taking_shower",
-    "drying_hair",
-    "brushing_hair",
-    "looking_in_mirror",
-    "doing_skincare"
+    "brushing_teeth", "washing_face", "washing_hands", "taking_bath",
+    "taking_shower", "drying_hair", "brushing_hair", "looking_in_mirror", "doing_skincare"
 ]
 
 [soft_constraints]
 # 💡 Освещение: яркое у зеркала или мягкое при ванне
-prefers_lighting_sources = [
-    "mirror_light", "overhead_light", "window_light", 
-    "candlelight", "warm_lamp"
-]
-prefers_lighting_quality = [
-    "bright_lighting", "soft_lighting", "clean_lighting"
-]
+prefers_lighting_sources = ["mirror_light", "overhead_light", "window_light", "candlelight", "warm_lamp"]
+prefers_lighting_quality = ["bright_lighting", "soft_lighting", "clean_lighting"]
 
 # 🛁 Реквизит и сантехника
-prefers_furniture = [
-    "bathtub", "shower", "sink", "mirror", 
-    "toilet", "towel_rack", "bath_mat"
-]
-prefers_props = [
-    "towel", "bath_towel", "soap", "shampoo", 
-    "toothbrush", "toothpaste", "hairbrush", 
-    "hair_dryer", "bath_bomb", "rubber_duck", 
-    "loofah", "skincare_bottle"
-]
+prefers_furniture = ["bathtub", "shower", "sink", "mirror", "toilet", "towel_rack", "bath_mat"]
+prefers_props = ["towel", "bath_towel", "soap", "shampoo", "toothbrush", "toothpaste", "hairbrush", "hair_dryer", "bath_bomb", "rubber_duck", "loofah", "skincare_bottle"]
 
 [visibility_modifiers]
-# Вода и пена скрывают тело (Coverage Engine не засчитает покрытие ног!)
+# Вода и пена скрывают тело
 conceals_if_taking_bath = ["lower_body", "feet_footwear", "upper_body"] 
 conceals_if_taking_shower = ["feet_footwear"]
-# У зеркала видны лицо и руки
 reveals_features_if_looking_in_mirror = ["face", "hands", "upper_body"]

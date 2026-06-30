@@ -5,57 +5,29 @@ display_name = "Balcony"
 type = "outdoor_semi_private"
 
 [hard_constraints]
-# ✅ Разрешенные стили (Character Profile)
-allowed_outfit_styles = ["pajamas", "loungewear", "casual_shirt_skirt", "sportswear"]
-
-# ✅ Разрешенные стили одежды для Луны
-
-# ✅ WHITELIST: Домашняя или легкая повседневная одежда
-
-# 🛑 BLACKLIST
+# 🛑 BLACKLIST: Разрешена домашняя или легкая повседневная одежда, запрещена уличная обувь и униформа
 excludes_outfit_categories = [
     "02_clothing/full_body/swimsuits.txt",
     "02_clothing/underwear/",
     "02_clothing/full_body/uniforms.txt",
-    "02_clothing/footwear/boots.txt" # Обычно выходят босиком или в носках/тапочках
+    "02_clothing/footwear/boots.txt"
 ]
 
 # ✅ WHITELIST действий
 allowed_actions = [
-    "drinking_coffee",
-    "drinking_tea",
-    "looking_out_window", # Смотреть вдаль
-    "reading",
-    "watering_plants",
-    "leaning_on_railing",
-    "daydreaming",
-    "taking_photos"
+    "drinking_coffee", "drinking_tea", "looking_out_window", "reading",
+    "watering_plants", "leaning_on_railing", "daydreaming", "taking_photos"
 ]
 
 [soft_constraints]
 # 💡 Освещение: сильно зависит от времени суток
-prefers_lighting_sources = [
-    "sunlight", "sunset", "sunrise", "moonlight", 
-    "city_lights", "streetlight", "golden_hour"
-]
-prefers_lighting_quality = [
-    "natural_lighting", "golden_hour", "blue_hour", 
-    "cinematic_lighting", "moody_lighting"
-]
+prefers_lighting_sources = ["sunlight", "sunset", "sunrise", "moonlight", "city_lights", "streetlight", "golden_hour"]
+prefers_lighting_quality = ["natural_lighting", "golden_hour", "blue_hour", "cinematic_lighting", "moody_lighting"]
 
 # 🌿 Реквизит балкона
-prefers_furniture = [
-    "balcony_chair", "small_table", "hammock", 
-    "railing", "potted_plant"
-]
-prefers_props = [
-    "coffee_cup", "teacup", "mug", "book", 
-    "smartphone", "camera", "watering_can", 
-    "blanket" # Плед, если прохладно
-]
+prefers_furniture = ["balcony_chair", "small_table", "hammock", "railing", "potted_plant"]
+prefers_props = ["coffee_cup", "teacup", "mug", "book", "smartphone", "camera", "watering_can", "blanket"]
 
-[weather_rules]
-# Балкон сильно зависит от погоды (динамические правила!)
 [weather_rules.if_weather_is_rain]
 prefers_actions = ["looking_at_rain", "daydreaming"]
 prefers_props = ["blanket", "hot_drink"]
@@ -66,6 +38,5 @@ requires_outfit_categories = ["02_clothing/topwear/sweaters.txt", "02_clothing/t
 prefers_props = ["blanket", "hot_drink"]
 
 [visibility_modifiers]
-# На балконе перила могут скрывать ноги
 conceals_if_leaning_on_railing = ["lower_body", "feet_footwear"]
 reveals_features = ["face", "upper_body", "hands"]
