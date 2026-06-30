@@ -19,49 +19,42 @@ class SceneBuilder:
         """Возвращает whitelist одежды из character-profile"""
         return self.char_profile.get('outfit_whitelist', {})
         
-    def _choose_smart_outfit(self, allowed_categories: list) -> dict:
+    def _choose_smart_outfit(self, allowed_styles: list) -> dict:
         """
-        Умный выбор одежды: собирает полный комплект (Top + Bottom + Legwear)
-        и фильтрует его через character-profile.yaml
+        Выбирает ЦЕЛИКОВЫЙ стиль из character-profile.yaml, 
+        а не собирает его из случайных кусков.
         """
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         whitelist = self._get_outfit_whitelist()
         
-        # Группируем разрешенные категории по типам
-        tops = [c for c in allowed_categories if "topwear" in c]
-        bottoms = [c for c in allowed_categories if "bottomwear" in c]
-        legwears = [c for c in allowed_categories if "legwear" in c]
-        full_body = [c for c in allowed_categories if "full_body" in c]
-        footwears = [c for c in allowed_categories if "footwear" in c]
+        # Если в TOML не указаны стили, или их нет в профиле - возвращаем пустоту
+        if not allowed_styles:
+            return outfit
+            
+        # Фильтруем только те стили, которые реально есть в профиле Луны
+        valid_styles = [s for s in allowed_styles if s in whitelist]
+        if not valid_styles:
+            return outfit
+            
+        # Случайным образом выбираем ОДИН стиль (например, "pajamas")
+        chosen_style = random.choice(valid_styles)
+        style_data = whitelist[chosen_style]
         
-        # ШАНС 1: Выбрать цельный наряд (full_body: пижама, платье, купальник)
-        if full_body and random.random() < 0.4:
-            chosen_cat = random.choice(full_body)
-            # Пытаемся найти тег, который есть в whitelist Луны
-            outfit["full"] = self._get_filtered_tag(chosen_cat, whitelist)
-            return outfit # Если выбрали пижаму, верх и низ не нужны
-            
-        # ШАНС 2: Собрать комплект из частей (Top + Bottom)
-        if tops:
-            chosen_cat = random.choice(tops)
-            outfit["top"] = self._get_filtered_tag(chosen_cat, whitelist)
-            
-        if bottoms:
-            chosen_cat = random.choice(bottoms)
-            outfit["bottom"] = self._get_filtered_tag(chosen_cat, whitelist)
-            
-        # Legwear (70% шанс, если разрешено)
-        if legwears and random.random() < 0.7:
-            chosen_cat = random.choice(legwears)
-            outfit["legwear"] = self._get_filtered_tag(chosen_cat, whitelist)
-            
-        # Footwear (50% шанс, если разрешено и не пижама)
-        if footwears and not outfit["full"] and random.random() < 0.5:
-            chosen_cat = random.choice(footwears)
-            outfit["footwear"] = self._get_filtered_tag(chosen_cat, whitelist)
-            
+        # Наполняем outfit тегами из этого стиля
+        if "full_body" in style_data:
+            outfit["full"] = random.choice(style_data["full_body"])
+        else:
+            if "topwear" in style_data:
+                outfit["top"] = random.choice(style_data["topwear"])
+            if "bottomwear" in style_data:
+                outfit["bottom"] = random.choice(style_data["bottomwear"])
+            if "legwear" in style_data:
+                outfit["legwear"] = random.choice(style_data["legwear"])
+            if "footwear" in style_data:
+                outfit["footwear"] = random.choice(style_data["footwear"])
+                
         return outfit
-        
+    
     def _get_filtered_tag(self, category: str, whitelist: dict) -> str:
         """
         Умный маппинг: связывает путь из TOML (например, 02_clothing/full_body/pajamas.txt)
@@ -114,8 +107,10 @@ class SceneBuilder:
         
         # 2. УМНЫЙ выбор одежды (Outfit)
         allowed_categories = hard_constraints.get("allowed_outfit_categories", [])
-        if allowed_categories:
-            outfit_parts = self._choose_smart_outfit(allowed_categories)
+         # 2. УМНЫЙ выбор одежды (Outfit) по СТИЛЯМ
+        allowed_styles = hard_constraints.get("allowed_outfit_styles", [])
+        if allowed_styles:
+            outfit_parts = self._choose_smart_outfit(allowed_styles)
             scene.outfit_full = outfit_parts["full"]
             scene.outfit_top = outfit_parts["top"]
             scene.outfit_bottom = outfit_parts["bottom"]
