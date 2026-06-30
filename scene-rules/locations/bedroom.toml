@@ -5,7 +5,7 @@ display_name = "Bedroom"
 type = "indoor_private"
 
 [hard_constraints]
-# ✅ WHITELIST: Разрешенные категории одежды (Универсально для приватных зон)
+# ✅ WHITELIST: Разрешенные категории одежды
 allowed_outfit_categories = [
     "02_clothing/full_body/pajamas.txt",
     "02_clothing/full_body/loungewear.txt",
@@ -16,7 +16,7 @@ allowed_outfit_categories = [
     "02_clothing/legwear/socks.txt"
 ]
 
-# 🛑 BLACKLIST: Запрещенные категории (Универсально)
+# 🛑 BLACKLIST: Запрещенные категории
 excludes_outfit_categories = [
     "02_clothing/full_body/swimsuits.txt",
     "02_clothing/full_body/uniforms.txt",
@@ -25,27 +25,26 @@ excludes_outfit_categories = [
     "02_clothing/footwear/boots.txt"
 ]
 
-# 🛑 Запрещенные действия (нелогичные для спальни)
-excludes_actions = ["running", "swimming", "fighting", "skateboarding"]
+# 🛑 Запрещенные действия
+excludes_actions = [
+    "cooking", "exercising", "swimming", "running", 
+    "shouting", "playing_instrument", "taking_bath", "eating"
+]
 
 [soft_constraints]
-# ⚖️ Типичные действия для спальни
 prefers_actions = [
     "reading", "sleeping", "waking_up", "daydreaming", 
     "looking_out_window", "drinking_tea", "brushing_hair",
     "using_smartphone", "watching_tv", "folding_clothes", "stretching"
 ]
 
-# 💡 Освещение: мягкое, уютное, домашнее
 prefers_lighting_sources = ["lamplight", "window_light", "fairy_lights", "candlelight", "moonlight", "screen_glow"]
 prefers_lighting_quality = ["soft_lighting", "warm_lighting", "dim_lighting", "golden_hour", "low-key_lighting"]
 
-# 🪑 Мебель и реквизит, типичные для спальни
 prefers_furniture = ["bed", "pillow", "blanket", "nightstand", "dresser", "wardrobe", "full-length_mirror", "desk", "chair", "rug", "curtains"]
 prefers_props = ["book", "smartphone", "teacup", "mug", "laptop", "plush_toy", "pillow", "blanket"]
 
 [visibility_modifiers]
-# 👁️ Правила видимости для Coverage Engine
 conceals_if_sleeping = ["feet_footwear", "lower_body", "hands"]
 conceals_if_lying_under_blanket = ["lower_body", "feet_footwear", "upper_body"]
 conceals_if_sitting_on_bed = ["feet_footwear"]

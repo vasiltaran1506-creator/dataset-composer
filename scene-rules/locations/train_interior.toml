@@ -5,7 +5,6 @@ display_name = "Train Interior"
 type = "indoor_public"
 
 [hard_constraints]
-# 🛑 BLACKLIST: Что неуместно в поезде
 excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/pajamas.txt",
@@ -13,74 +12,25 @@ excludes_outfit_categories = [
     "02_clothing/full_body/loungewear.txt"
 ]
 
-# 🛑 Запрещенные действия
 excludes_actions = [
-    "cooking",
-    "bathing",
-    "sleeping_in_bed",
-    "exercising"
+    "cooking", "bathing", "exercising", "swimming", 
+    "taking_bath", "playing_instrument", "shouting", "running"
 ]
 
 [soft_constraints]
-# Типичные действия в поезде
-prefers_actions = [
-    "sitting_by_window",
-    "looking_out_window",
-    "reading",
-    "listening_to_music",
-    "using_smartphone",
-    "sleeping",
-    "daydreaming",
-    "holding_strap",
-    "standing"
-]
+prefers_actions = ["sitting_by_window", "looking_out_window", "reading", "listening_to_music", "using_smartphone", "sleeping", "daydreaming", "holding_strap", "standing"]
 
-# Освещение: мигающий свет из окна, закатные тона
-prefers_lighting_sources = [
-    "window_light",
-    "sunset",
-    "golden_hour",
-    "overhead_light",
-    "scenic_light"
-]
-prefers_lighting_quality = [
-    "cinematic_lighting",
-    "warm_lighting",
-    "dramatic_lighting",
-    "moving_light"
-]
+prefers_lighting_sources = ["window_light", "sunset", "golden_hour", "overhead_light", "scenic_light"]
+prefers_lighting_quality = ["cinematic_lighting", "warm_lighting", "dramatic_lighting", "moving_light"]
 
-# Реквизит поезда
-prefers_furniture = [
-    "train_seat",
-    "window",
-    "hand_strap",
-    "luggage_rack"
-]
-prefers_props = [
-    "bag",
-    "backpack",
-    "headphones",
-    "smartphone",
-    "book",
-    "ticket",
-    "bento"
-]
+prefers_furniture = ["train_seat", "window", "hand_strap", "luggage_rack"]
+prefers_props = ["bag", "backpack", "headphones", "smartphone", "book", "ticket", "bento"]
 
-# Пейзаж за окном
-prefers_scenic_elements = [
-    "scenic_view",
-    "cityscape",
-    "countryside",
-    "sunset_view",
-    "night_city_lights",
-    "mountains_in_distance"
-]
+prefers_scenic_elements = ["scenic_view", "cityscape", "countryside", "sunset_view", "night_city_lights", "mountains_in_distance"]
 
 [time_of_day]
 prefers = ["morning", "afternoon", "evening", "sunset"]
 
 [visibility_modifiers]
-# Сидя у окна - виден профиль, силуэт
 reveals_features = ["face", "upper_body", "hair"]
 conceals_if_sitting_by_window = ["lower_body", "feet_footwear"]

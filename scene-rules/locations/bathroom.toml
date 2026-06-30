@@ -5,13 +5,11 @@ display_name = "Bathroom"
 type = "indoor_private"
 
 [hard_constraints]
-# ✅ WHITELIST: Только то, в чем можно находиться в ванной
 allowed_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/swimsuits.txt"
 ]
 
-# 🛑 BLACKLIST: Уличная одежда в ванной невозможна
 excludes_outfit_categories = [
     "02_clothing/topwear/",
     "02_clothing/bottomwear/",
@@ -20,23 +18,25 @@ excludes_outfit_categories = [
     "02_clothing/footwear/"
 ]
 
-# ✅ WHITELIST действий
-allowed_actions = [
+excludes_actions = [
+    "looking_out_window", "cooking", "sleeping", "reading", 
+    "studying", "exercising", "eating", "drinking_tea", 
+    "playing_instrument", "walking", "running"
+]
+
+[soft_constraints]
+prefers_actions = [
     "brushing_teeth", "washing_face", "washing_hands", "taking_bath",
     "taking_shower", "drying_hair", "brushing_hair", "looking_in_mirror", "doing_skincare"
 ]
 
-[soft_constraints]
-# 💡 Освещение: яркое у зеркала или мягкое при ванне
 prefers_lighting_sources = ["mirror_light", "overhead_light", "window_light", "candlelight", "warm_lamp"]
 prefers_lighting_quality = ["bright_lighting", "soft_lighting", "clean_lighting"]
 
-# 🛁 Реквизит и сантехника
 prefers_furniture = ["bathtub", "shower", "sink", "mirror", "toilet", "towel_rack", "bath_mat"]
 prefers_props = ["towel", "bath_towel", "soap", "shampoo", "toothbrush", "toothpaste", "hairbrush", "hair_dryer", "bath_bomb", "rubber_duck", "loofah", "skincare_bottle"]
 
 [visibility_modifiers]
-# Вода и пена скрывают тело
 conceals_if_taking_bath = ["lower_body", "feet_footwear", "upper_body"] 
 conceals_if_taking_shower = ["feet_footwear"]
 reveals_features_if_looking_in_mirror = ["face", "hands", "upper_body"]

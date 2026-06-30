@@ -5,7 +5,6 @@ display_name = "School Classroom"
 type = "indoor_institutional"
 
 [hard_constraints]
-# ✅ WHITELIST: В школе уместна форма или опрятная одежда
 allowed_outfit_categories = [
     "02_clothing/full_body/uniforms.txt",
     "02_clothing/topwear/shirts.txt",
@@ -17,7 +16,6 @@ allowed_outfit_categories = [
     "02_clothing/footwear/shoes.txt"
 ]
 
-# 🛑 BLACKLIST: Что неуместно в школе
 excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/pajamas.txt",
@@ -27,21 +25,21 @@ excludes_outfit_categories = [
     "02_clothing/topwear/jackets.txt"
 ]
 
-# ✅ WHITELIST действий (учебные действия)
-allowed_actions = [
+excludes_actions = [
+    "sleeping", "running", "eating", "drinking", "dancing", 
+    "singing", "cooking", "exercising", "swimming", "taking_bath", 
+    "playing_instrument", "shouting"
+]
+
+[soft_constraints]
+prefers_actions = [
     "studying", "reading", "writing", "taking_notes", "listening_to_teacher",
     "looking_at_blackboard", "raising_hand", "thinking", "daydreaming", "chatting_with_classmate"
 ]
 
-# 🛑 Запрещенные действия
-excludes_actions = ["sleeping", "running", "eating", "drinking", "dancing", "singing"]
-
-[soft_constraints]
-# 💡 Освещение: школьное, флуоресцентное + окно
 prefers_lighting_sources = ["fluorescent_light", "window_light", "overhead_light"]
 prefers_lighting_quality = ["bright_lighting", "natural_lighting", "institutional_lighting"]
 
-# 📚 Школьная мебель и реквизит
 prefers_furniture = ["school_desk", "wooden_chair", "blackboard", "bookshelf", "globe", "clock", "window"]
 prefers_props = ["textbook", "notebook", "pen", "pencil", "eraser", "ruler", "school_bag", "lunch_box", "chalk", "calculator"]
 

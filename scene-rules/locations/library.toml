@@ -5,7 +5,6 @@ display_name = "Library"
 type = "indoor_public"
 
 [hard_constraints]
-# 🛑 BLACKLIST: Неуместно в публичной библиотеке (разрешено всё остальное)
 excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/pajamas.txt",
@@ -13,18 +12,18 @@ excludes_outfit_categories = [
     "02_clothing/full_body/loungewear.txt"
 ]
 
-# 🛑 Запрещенные действия (в библиотеке нужна тишина)
-excludes_actions = ["shouting", "singing", "running", "dancing", "fighting", "sleeping"]
+excludes_actions = [
+    "shouting", "singing", "running", "dancing", "fighting", 
+    "sleeping", "cooking", "eating", "exercising", "swimming", 
+    "playing_instrument", "taking_bath"
+]
 
 [soft_constraints]
-# ⚖️ Типичные действия для библиотеки
 prefers_actions = ["reading", "studying", "writing", "looking_for_book", "browsing_bookshelf", "taking_notes", "thinking"]
 
-# 💡 Освещение: теплое, книжное, атмосферное
 prefers_lighting_sources = ["lamplight", "desk_lamp", "window_light", "fluorescent_light", "warm_lamp"]
 prefers_lighting_quality = ["soft_lighting", "warm_lighting", "cinematic_lighting", "chiaroscuro"]
 
-# 📚 Реквизит библиотеки
 prefers_furniture = ["bookshelf", "desk", "chair", "reading_table", "armchair", "ladder", "globe"]
 prefers_props = ["book", "notebook", "pen", "reading_glasses", "laptop", "stack_of_books", "bookmark"]
 

@@ -5,7 +5,6 @@ display_name = "Park"
 type = "outdoor_public"
 
 [hard_constraints]
-# 🛑 BLACKLIST: Что НЕЛЬЗЯ носить в парке
 excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/pajamas.txt",
@@ -13,21 +12,17 @@ excludes_outfit_categories = [
     "02_clothing/full_body/loungewear.txt"
 ]
 
-# 🛑 Запрещенные действия
-excludes_actions = ["sleeping", "cooking", "showering", "brushing_teeth"]
-
-# 🛑 Запрещенный реквизит
-excludes_prop_categories = ["09_props/furniture.txt"]
+excludes_actions = [
+    "cooking", "sleeping", "showering", "brushing_teeth", 
+    "taking_bath", "studying", "playing_instrument"
+]
 
 [soft_constraints]
-# ⚖️ Типичные действия для парка
 prefers_actions = ["walking", "sitting_on_bench", "reading", "looking_at_trees", "feeding_birds", "picnic", "playing_with_pet", "jogging", "cycling", "taking_photos", "daydreaming"]
 
-# 💡 Освещение: естественное, солнечное, с тенями от деревьев
 prefers_lighting_sources = ["sunlight", "dappled_sunlight", "golden_hour", "sunset", "sunrise", "overcast_light"]
 prefers_lighting_quality = ["natural_lighting", "soft_lighting", "dappled_light", "warm_lighting"]
 
-# 🌳 Природные элементы и парковая мебель
 prefers_nature = ["tree", "cherry_blossom_tree", "maple_tree", "grass", "flower", "bush", "fallen_leaves", "pond", "bench", "path", "fountain"]
 prefers_props = ["bench", "picnic_blanket", "basket", "book", "camera", "bicycle", "kite", "ball"]
 

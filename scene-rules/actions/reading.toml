@@ -4,68 +4,22 @@ category = "action"
 display_name = "Reading"
 
 [hard_constraints]
-# Чтение ТРЕБУЕТ объект для чтения (теперь у нас есть books.txt!)
 requires_prop_categories = [
     "09_props/books.txt",
     "09_props/electronics.txt"
 ]
 
-# Чтение несовместимо с активными физическими действиями
 excludes_actions = [
-    "running",
-    "swimming",
-    "jumping",
-    "exercising",
-    "dancing"
+    "running", "swimming", "jumping", "exercising", "dancing", "cooking"
 ]
 
 [soft_constraints]
-# Позы: читать можно сидя, лежа, стоя
-prefers_poses = [
-    "sitting",
-    "sitting_on_chair",
-    "sitting_on_floor",
-    "sitting_cross_legged",
-    "lying_on_stomach",
-    "lying_on_side",
-    "leaning_back",
-    "standing"
-]
+prefers_poses = ["sitting", "sitting_on_chair", "sitting_on_floor", "sitting_cross_legged", "lying_on_stomach", "lying_on_side", "leaning_back", "standing"]
+prefers_expressions = ["focused", "concentrated", "thoughtful", "gentle_smile", "downcast_eyes", "looking_down"]
+prefers_locations = ["bedroom", "library", "cafe", "park", "balcony", "living_room", "train_interior"]
 
-# Выражение лица при чтении
-prefers_expressions = [
-    "focused",
-    "concentrated",
-    "thoughtful",
-    "gentle_smile",
-    "downcast_eyes",
-    "looking_down"
-]
-
-# Типичные локации для чтения
-prefers_locations = [
-    "bedroom",
-    "library",
-    "cafe",
-    "park",
-    "balcony",
-    "living_room",
-    "train_interior"
-]
-
-# Освещение для чтения
-prefers_lighting_sources = [
-    "desk_lamp",
-    "window_light",
-    "lamplight",
-    "overhead_light",
-    "sunlight"
-]
-prefers_lighting_quality = [
-    "warm_lighting",
-    "soft_lighting",
-    "bright_lighting"
-]
+prefers_lighting_sources = ["desk_lamp", "window_light", "lamplight", "overhead_light", "sunlight"]
+prefers_lighting_quality = ["warm_lighting", "soft_lighting", "bright_lighting"]
 
 [visibility_modifiers]
 reveals_features = ["hands", "face", "upper_body"]

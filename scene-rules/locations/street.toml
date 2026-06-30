@@ -5,7 +5,6 @@ display_name = "City Street"
 type = "outdoor_urban"
 
 [hard_constraints]
-# 🛑 BLACKLIST: Что неуместно на улице
 excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/pajamas.txt",
@@ -13,18 +12,17 @@ excludes_outfit_categories = [
     "02_clothing/full_body/loungewear.txt"
 ]
 
-# 🛑 Запрещенные действия
-excludes_actions = ["sleeping", "cooking", "showering", "bathing"]
+excludes_actions = [
+    "sleeping", "cooking", "showering", "bathing", "studying", 
+    "reading", "taking_bath", "playing_instrument", "exercising"
+]
 
 [soft_constraints]
-# ⚖️ Типичные уличные действия
 prefers_actions = ["walking", "window_shopping", "holding_coffee_cup", "using_smartphone", "waiting_for_bus", "crossing_street", "looking_at_buildings", "taking_photos", "running_to_catch_bus"]
 
-# 💡 Освещение: зависит от времени суток
 prefers_lighting_sources = ["sunlight", "streetlight", "neon_light", "shop_lights", "golden_hour", "blue_hour"]
 prefers_lighting_quality = ["natural_lighting", "urban_lighting", "neon_lighting", "cinematic_lighting"]
 
-# 🏙️ Городские элементы
 prefers_props = ["coffee_cup", "shopping_bag", "smartphone", "umbrella", "backpack", "camera"]
 prefers_urban_elements = ["crosswalk", "traffic_light", "street_sign", "shop_window", "building", "sidewalk", "bus_stop", "bench", "vending_machine"]
 
