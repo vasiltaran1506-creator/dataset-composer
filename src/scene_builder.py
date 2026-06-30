@@ -1,5 +1,5 @@
 """
-Scene Builder v3 - Универсальный сборщик сцен с фильтрацией через Character Profile
+Scene Builder v4 - Полная интеграция всех правил (Locations, Actions, Weather, Camera)
 """
 import random
 from scene import Scene
@@ -7,13 +7,17 @@ from prompt_library import PromptLibrary
 
 
 class SceneBuilder:
-    """Строит логически согласованные сцены на основе универсальных TOML-правил"""
+    """Строит логически согласованные сцены на основе всех TOML-правил"""
     
     def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict):
         self.library = library
         self.scene_rules = scene_rules
-        # Храним весь профиль для доступа к outfit_whitelist
-        self.full_profile = character_profile 
+        self.full_profile = character_profile
+        
+        # Кэшируем списки доступных правил по категориям
+        self.available_actions = [k.split('.')[-1] for k in scene_rules.keys() if k.startswith('actions.')]
+        self.available_weathers = [k.split('.')[-1] for k in scene_rules.keys() if k.startswith('weather.')]
+        self.available_cameras = [k.split('.')[-1] for k in scene_rules.keys() if k.startswith('camera.')]
         
     def _get_outfit_whitelist(self) -> dict:
         """Возвращает whitelist одежды из character-profile.yaml"""
@@ -22,9 +26,7 @@ class SceneBuilder:
         return self.full_profile.get('character', {}).get('outfit_whitelist', {})
         
     def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
-        """
-        Умный выбор одежды v5: Исправлена логика Blacklist режима.
-        """
+        """Умный выбор одежды с двойной фильтрацией (TOML + Character Profile)"""
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         whitelist = self._get_outfit_whitelist()
         
@@ -38,72 +40,43 @@ class SceneBuilder:
                 continue
                 
             style_compatible = False
-            
-            # Определяем тип стиля
             has_full_body = "full_body" in style_data
             has_swimsuit = "swimsuit" in style_data
             has_top_bottom = "topwear" in style_data or "bottomwear" in style_data
             
             if allowed_categories:
-                # РЕЖИМ 1: Whitelist (проверяем, разрешено ли в локации)
-                if has_full_body:
-                    if any("full_body" in cat for cat in allowed_categories):
-                        style_compatible = True
-                elif has_swimsuit:
-                    if any("swimsuits" in cat for cat in allowed_categories):
-                        style_compatible = True
+                # Whitelist режим
+                if has_full_body and any("full_body" in cat for cat in allowed_categories):
+                    style_compatible = True
+                elif has_swimsuit and any("swimsuits" in cat for cat in allowed_categories):
+                    style_compatible = True
                 elif has_top_bottom:
-                    has_top = any("topwear" in cat for cat in allowed_categories)
-                    has_bottom = any("bottomwear" in cat for cat in allowed_categories)
-                    if has_top and has_bottom:
+                    if any("topwear" in cat for cat in allowed_categories) and any("bottomwear" in cat for cat in allowed_categories):
                         style_compatible = True
             else:
-                # РЕЖИМ 2: Blacklist (проверяем, не запрещено ли в локации)
-                # ИСПРАВЛЕНО: Теперь правильно проверяем каждый элемент стиля
+                # Blacklist режим
                 if has_full_body:
-                    # Проверяем, не запрещены ли full_body
-                    full_body_excluded = any(
-                        any(exc in cat for exc in ["pajamas", "swimsuits", "loungewear"])
-                        for cat in excluded_categories
-                    )
-                    if not full_body_excluded:
+                    if not any(any(exc in cat for exc in ["pajamas", "swimsuits", "loungewear"]) for cat in excluded_categories):
                         style_compatible = True
                 elif has_swimsuit:
-                    # Проверяем, не запрещены ли swimsuits
-                    swimsuit_excluded = any("swimsuits" in cat for cat in excluded_categories)
-                    if not swimsuit_excluded:
+                    if not any("swimsuits" in cat for cat in excluded_categories):
                         style_compatible = True
                 elif has_top_bottom:
-                    # Проверяем, не запрещены ли topwear или bottomwear
-                    # ИСПРАВЛЕНО: Теперь проверяем конкретные подкатегории
-                    top_excluded = any(
-                        any(exc in cat for exc in ["coats", "jackets"])
-                        for cat in excluded_categories
-                    )
-                    bottom_excluded = any(
-                        any(exc in cat for exc in ["pants"])
-                        for cat in excluded_categories
-                    )
-                    if not top_excluded and not bottom_excluded:
+                    if not any(any(exc in cat for exc in ["coats", "jackets"]) for cat in excluded_categories):
                         style_compatible = True
                         
             if style_compatible:
                 compatible_styles.append(style_name)
                 
         if not compatible_styles:
-            # ИСПРАВЛЕНО: Если нет совместимых стилей, ВСЕ РАВНО пытаемся выбрать из whitelist
-            # вместо случайной одежды из библиотеки
-            all_styles = list(whitelist.keys())
-            if all_styles:
-                compatible_styles = all_styles
-                
+            compatible_styles = list(whitelist.keys())
+            
         if not compatible_styles:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
             
         chosen_style = random.choice(compatible_styles)
         style_data = whitelist[chosen_style]
         
-        # Наполняем outfit
         if "full_body" in style_data:
             outfit["full"] = random.choice(style_data["full_body"])
         elif "swimsuit" in style_data:
@@ -114,18 +87,15 @@ class SceneBuilder:
             if "bottomwear" in style_data:
                 outfit["bottom"] = random.choice(style_data["bottomwear"])
                 
-        # Legwear и Footwear
         if "legwear" in style_data and random.random() < 0.7:
             outfit["legwear"] = random.choice(style_data["legwear"])
         if "footwear" in style_data and random.random() < 0.5:
             outfit["footwear"] = random.choice(style_data["footwear"])
                 
         return outfit
-    
+        
     def _choose_random_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
-        """
-        Fallback: Случайная сборка одежды из библиотеки (если у персонажа нет whitelist)
-        """
+        """Fallback: случайная сборка одежды из библиотеки"""
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         
         if allowed_categories:
@@ -157,59 +127,42 @@ class SceneBuilder:
             outfit["footwear"] = self.library.get_random_tag(random.choice(footwear_cats)) or ""
             
         return outfit
-    def _get_filtered_tag(self, category: str, whitelist: dict) -> str:
-        """
-        Магия фильтрации! 
-        Берет тег из библиотеки, но проверяет, есть ли у персонажа жесткие требования к этой категории.
-        """
-        parts = category.split('/')
-        if len(parts) < 2:
-            return self.library.get_random_tag(category) or ""
-            
-        folder = parts[-2]  # Например: 'full_body', 'topwear', 'bottomwear'
-        file_name = parts[-1].replace('.txt', '') # Например: 'pajamas', 'shirts'
-        
-        allowed_tags = []
-        
-        # Ищем подходящие теги в whitelist персонажа
-        for style_name, style_data in whitelist.items():
-            if not isinstance(style_data, dict):
-                continue
-                
-            # Совпадение по папке (например, ищем все разрешенные topwear)
-            if folder in style_data:
-                allowed_tags.extend(style_data[folder])
-                
-            # Совпадение по стилю и файлу (например, стиль 'pajamas' и файл 'pajamas.txt')
-            elif style_name == file_name and folder in style_data:
-                allowed_tags.extend(style_data[folder])
-                
-        # Если в профиле персонажа есть жесткие теги для этой категории - берем из них!
-        if allowed_tags:
-            return random.choice(allowed_tags)
-            
-        # Fallback: Если ограничений нет (например, это реквизит или у персонажа нет спец. требований)
-        # берем случайный тег из общей библиотеки
-        tag = self.library.get_random_tag(category)
-        return tag if tag else ""
         
     def build_scene(self, location_id: str) -> Scene:
+        """
+        ГЛАВНЫЙ МЕТОД: Собирает сцену, применяя все правила
+        """
         scene = Scene()
         scene.location = location_id
         
-        rule_key = f"locations.{location_id}"
-        rule = self.scene_rules.get(rule_key, {})
+        # Загружаем правила для выбранной локации
+        location_rule = self.scene_rules.get(f"locations.{location_id}", {})
+        location_soft = location_rule.get("soft_constraints", {})
+        location_hard = location_rule.get("hard_constraints", {})
         
-        soft_constraints = rule.get("soft_constraints", {})
-        hard_constraints = rule.get("hard_constraints", {})
-        
-        # 1. Выбор действия (Action)
-        prefers_actions = soft_constraints.get("prefers_actions", ["standing", "sitting"])
+        # 1. ВЫБОР ДЕЙСТВИЯ (Action)
+        # Берем из prefers_actions локации, если есть
+        prefers_actions = location_soft.get("prefers_actions", self.available_actions)
         scene.action = random.choice(prefers_actions)
         
-        # 2. УМНЫЙ выбор одежды (Outfit)
-        allowed_categories = hard_constraints.get("allowed_outfit_categories", [])
-        excluded_categories = hard_constraints.get("excludes_outfit_categories", [])
+        # Загружаем правила для выбранного действия
+        action_rule = self.scene_rules.get(f"actions.{scene.action}", {})
+        action_soft = action_rule.get("soft_constraints", {})
+        action_hard = action_rule.get("hard_constraints", {})
+        
+        # 2. ВЫБОР ПОГОДЫ (Weather) - случайно из доступных
+        scene.weather = random.choice(self.available_weathers)
+        weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
+        weather_soft = weather_rule.get("soft_constraints", {})
+        
+        # 3. ВЫБОР КАМЕРЫ (Camera) - случайно из доступных
+        scene.camera = random.choice(self.available_cameras)
+        camera_rule = self.scene_rules.get(f"camera.{scene.camera}", {})
+        camera_soft = camera_rule.get("soft_constraints", {})
+        
+        # 4. ВЫБОР ОДЕЖДЫ (Outfit)
+        allowed_categories = location_hard.get("allowed_outfit_categories", [])
+        excluded_categories = location_hard.get("excludes_outfit_categories", [])
         
         if allowed_categories or excluded_categories:
             outfit_parts = self._choose_smart_outfit(allowed_categories, excluded_categories)
@@ -217,20 +170,57 @@ class SceneBuilder:
             scene.outfit_top = outfit_parts["top"]
             scene.outfit_bottom = outfit_parts["bottom"]
             scene.outfit_legwear = outfit_parts["legwear"]
+            scene.outfit_footwear = outfit_parts["footwear"]
             
-        # 3. Выбор реквизита (Props)
-        prefers_props = soft_constraints.get("prefers_props", [])
-        if prefers_props:
-            num_props = random.choice([1, 2])
-            scene.props = random.sample(prefers_props, min(num_props, len(prefers_props)))
+        # 5. ВЫБОР ВЫРАЖЕНИЯ ЛИЦА (Expression)
+        # Приоритет: action > location > случайный
+        prefers_expressions = action_soft.get("prefers_expressions", location_soft.get("prefers_expressions", []))
+        if prefers_expressions:
+            scene.expression = random.choice(prefers_expressions)
             
-        # 4. Выбор освещения (Lighting)
-        prefers_lighting_sources = soft_constraints.get("prefers_lighting_sources", [])
-        if prefers_lighting_sources:
-            scene.lighting_source = random.choice(prefers_lighting_sources)
+        # 6. ВЫБОР РЕКВИЗИТА (Props)
+        props = []
+        
+        # 6a. Обязательный реквизит из action (requires_prop_categories)
+        requires_prop_cats = action_hard.get("requires_prop_categories", [])
+        for cat in requires_prop_cats:
+            tag = self.library.get_random_tag(cat)
+            if tag:
+                props.append(tag)
+                
+        # 6b. Предпочитаемый реквизит из action
+        prefers_props_action = action_soft.get("prefers_props", [])
+        if prefers_props_action and random.random() < 0.7:
+            props.append(random.choice(prefers_props_action))
             
-        prefers_lighting_quality = soft_constraints.get("prefers_lighting_quality", [])
-        if prefers_lighting_quality:
-            scene.lighting_quality = random.choice(prefers_lighting_quality)
+        # 6c. Предпочитаемый реквизит из location
+        prefers_props_location = location_soft.get("prefers_props", [])
+        if prefers_props_location and random.random() < 0.5:
+            props.append(random.choice(prefers_props_location))
+            
+        scene.props = props
+        
+        # 7. ВЫБОР ОСВЕЩЕНИЯ (Lighting)
+        # Приоритет: weather > action > location
+        lighting_sources = (
+            weather_soft.get("prefers_lighting_sources", []) or
+            action_soft.get("prefers_lighting_sources", []) or
+            location_soft.get("prefers_lighting_sources", [])
+        )
+        if lighting_sources:
+            scene.lighting_source = random.choice(lighting_sources)
+            
+        lighting_quality = (
+            weather_soft.get("prefers_lighting_quality", []) or
+            action_soft.get("prefers_lighting_quality", []) or
+            location_soft.get("prefers_lighting_quality", [])
+        )
+        if lighting_quality:
+            scene.lighting_quality = random.choice(lighting_quality)
+            
+        # 8. ЭФФЕКТЫ (Effects) - из weather
+        prefers_effects = weather_soft.get("prefers_effects", [])
+        if prefers_effects and random.random() < 0.6:
+            scene.effects.append(random.choice(prefers_effects))
             
         return scene
