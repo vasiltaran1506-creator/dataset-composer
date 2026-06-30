@@ -5,20 +5,10 @@ display_name = "Library"
 type = "indoor_public"  # Публичное тихое помещение
 
 [hard_constraints]
+# ✅ Разрешенные стили одежды для Луны
+allowed_outfit_styles = ["casual_shirt_skirt"]
+
 # ✅ WHITELIST: Уместная одежда для библиотеки
-allowed_outfit_categories = [
-    "02_clothing/topwear/shirts.txt",
-    "02_clothing/topwear/blouses.txt",
-    "02_clothing/topwear/sweaters.txt",
-    "02_clothing/topwear/jackets.txt",
-    "02_clothing/bottomwear/pants.txt",
-    "02_clothing/bottomwear/skirts.txt",
-    "02_clothing/full_body/dresses.txt",
-    "02_clothing/full_body/uniforms.txt",    # Школьная форма — ок
-    "02_clothing/legwear/",
-    "02_clothing/footwear/shoes.txt",
-    "02_clothing/accessories/"
-]
 
 # 🛑 BLACKLIST: Неуместно в публичной библиотеке
 excludes_outfit_categories = [

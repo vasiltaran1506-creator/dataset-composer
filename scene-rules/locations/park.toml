@@ -5,6 +5,9 @@ display_name = "Park"
 type = "outdoor_public"
 
 [hard_constraints]
+# ✅ Разрешенные стили одежды для Луны
+allowed_outfit_styles = ["casual_shirt_skirt", "sportswear"]
+
 # 🛑 BLACKLIST: Что НЕЛЬЗЯ носить в парке
 # Мы не пишем allowed_..., потому что разрешена почти любая уличная одежда
 excludes_outfit_categories = [

@@ -5,11 +5,10 @@ display_name = "Bathroom"
 type = "indoor_private"
 
 [hard_constraints]
+# ✅ Разрешенные стили одежды для Луны
+allowed_outfit_styles = ["bikini"]
+
 # ✅ WHITELIST: Только то, в чем можно находиться в ванной
-allowed_outfit_categories = [
-    "02_clothing/underwear/",           # Нижнее белье
-    "02_clothing/full_body/swimsuits.txt" # Купальник (если принимает душ/ванну в нем)
-]
 # Примечание: В будущем можно добавить категорию "towels" и "robes"
 
 # 🛑 BLACKLIST: Уличная одежда в ванной невозможна

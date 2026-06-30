@@ -5,6 +5,9 @@ display_name = "Cafe"
 type = "indoor_public"
 
 [hard_constraints]
+# ✅ Разрешенные стили одежды для Луны
+allowed_outfit_styles = ["casual_shirt_skirt"]
+
 # ✅ WHITELIST для действий (в кафе ограниченный набор действий)
 allowed_actions = [
     "drinking_coffee",

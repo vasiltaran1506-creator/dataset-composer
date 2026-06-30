@@ -5,15 +5,10 @@ display_name = "Beach"
 type = "outdoor"
 
 [hard_constraints]
+# ✅ Разрешенные стили одежды для Луны
+allowed_outfit_styles = ["bikini", "casual_shirt_skirt"]
+
 # ✅ WHITELIST: Что носят на пляже
-allowed_outfit_categories = [
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/topwear/shirts.txt",       # Накидки
-    "02_clothing/bottomwear/shorts.txt",
-    "02_clothing/full_body/dresses.txt",    # Летние платья
-    "02_clothing/accessories/headwear.txt", # Шляпы от солнца
-    "02_clothing/accessories/jewelry.txt"
-]
 
 # 🛑 BLACKLIST: Никогда на пляже
 excludes_outfit_categories = [

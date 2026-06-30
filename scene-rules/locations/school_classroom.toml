@@ -5,18 +5,10 @@ display_name = "School Classroom"
 type = "indoor_institutional"
 
 [hard_constraints]
+# ✅ Разрешенные стили одежды для Луны
+allowed_outfit_styles = ["casual_shirt_skirt"]
+
 # ✅ WHITELIST для одежды (в школе уместна форма или опрятная одежда)
-allowed_outfit_categories = [
-    "02_clothing/full_body/uniforms.txt",   # Школьная форма
-    "02_clothing/topwear/shirts.txt",       # Рубашки
-    "02_clothing/topwear/blouses.txt",      # Блузки
-    "02_clothing/topwear/sweaters.txt",     # Свитера
-    "02_clothing/bottomwear/skirts.txt",    # Юбки
-    "02_clothing/bottomwear/pants.txt",     # Брюки
-    "02_clothing/legwear/socks.txt",        # Носки
-    "02_clothing/legwear/thighhighs.txt",   # Гольфы
-    "02_clothing/footwear/shoes.txt"        # Туфли
-]
 
 # 🛑 BLACKLIST: Что неуместно в школе
 excludes_outfit_categories = [
