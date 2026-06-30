@@ -1,0 +1,38 @@
+open mouth
+closed mouth
+smile
+gentle smile
+wide smile
+grin
+smirk
+frown
+sad expression
+pout
+pouting lips
+parted lips
+biting lip
+licking lips
+tongue out
+teeth
+clenched teeth
+gritted teeth
+grimace
+gasping
+sighing
+yawning
+sneezing
+coughing
+crying
+sobbing
+laughing
+giggling
+shouting
+screaming
+whispering
+talking
+singing
+blowing kiss
+smoking
+eating
+drinking
+chewing

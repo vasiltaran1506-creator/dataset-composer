@@ -1,0 +1,42 @@
+clear sky
+sunny
+sunshine
+bright sunlight
+sunbeam
+blue sky
+cloudy
+partly cloudy
+overcast
+starry sky
+starry night
+milky way
+shooting star
+full moon
+crescent moon
+new moon
+sunset
+sunrise
+dawn
+dusk
+twilight
+golden hour
+blue hour
+rainbow
+double rainbow
+sun halo
+moon halo
+clear weather
+beautiful sky
+scenic sky
+dramatic sky
+cumulus clouds
+cirrus clouds
+fluffy clouds
+wispy clouds
+sunny day
+warm sunlight
+dappled sunlight
+god rays
+crepuscular rays
+lens flare
+sunburst

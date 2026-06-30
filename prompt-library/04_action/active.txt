@@ -1,0 +1,36 @@
+running
+sprinting
+jogging
+jumping
+leaping
+skipping
+climbing
+crawling
+dancing
+spinning
+stretching
+exercising
+doing yoga
+martial arts pose
+fighting
+kicking
+punching
+dodging
+falling
+tripping
+catching
+throwing
+swimming
+diving
+floating
+riding a bicycle
+skateboarding
+roller skating
+ice skating
+skiing
+snowboarding
+surfing
+playing sports
+playing basketball
+playing soccer
+playing tennis

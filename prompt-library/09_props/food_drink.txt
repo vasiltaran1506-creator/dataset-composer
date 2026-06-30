@@ -1,0 +1,60 @@
+coffee cup
+teacup
+mug
+glass
+wine glass
+beer mug
+soda can
+water bottle
+bento
+sandwich
+burger
+pizza
+slice of cake
+pastry
+donut
+cookie
+ice cream
+popsicle
+apple
+banana
+strawberry
+chopsticks
+fork
+spoon
+knife
+straw
+bubble tea
+milkshake
+cocktail
+sake cup
+teapot
+candy
+chocolate
+lollipop
+chips
+bread
+croissant
+sushi
+ramen
+soup
+salad
+fruit
+picnic basket
+lunchbox
+thermos
+juice box
+pancake
+waffle
+crepe
+macaron
+pudding
+jelly
+dango
+onigiri
+takoyaki
+melonpan
+taiyaki
+pocky
+parfait
+sundae

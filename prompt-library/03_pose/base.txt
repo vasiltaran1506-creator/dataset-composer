@@ -1,0 +1,31 @@
+standing
+sitting
+sitting on chair
+sitting on floor
+sitting on bed
+sitting cross-legged
+sitting on knees
+seiza
+wariza
+agura
+lying
+lying on back
+lying on side
+lying on stomach
+reclining
+lounging
+kneeling
+kneeling on one knee
+crouching
+squatting
+huddled
+fetal position
+leaning forward
+leaning back
+leaning to the side
+leaning against wall
+bending over
+bending forward
+arched back
+twisting torso
+upside down

@@ -1,0 +1,85 @@
+street
+alley
+sidewalk
+crosswalk
+intersection
+highway
+bridge
+tunnel
+parking lot
+park
+playground
+botanical garden
+zoo
+amusement park
+carnival
+fairground
+beach
+coast
+shoreline
+pier
+dock
+harbor
+port
+marina
+lake
+river
+stream
+waterfall
+pond
+swamp
+forest
+woods
+jungle
+bamboo forest
+mountain
+hill
+valley
+cliff
+canyon
+desert
+dunes
+oasis
+snowy landscape
+glacier
+ice cave
+field
+meadow
+wheat field
+flower field
+sunflower field
+farm
+barn
+orchard
+vineyard
+garden
+courtyard
+plaza
+town square
+marketplace
+sports field
+running track
+tennis court
+basketball court
+soccer field
+golf course
+cemetery
+graveyard
+construction site
+junkyard
+rooftop
+balcony
+terrace
+porch
+bus stop
+train station
+airport
+campsite
+campfire
+ruins
+temple exterior
+shrine exterior
+castle exterior
+schoolyard
+university campus
+festival

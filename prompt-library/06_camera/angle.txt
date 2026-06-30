@@ -1,0 +1,23 @@
+from above
+high angle
+from below
+low angle
+dutch angle
+tilted angle
+eye-level
+straight on
+profile view
+side view
+three-quarter view
+from behind
+rear view
+over the shoulder
+pov
+first-person view
+bird's-eye view
+worm's-eye view
+isometric view
+fisheye lens
+wide-angle lens
+telephoto lens
+panorama

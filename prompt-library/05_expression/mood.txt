@@ -1,0 +1,44 @@
+blush
+heavy blush
+light blush
+full-face blush
+embarrassed
+shy
+nervous
+angry
+furious
+annoyed
+frustrated
+sad
+depressed
+gloomy
+happy
+joyful
+excited
+ecstatic
+surprised
+shocked
+stunned
+terrified
+scared
+anxious
+worried
+confused
+bewildered
+thoughtful
+pensive
+focused
+determined
+confident
+proud
+smug
+mischievous
+evil smile
+relaxed
+peaceful
+bored
+tired
+exhausted
+sleepy
+drunk
+dizzy

@@ -1,0 +1,62 @@
+scarf
+red scarf
+black scarf
+white scarf
+plaid scarf
+striped scarf
+knit scarf
+wool scarf
+cashmere scarf
+silk scarf
+chiffon scarf
+infinity scarf
+blanket scarf
+shawl
+pashmina
+wrap
+stole
+fur stole
+necktie
+black necktie
+red necktie
+blue necktie
+striped necktie
+plaid necktie
+bowtie
+black bowtie
+red bowtie
+white bowtie
+ribbon tie
+ascot
+cravat
+neck ribbon
+black neck ribbon
+red neck ribbon
+white neck ribbon
+bow neck ribbon
+choker
+black choker
+leather choker
+lace choker
+velvet choker
+spiked choker
+studded choker
+pearl choker
+chain choker
+collar
+dog collar
+spiked collar
+detached collar
+sailor collar
+peter pan collar
+mandarin collar
+turtleneck collar
+pendant necklace
+chain necklace
+pearl necklace
+choker necklace
+layered necklaces
+locket necklace
+cross necklace
+heart necklace
+gemstone necklace

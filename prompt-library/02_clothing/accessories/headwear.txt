@@ -1,0 +1,70 @@
+beret
+black beret
+red beret
+white beret
+pink beret
+navy beret
+beanie
+black beanie
+grey beanie
+knit beanie
+pom-pom beanie
+cap
+baseball cap
+black cap
+white cap
+snapback cap
+bucket hat
+sun hat
+straw hat
+wide-brim hat
+fedora
+trilby hat
+bowler hat
+top hat
+newsboy cap
+flat cap
+peaked cap
+military cap
+nurse cap
+maid headband
+frilled headband
+lace headband
+hair bow
+red hair bow
+black hair bow
+white hair bow
+pink hair bow
+blue hair bow
+yellow hair bow
+ribbon
+hair ribbon
+satin ribbon
+silk ribbon
+hairband
+headband
+black headband
+white headband
+red headband
+sports headband
+cat ears
+fake cat ears
+rabbit ears
+bunny ears
+fox ears
+wolf ears
+dog ears
+deer antlers
+hair clips
+hair pins
+bobby pins
+barrettes
+hair sticks
+kanzashi
+tiara
+crown
+flower crown
+wreath
+veil
+hood
+fur-trimmed hood

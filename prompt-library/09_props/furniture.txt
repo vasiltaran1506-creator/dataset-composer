@@ -1,0 +1,91 @@
+bed
+single bed
+double bed
+bunk bed
+canopy bed
+mattress
+pillow
+blanket
+duvet
+sheet
+nightstand
+dresser
+wardrobe
+closet
+armoire
+desk
+study desk
+office desk
+vanity
+table
+dining table
+coffee table
+side table
+end table
+folding table
+kotatsu
+chair
+dining chair
+office chair
+armchair
+rocking chair
+recliner
+folding chair
+stool
+bar stool
+sofa
+couch
+loveseat
+sectional sofa
+futon
+beanbag
+ottoman
+footstool
+bookshelf
+bookcase
+shelving unit
+display cabinet
+cupboard
+sideboard
+buffet
+tv stand
+entertainment center
+fireplace
+mantel
+hearth
+rug
+carpet
+mat
+curtains
+drapes
+blinds
+shutters
+mirror
+full-length mirror
+wall mirror
+clock
+grandfather clock
+wall clock
+lamp
+table lamp
+floor lamp
+desk lamp
+ceiling light
+chandelier
+pendant light
+wall sconce
+plant
+potted plant
+vase
+flowers
+painting
+picture frame
+poster
+tapestry
+sculpture
+figurine
+basket
+laundry basket
+trash can
+umbrella stand
+coat rack

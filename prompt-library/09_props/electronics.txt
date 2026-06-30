@@ -1,0 +1,65 @@
+smartphone
+cellphone
+mobile phone
+flip phone
+tablet
+ipad
+e-reader
+laptop
+notebook
+desktop computer
+monitor
+computer screen
+keyboard
+mouse
+gaming controller
+gamepad
+joystick
+steering wheel
+vr headset
+headphones
+earphones
+earbuds
+headset
+microphone
+speaker
+bluetooth speaker
+soundbar
+radio
+television
+tv
+flat screen tv
+crt tv
+projector
+camera
+dslr
+polaroid
+instant camera
+camcorder
+video camera
+drone
+smartwatch
+fitness tracker
+calculator
+clock radio
+alarm clock
+router
+modem
+printer
+scanner
+vending machine
+atm
+cash register
+arcade machine
+pinball machine
+jukebox
+synthesizer
+keyboard instrument
+electric guitar
+amplifier
+turntable
+record player
+cassette player
+cd player
+mp3 player
+walkman

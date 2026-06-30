@@ -1,0 +1,60 @@
+bedroom
+living room
+kitchen
+bathroom
+dining room
+hallway
+staircase
+attic
+basement
+garage
+classroom
+lecture hall
+library
+laboratory
+office
+cubicle
+conference room
+cafe
+coffee shop
+restaurant
+bar
+izakaya
+nightclub
+convenience store
+supermarket
+shopping mall
+boutique
+bookstore
+art gallery
+museum
+theater
+cinema
+concert hall
+hospital room
+doctor's office
+clinic
+train interior
+airplane interior
+car interior
+subway interior
+bus interior
+elevator
+prison cell
+dungeon
+castle interior
+church interior
+cathedral
+temple interior
+shrine interior
+greenhouse
+indoor pool
+gym
+locker room
+dojo
+dance studio
+recording studio
+broadcasting studio
+hotel room
+motel room
+hostel

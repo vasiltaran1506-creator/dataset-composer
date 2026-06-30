@@ -1,0 +1,55 @@
+tree
+pine tree
+cherry blossom tree
+maple tree
+willow tree
+bush
+flower
+rose
+sunflower
+lily
+daisy
+tulip
+lotus
+cherry blossoms
+fallen leaves
+grass
+tall grass
+fern
+moss
+vine
+ivy
+rock
+boulder
+pebble
+log
+tree stump
+branch
+pinecone
+acorn
+mushroom
+cactus
+bamboo
+reeds
+seaweed
+coral
+shell
+starfish
+driftwood
+sand
+water drop
+dew drop
+puddle
+stream
+river
+lake
+ocean wave
+waterfall
+pond
+lily pad
+petals
+floating petals
+flower petals
+leaves
+autumn leaves
+maple leaf

@@ -1,0 +1,38 @@
+holding object
+holding cup
+holding phone
+holding book
+holding umbrella
+holding weapon
+holding hands
+hugging
+embracing
+kissing
+leaning on
+touching
+adjusting hair
+adjusting glasses
+adjusting clothes
+tying shoes
+tying ribbon
+buttoning shirt
+zipping up
+putting on jacket
+taking off jacket
+looking at object
+pointing at object
+reaching for object
+carrying bag
+carrying box
+opening door
+opening window
+writing with pen
+typing on keyboard
+playing instrument
+playing guitar
+playing piano
+playing violin
+brushing hair
+washing hands
+cooking
+stirring pot

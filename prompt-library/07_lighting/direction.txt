@@ -1,0 +1,31 @@
+front lighting
+side lighting
+backlighting
+rim light
+rim lighting
+top lighting
+bottom lighting
+underlighting
+cross lighting
+split lighting
+loop lighting
+rembrandt lighting
+butterfly lighting
+broad lighting
+short lighting
+chiaroscuro
+volumetric lighting
+god rays
+crepuscular rays
+sunbeams
+dappled light
+dappled sunlight
+caustics
+light through window
+light through blinds
+shadow on face
+shadow over eyes
+harsh shadows
+soft shadows
+long shadows
+silhouette

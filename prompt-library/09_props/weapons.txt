@@ -1,0 +1,62 @@
+sword
+katana
+longsword
+shortsword
+broadsword
+rapier
+scimitar
+dagger
+knife
+axe
+battleaxe
+hatchet
+spear
+lance
+halberd
+trident
+bow
+longbow
+crossbow
+arrow
+quiver
+shield
+buckler
+club
+mace
+warhammer
+whip
+chain
+boomerang
+shuriken
+kunai
+senbon
+staff
+magic wand
+scepter
+gun
+pistol
+revolver
+rifle
+sniper rifle
+shotgun
+assault rifle
+machine gun
+bazooka
+rocket launcher
+grenade
+bomb
+cannon
+laser gun
+ray gun
+blaster
+lightsaber
+energy sword
+scythe
+sickle
+kusarigama
+nunchaku
+brass knuckles
+gauntlet
+throwing knives
+holographic weapon
+magical weapon
