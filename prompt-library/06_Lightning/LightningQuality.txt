@@ -1,0 +1,55 @@
+soft light
+hard light
+diffused light
+harsh light
+gentle light
+warm light
+cool light
+neutral light
+bright light
+dim light
+low light
+high contrast light
+low contrast light
+even light
+uneven light
+flat light
+volumetric light
+glowing light
+flickering light
+steady light
+pulsing light
+dappled light
+shaft of light
+beam of light
+ray of light
+halo light
+scattered light
+focused light
+broad light
+narrow light
+intense light
+mild light
+subdued light
+radiant light
+golden light
+silver light
+blue light
+orange light
+pink light
+purple light
+green light
+red light
+white light
+yellow light
+magenta light
+cyan light
+pastel light
+neon light
+fluorescent light
+incandescent light
+LED light
+candle glow
+firelight glow
+moonlight glow
+sunlight glow

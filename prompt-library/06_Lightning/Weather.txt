@@ -1,0 +1,49 @@
+clear sky
+sunny
+partly cloudy
+overcast
+cloudy
+rainy
+drizzling
+pouring rain
+stormy
+thunderstorm
+snowy
+blizzard
+sleet
+hail
+foggy
+misty
+hazy
+smoky
+windy
+breezy
+calm
+humid
+dry
+frosty
+icy
+snow flurries
+light rain
+heavy rain
+scattered clouds
+broken clouds
+dark clouds
+storm clouds
+rainbow after rain
+sunshower
+windy with clouds
+snowfall
+light snow
+heavy snow
+drifting snow
+foggy morning
+misty evening
+clear night
+star-filled sky
+moonlit clouds
+overcast with breaks
+humid summer day
+dry autumn day
+crisp winter day
+fresh spring morning

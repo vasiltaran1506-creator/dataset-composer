@@ -1,0 +1,42 @@
+morning
+early morning
+late morning
+noon
+afternoon
+late afternoon
+evening
+dusk
+twilight
+night
+midnight
+dawn
+sunrise
+sunset
+golden hour
+blue hour
+magic hour
+first light
+last light
+daytime
+nighttime
+early dawn
+late dusk
+pre-dawn
+post-sunset
+crescent moon night
+full moon night
+starlit night
+cloudy daytime
+overcast daytime
+bright midday
+soft afternoon
+hazy morning
+crisp evening
+warm sunset
+cool dawn
+moonlit night
+pitch black night
+twilight transition
+sunset glow
+morning mist
+evening shade

@@ -1,0 +1,50 @@
+sunlight
+moonlight
+window light
+lamp light
+desk lamp
+floor lamp
+ceiling light
+chandelier
+candlelight
+firelight
+campfire light
+fireplace light
+street lamp
+neon light
+fluorescent light
+LED light
+monitor light
+screen light
+phone light
+flashlight
+torchlight
+lantern light
+oil lamp light
+gas lamp light
+headlights
+car headlights
+spotlight
+stage light
+studio light
+ring light
+softbox light
+natural light
+artificial light
+daylight
+twilight glow
+starlight
+aurora light
+bioluminescence
+lightning flash
+fireworks glow
+camera flash
+reflected light
+skylight
+underwater light
+shaft of light
+beam of light
+diffused light
+direct light
+indirect light
+ambient light
