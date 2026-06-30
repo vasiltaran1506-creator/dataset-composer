@@ -1,0 +1,83 @@
+[meta]
+id = "street"
+category = "location"
+display_name = "City Street"
+type = "outdoor_urban"
+
+[hard_constraints]
+# 🛑 BLACKLIST: Что неуместно на улице
+excludes_outfit_categories = [
+    "02_clothing/underwear/",
+    "02_clothing/full_body/pajamas.txt",
+    "02_clothing/full_body/swimsuits.txt",
+    "02_clothing/full_body/loungewear.txt"
+]
+
+# 🛑 Запрещенные действия (опасные или нелогичные)
+excludes_actions = [
+    "sleeping",
+    "cooking",
+    "showering",
+    "bathing"
+]
+
+[soft_constraints]
+# ⚖️ Типичные уличные действия
+prefers_actions = [
+    "walking",
+    "window_shopping",
+    "holding_coffee_cup",
+    "using_smartphone",
+    "waiting_for_bus",
+    "crossing_street",
+    "looking_at_buildings",
+    "taking_photos",
+    "running_to_catch_bus"
+]
+
+# 💡 Освещение: зависит от времени суток
+prefers_lighting_sources = [
+    "sunlight", "streetlight", "neon_light", 
+    "shop_lights", "golden_hour", "blue_hour"
+]
+prefers_lighting_quality = [
+    "natural_lighting", "urban_lighting", 
+    "neon_lighting", "cinematic_lighting"
+]
+
+# 🏙️ Городские элементы
+prefers_props = [
+    "coffee_cup", "shopping_bag", "smartphone", 
+    "umbrella", "backpack", "camera"
+]
+prefers_urban_elements = [
+    "crosswalk", "traffic_light", "street_sign", 
+    "shop_window", "building", "sidewalk", 
+    "bus_stop", "bench", "vending_machine"
+]
+
+[weather_rules]
+# Улица требует соответствующей одежды под погоду
+# Это критически важное правило!
+if_weather_is_snow = { 
+    requires_outfit_categories = ["02_clothing/topwear/coats.txt", "02_clothing/topwear/jackets.txt"],
+    prefers_props = ["scarf", "gloves", "winter_boots"]
+}
+if_weather_is_rain = { 
+    prefers_props = ["umbrella", "raincoat"],
+    prefers_lighting_quality = ["moody_lighting", "reflections_on_wet_ground"]
+}
+if_weather_is_sunny = { 
+    prefers_props = ["sunglasses", "sun_hat"]
+}
+
+[time_of_day]
+prefers = ["morning", "afternoon", "evening", "night"]
+# Ночью на улице нужно особое освещение
+if_time_is_night = { 
+    prefers_lighting_sources = ["streetlight", "neon_light", "shop_lights"],
+    prefers_lighting_quality = ["low-key_lighting", "cinematic_lighting"]
+}
+
+[visibility_modifiers]
+reveals_features = ["face", "upper_body", "lower_body", "feet_footwear"]

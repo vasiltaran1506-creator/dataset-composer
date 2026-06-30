@@ -1,0 +1,100 @@
+[meta]
+id = "bedroom"
+category = "location"
+display_name = "Bedroom"
+type = "indoor_private"  # Приватное помещение
+
+[hard_constraints]
+# ✅ WHITELIST: Разрешенные категории одежды
+# В спальне уместна только домашняя/повседневная одежда
+allowed_outfit_categories = [
+    "02_clothing/underwear/",          # Нижнее белье (дома можно)
+    "02_clothing/full_body/pajamas.txt",
+    "02_clothing/full_body/loungewear.txt",
+    "02_clothing/topwear/shirts.txt",
+    "02_clothing/topwear/blouses.txt",
+    "02_clothing/topwear/sweaters.txt",
+    "02_clothing/bottomwear/shorts.txt",
+    "02_clothing/bottomwear/pants.txt",
+    "02_clothing/bottomwear/skirts.txt",
+    "02_clothing/legwear/socks.txt",   # Носки дома — ок
+    "02_clothing/footwear/shoes.txt"   # Только домашние тапочки/слипоны
+]
+
+# 🛑 BLACKLIST: Категорически неуместно в спальне
+excludes_outfit_categories = [
+    "02_clothing/full_body/swimsuits.txt",   # Купальник не для спальни
+    "02_clothing/full_body/uniforms.txt",    # Униформа (кроме случаев переодевания)
+    "02_clothing/topwear/coats.txt",         # Пальто
+    "02_clothing/topwear/jackets.txt",       # Куртки
+    "02_clothing/footwear/boots.txt",        # Уличная обувь
+    "02_clothing/accessories/headwear.txt"   # Уличные головные уборы
+]
+
+# 🛑 Запрещенные действия (нелогичные для спальни)
+excludes_action_categories = [
+    "04_action/active.txt"    # Бег, прыжки, спорт — не в спальне
+]
+
+# 🛑 Запрещенный реквизит
+excludes_prop_categories = [
+    "09_props/weapons.txt",
+    "09_props/tools.txt"
+]
+
+[soft_constraints]
+# ⚖️ Предпочитаемая одежда (веса для Scene Builder)
+prefers_outfit_categories = [
+    { id = "02_clothing/full_body/pajamas.txt", weight = 0.35 },
+    { id = "02_clothing/full_body/loungewear.txt", weight = 0.25 },
+    { id = "02_clothing/topwear/sweaters.txt", weight = 0.20 },
+    { id = "02_clothing/topwear/shirts.txt", weight = 0.20 }
+]
+
+# ⚖️ Предпочитаемые действия для спальни
+prefers_actions = [
+    "reading",
+    "sleeping",
+    "waking_up",
+    "daydreaming",
+    "looking_out_window",
+    "drinking_tea",
+    "brushing_hair",
+    "using_smartphone",
+    "watching_tv",
+    "folding_clothes",
+    "stretching"
+]
+
+# 💡 Освещение: мягкое, уютное, домашнее
+prefers_lighting_sources = [
+    "lamplight", "window_light", "fairy_lights", 
+    "candlelight", "moonlight", "screen_glow"
+]
+prefers_lighting_quality = [
+    "soft_lighting", "warm_lighting", "dim_lighting", 
+    "golden_hour", "low-key_lighting"
+]
+
+# 🪑 Мебель и реквизит, типичные для спальни
+prefers_furniture = [
+    "bed", "pillow", "blanket", "nightstand", 
+    "dresser", "wardrobe", "full-length_mirror", 
+    "desk", "chair", "rug", "curtains"
+]
+prefers_props = [
+    "book", "smartphone", "teacup", "mug", 
+    "laptop", "plush_toy", "pillow", "blanket"
+]
+
+[visibility_modifiers]
+# 👁️ Правила видимости для Coverage Engine
+# Действия, которые скрывают части тела
+conceals_if_sleeping = ["feet_footwear", "lower_body", "hands"]
+conceals_if_lying_under_blanket = ["lower_body", "feet_footwear", "upper_body"]
+conceals_if_sitting_on_bed = ["feet_footwear"]
+
+[time_of_day]
+# 🕐 Когда эта локация чаще всего используется
+prefers = ["morning", "evening", "night"]
+avoids = ["midday"]  # В спальне реже находятся в полдень

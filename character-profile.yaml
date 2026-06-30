@@ -1,215 +1,88 @@
 # Character Profile: Luna
-# Этот файл определяет неизменные черты персонажа и правила для Scene Engine
+# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules
+# Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь
 
 character:
   name: "Luna"
   age: 18
   archetype: "quiet intellectual dreamer"
-  
-  # 🔒 FIXED TRAITS (Неизменяемые черты - ВСЕГДА добавляются в промпт)
-  fixed_traits:
-    - "1girl"
-    - "solo"
-    - "young woman"
-    - "long straight light blue hair"
-    - "brown eyes"
-    - "round face"
-    - "soft features"
-    - "petite"
-    - "narrow shoulders"
-    - "slender waist"
-    - "small breasts"
-    - "pale skin"
-  
-  # 💇‍♀️ HAIR RULES (Правила для волос)
-  hair_rules:
-    default: "hair down"
-    occasional: "ponytail"  # Завязывает хвост, когда читает или занимается делами
-    avoid:
-      - "twintails"
-      - "braids"
-      - "messy bun"
-      - "hair ornament" # Не носит аксессуары для волос
-  
-  # 🎭 PERSONALITY TRAITS (Характер - влияет на Expression и Pose)
-  personality_traits:
-    - "shy"
-    - "quiet"
-    - "thoughtful"
-    - "dreamy"
-    - "gentle"
-    - "introverted"
-    - "bookworm"
-  
-  # ✅ ALLOWED OUTFIT STYLES (Разрешенные стили одежды)
-  allowed_outfit_styles:
-    - "casual_shirt_skirt"
-    - "sportswear"
-    - "bikini"
-    - "pajamas"
-    - "loungewear"
-  
-  # 👙 UNDERWEAR RULES (Правила для нижнего белья)
-  underwear_rules:
-    style: "simple"
-    prefer:
-      - "plain cotton panties"
-      - "simple bra"
-      - "white cotton bra"
-      - "plain white panties"
-    avoid:
-      - "lace bra"
-      - "lace panties"
-      - "lingerie"
-      - "garter belt"
-      - "corset"
-      - "strappy bra"
-      - "sheer lingerie"
-  
-  # 🚫 BLACKLIST (Жесткие запреты)
-  blacklisted_tags:
-    - "armor"
-    - "weapon"
-    - "sword"
-    - "gun"
-    - "military_uniform"
-    - "gothic_lolita"
-    - "tattoos"
-    - "piercings"
-    - "smoking"
-    - "drunk"
-    - "nsfw"
-    - "confident_pose"
-    - "hands_on_hips"
-    - "smirk"
-    - "arrogant"
-    - "lace lingerie"
-    - "earrings"
-    - "necklace"
-    - "bracelet"
-    
-    categories:
-      - "props/weapons"
-      - "clothing/accessories/jewelry"
-  
-  # 🎯 PREFERRED ENVIRONMENT & ATMOSPHERE
-  preferred_locations:
-    - "bedroom"
-    - "living_room"
-    - "library"
-    - "park"
-    - "cafe"
-    - "balcony"
-  
-  preferred_lighting:
-    - "sunset"
-    - "golden_hour"
-    - "warm_lighting"
-    - "window_light"
-    - "soft_lighting"
-  
-  preferred_weather:
-    - "rain"          # Завораживает её
-    - "light_rain"
-    - "clear_sky"
-  
-  # 🧸 SIGNATURE PROPS (Фирменные предметы)
-  signature_props:
-    - name: "plush_teddy_bear"
-      tags: ["teddy bear", "plush toy", "stuffed animal"]
-      context: "часто обнимает, когда лежит на кровати или мечтает"
-    - name: "book"
-      tags: ["book", "novel", "reading"]
-    - name: "teacup"
-      tags: ["teacup", "cup of tea", "mug"]
-  
-  # 👗 SIGNATURE OUTFITS (Фирменные наряды)
-  signature_outfits:
-    - name: "casual_shirt_skirt"
-      description: "Её повседневный образ"
-      components:
-        topwear: "white cotton shirt, rolled-up sleeves"
-        bottomwear: "black skirt, above knee"
-        legwear: "white ankle socks OR black knee-high socks"
-        footwear: "loafers OR mary janes"
-    
-    - name: "sportswear"
-      description: "Спортивная одежда"
-      components:
-        topwear: "white oversized t-shirt"
-        bottomwear: "green shorts"
-        footwear: "white sneakers"
-    
-    - name: "pajamas"
-      description: "Домашняя одежда для сна"
-      components:
-        full_body: "soft pink silk pajamas"
-    
-    - name: "loungewear"
-      description: "Повседневная домашняя одежда (отличается от спортивной!)"
-      components:
-        topwear: "casual t-shirt"
-        bottomwear: "short shorts"
-    
-    - name: "bikini"
-      description: "Купальник (только двусоставной!)"
-      components:
-        swimsuit: "bikini"
-      excludes:
-        - "one-piece swimsuit"
-        - "school swimsuit"
-        - "competition swimsuit"
 
-# 🎨 EXPRESSION RULES
-expression_rules:
-  prefer:
-    - "blush"
-    - "light blush"
-    - "shy"
-    - "thoughtful"
-    - "gentle smile"
-    - "looking away"
-    - "looking down"
-    - "downcast eyes"
-    - "closed eyes"
-    - "dreamy"
-    - "fascinated"  # когда смотрит на дождь или закат
+# 🔒 FIXED TRAITS (Добавляются в КАЖДЫЙ промпт без исключений)
+fixed_traits:
+  - "1girl"
+  - "solo"
+  - "young woman"
+  - "long straight light blue hair"
+  - "brown eyes"
+  - "round face"
+  - "soft features"
+  - "petite"
+  - "narrow shoulders"
+  - "slender waist"
+  - "small breasts"
+  - "pale skin"
+
+# 👗 OUTFIT WHITELIST (Фирменные наряды и их маппинг на prompt-library)
+# Движок будет использовать эти теги, игнорируя всё остальное в соответствующих файлах
+outfit_whitelist:
+  casual_shirt_skirt:
+    topwear: ["white cotton shirt", "white shirt", "rolled-up sleeves"]
+    bottomwear: ["black skirt", "pleated skirt", "black pleated skirt"]
+    legwear: ["white ankle socks", "black knee-high socks"]
+    footwear: ["loafers", "mary janes", "white sneakers"]
   
-  avoid:
-    - "smirk"
-    - "confident"
-    - "arrogant"
-    - "aggressive"
-    - "seductive"
-    - "evil smile"
-    - "wide grin"
-
-# 📸 POSE & ACTION RULES
-pose_rules:
-  prefer:
-    - "sitting"
-    - "sitting on chair"
-    - "sitting on floor"
-    - "lying on bed"
-    - "standing quietly"
-    - "looking away"
-    - "head tilt"
-    - "hands in lap"
-    - "holding own arm"
-    - "hugging pillow"
-    - "hugging teddy bear"
+  sportswear:
+    topwear: ["white oversized t-shirt", "white t-shirt"]
+    bottomwear: ["green shorts", "athletic shorts"]
+    footwear: ["white sneakers"]
+  
+  pajamas:
+    full_body: ["pink pajamas", "silk pajamas", "pink silk pajamas", "cute pajamas"]
+  
+  loungewear:
+    topwear: ["casual t-shirt", "oversized t-shirt"]
+    bottomwear: ["short shorts", "cotton shorts"]
     
-  avoid:
-    - "hands on hips"
-    - "arms spread"
-    - "power pose"
-    - "confident stance"
+  bikini:
+    swimsuit: ["bikini", "two-piece swimsuit"]
+    # Жесткий запрет на слитные купальники
+    excluded_tags: ["one-piece swimsuit", "school swimsuit", "competition swimsuit"]
 
-action_rules:
-  indoor_prefer:
-    - "reading"
-    - "drinking tea"
-    - "looking out window"
-    - "daydreaming"
-    - "lying on bed"
-    - "hugging teddy bear"
+# 👙 UNDERWEAR WHITELIST (Простое белье)
+underwear_whitelist:
+  bras: ["white cotton bra", "simple bra", "plain bra", "cotton bra"]
+  panties: ["plain white panties", "white cotton panties", "simple panties", "plain panties"]
+  # Жесткий запрет на кружево и сложные формы
+  excluded_tags: ["lace", "sheer", "strappy", "garter", "corset", "lingerie", "thong"]
+
+# 🧸 SIGNATURE PROPS (Фирменные предметы)
+signature_props:
+  - name: "teddy bear"
+    tags: ["teddy bear", "plush teddy bear", "stuffed animal", "holding teddy bear"]
+    context_weight: 0.8 # 80% шанс появления, если она в спальне и action = daydreaming/lying
+  - name: "book"
+    tags: ["book", "novel", "reading book"]
+  - name: "teacup"
+    tags: ["teacup", "cup of tea", "mug"]
+
+# 💇‍♀️ HAIR RULES (Правила для прически)
+hair_rules:
+  default: "hair down"
+  conditional:
+    - if_action: ["reading", "studying", "brushing hair"]
+      style: "ponytail"
+      probability: 0.4 # В 40% случаев при чтении собирает волосы
+
+# 🎭 EXPRESSION & POSE FILTERS (Фильтры выражений и поз)
+expression_filter:
+  prefer: ["blush", "light blush", "shy", "thoughtful", "gentle smile", "looking away", "downcast eyes", "dreamy", "fascinated"]
+  avoid: ["smirk", "confident", "arrogant", "aggressive", "seductive", "evil smile", "wide grin", "angry"]
+
+pose_filter:
+  prefer: ["sitting", "lying on bed", "standing quietly", "head tilt", "hands in lap", "holding own arm", "hugging pillow", "hugging teddy bear"]
+  avoid: ["hands on hips", "arms spread", "power pose", "confident stance", "spread legs"]
+
+# 🌍 ATMOSPHERE PREFERENCES (Влияет на веса при выборе Lighting/Weather)
+atmosphere_preferences:
+  lighting: ["sunset", "golden_hour", "warm_lighting", "window_light", "soft_lighting"]
+  weather: ["rain", "light_rain", "clear_sky"]

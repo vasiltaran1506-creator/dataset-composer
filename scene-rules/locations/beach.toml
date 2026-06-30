@@ -1,0 +1,83 @@
+[meta]
+id = "beach"
+category = "location"
+display_name = "Beach"
+type = "outdoor"
+
+[hard_constraints]
+# ✅ WHITELIST: Что носят на пляже
+allowed_outfit_categories = [
+    "02_clothing/full_body/swimsuits.txt",
+    "02_clothing/topwear/shirts.txt",       # Накидки
+    "02_clothing/bottomwear/shorts.txt",
+    "02_clothing/full_body/dresses.txt",    # Летние платья
+    "02_clothing/accessories/headwear.txt", # Шляпы от солнца
+    "02_clothing/accessories/jewelry.txt"
+]
+
+# 🛑 BLACKLIST: Никогда на пляже
+excludes_outfit_categories = [
+    "02_clothing/topwear/coats.txt",
+    "02_clothing/topwear/jackets.txt",
+    "02_clothing/topwear/sweaters.txt",
+    "02_clothing/bottomwear/pants.txt",     # Длинные штаны
+    "02_clothing/full_body/uniforms.txt",
+    "02_clothing/footwear/boots.txt",
+    "02_clothing/legwear/pantyhose.txt",
+    "02_clothing/legwear/thighhighs.txt"
+]
+
+# 🛑 Запрещенная погода на пляже
+excludes_weather = [
+    "snow", "blizzard", "heavy_rain", 
+    "fog", "hail", "thunderstorm"
+]
+
+# 🛑 Запрещенный реквизит
+excludes_props = [
+    "office_chair", "desk", "computer", 
+    "fireplace", "winter_items"
+]
+
+[soft_constraints]
+# ⚖️ Типичные пляжные действия
+prefers_actions = [
+    "walking_along_shore",
+    "swimming",
+    "sunbathing",
+    "collecting_shells",
+    "building_sandcastle",
+    "sitting_on_towel",
+    "looking_at_sea",
+    "playing_in_water",
+    "taking_photos"
+]
+
+# ☀️ Освещение: яркое, солнечное, естественное
+prefers_lighting_sources = [
+    "sunlight", "bright_sunlight", 
+    "golden_hour", "sunset", "sunrise"
+]
+prefers_lighting_quality = [
+    "natural_lighting", "hard_lighting", 
+    "golden_hour", "warm_lighting"
+]
+
+# 🏖️ Пляжный реквизит
+prefers_props = [
+    "beach_towel", "beach_umbrella", "beach_ball", 
+    "sunglasses", "sunscreen", "sandals", "flip_flops",
+    "surfboard", "bucket", "shell"
+]
+
+# 🌊 Природные элементы
+prefers_nature = [
+    "sand", "ocean_waves", "palm_tree", "driftwood", 
+    "shell", "seagull"
+]
+
+[visibility_modifiers]
+# На пляже обычно видны все части тела
+reveals_features = ["face", "upper_body", "lower_body", "feet_footwear", "back_view"]
+# Если в воде - ноги скрыты
+conceals_if_swimming = ["feet_footwear", "lower_body"]

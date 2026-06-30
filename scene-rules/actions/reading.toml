@@ -4,22 +4,30 @@ category = "action"
 display_name = "Reading"
 
 [hard_constraints]
-# 🛑 REQUIRES: Чтение требует объект (если книги нет в сцене - это не чтение)
-requires_props = ["book", "manga", "tablet", "notebook"]
+# 🛑 Чтение ТРЕБУЕТ объект для чтения. Без него сцена невалидна.
+requires_prop_categories = ["reading_material"] # Программа пойдет в props/books.txt
 
-# 🛑 EXCLUDES: С чем чтение несовместимо
-excludes_actions = ["running", "swimming", "sleeping"]
+# 🛑 С чем чтение несовместимо
+excludes_actions = ["running", "swimming", "sleeping", "eating"]
+excludes_expressions = ["shouting", "crying", "angry"]
 
 [soft_constraints]
-# ⚖️ PREFERS: Какие позы предпочтительны (с указанием веса!)
+# ⚖️ Позы: читать стоя можно, но сидя/лежа — в 90% случаев
 prefers_poses = [
-    { id = "sitting", weight = 0.8 },
-    { id = "lying", weight = 0.6 },
-    { id = "standing", weight = 0.2 }
+    { id = "sitting", weight = 0.6 },
+    { id = "lying_on_stomach", weight = 0.2 },
+    { id = "lying_on_back", weight = 0.1 },
+    { id = "standing", weight = 0.1 }
 ]
 
-# ⚖️ PREFERS: Где это действие уместно (повышает шанс выбора этих локаций)
-prefers_environments = ["bedroom", "library", "cafe", "park_bench"]
+# ⚖️ Где она обычно читает
+prefers_locations = ["bedroom", "library", "park_bench", "cafe", "balcony"]
 
-# 🌊 INFLUENCES: Какое выражение лица/настроение
-influences_expressions = ["focused", "calm", "thoughtful", "slight_smile"]
+# 🎭 Выражение лица: сосредоточенность, легкая улыбка, задумчивость
+prefers_expressions = ["focused", "thoughtful", "gentle_smile", "downcast_eyes", "looking_at_object"]
+
+[luna_specific_rules]
+# 🎀 Особое правило из её Character Profile
+# Когда Луна читает, она иногда собирает волосы, чтобы не мешали
+hair_override_probability = 0.3 # В 30% случаев при чтении
+hair_override_style = "ponytail" # (вместо стандартного "hair down")
