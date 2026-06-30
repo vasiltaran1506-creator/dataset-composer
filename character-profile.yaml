@@ -23,67 +23,143 @@ fixed_traits:
   - "pale skin"
 
 # 👗 OUTFIT WHITELIST (Фирменные наряды и их маппинг на prompt-library)
-# Движок будет использовать эти теги, игнорируя всё остальное в соответствующих файлах
 outfit_whitelist:
-    casual_shirt_skirt:
-    # Убрали "rolled-up sleeves", оставили только сами рубашки
-    topwear: ["white cotton shirt", "white shirt"] 
-    bottomwear: ["black skirt", "pleated skirt", "black pleated skirt"]
-    legwear: ["white ankle socks", "black knee-high socks"]
-    footwear: ["loafers", "mary janes"]
+  casual_shirt_skirt:
+    topwear:
+      - "white cotton shirt"
+      - "white shirt"
+    bottomwear:
+      - "black skirt"
+      - "pleated skirt"
+      - "black pleated skirt"
+    legwear:
+      - "white ankle socks"
+      - "black knee-high socks"
+    footwear:
+      - "loafers"
+      - "mary janes"
   
   sportswear:
-    topwear: ["white oversized t-shirt", "white t-shirt"]
-    bottomwear: ["green shorts", "athletic shorts"]
-    footwear: ["white sneakers"]
+    topwear:
+      - "white oversized t-shirt"
+      - "white t-shirt"
+    bottomwear:
+      - "green shorts"
+      - "athletic shorts"
+    footwear:
+      - "white sneakers"
   
   pajamas:
-    full_body: ["pink pajamas", "silk pajamas", "pink silk pajamas", "cute pajamas"]
+    full_body:
+      - "pink pajamas"
+      - "silk pajamas"
+      - "pink silk pajamas"
+      - "cute pajamas"
   
   loungewear:
-    topwear: ["casual t-shirt", "oversized t-shirt"]
-    bottomwear: ["short shorts", "cotton shorts"]
+    topwear:
+      - "casual t-shirt"
+      - "oversized t-shirt"
+    bottomwear:
+      - "short shorts"
+      - "cotton shorts"
     
   bikini:
-    swimsuit: ["bikini", "two-piece swimsuit"]
-    # Жесткий запрет на слитные купальники
-    excluded_tags: ["one-piece swimsuit", "school swimsuit", "competition swimsuit"]
+    swimsuit:
+      - "bikini"
+      - "two-piece swimsuit"
 
 # 👙 UNDERWEAR WHITELIST (Простое белье)
 underwear_whitelist:
-  bras: ["white cotton bra", "simple bra", "plain bra", "cotton bra"]
-  panties: ["plain white panties", "white cotton panties", "simple panties", "plain panties"]
-  # Жесткий запрет на кружево и сложные формы
-  excluded_tags: ["lace", "sheer", "strappy", "garter", "corset", "lingerie", "thong"]
+  bras:
+    - "white cotton bra"
+    - "simple bra"
+    - "plain bra"
+    - "cotton bra"
+  panties:
+    - "plain white panties"
+    - "white cotton panties"
+    - "simple panties"
+    - "plain panties"
 
 # 🧸 SIGNATURE PROPS (Фирменные предметы)
 signature_props:
   - name: "teddy bear"
-    tags: ["teddy bear", "plush teddy bear", "stuffed animal", "holding teddy bear"]
-    context_weight: 0.8 # 80% шанс появления, если она в спальне и action = daydreaming/lying
+    tags:
+      - "teddy bear"
+      - "plush teddy bear"
+      - "stuffed animal"
+      - "holding teddy bear"
   - name: "book"
-    tags: ["book", "novel", "reading book"]
+    tags:
+      - "book"
+      - "novel"
+      - "reading book"
   - name: "teacup"
-    tags: ["teacup", "cup of tea", "mug"]
+    tags:
+      - "teacup"
+      - "cup of tea"
+      - "mug"
 
 # 💇‍♀️ HAIR RULES (Правила для прически)
 hair_rules:
   default: "hair down"
   conditional:
-    - if_action: ["reading", "studying", "brushing hair"]
+    - if_action:
+        - "reading"
+        - "studying"
+        - "brushing hair"
       style: "ponytail"
-      probability: 0.4 # В 40% случаев при чтении собирает волосы
+      probability: 0.4
 
 # 🎭 EXPRESSION & POSE FILTERS (Фильтры выражений и поз)
 expression_filter:
-  prefer: ["blush", "light blush", "shy", "thoughtful", "gentle smile", "looking away", "downcast eyes", "dreamy", "fascinated"]
-  avoid: ["smirk", "confident", "arrogant", "aggressive", "seductive", "evil smile", "wide grin", "angry"]
+  prefer:
+    - "blush"
+    - "light blush"
+    - "shy"
+    - "thoughtful"
+    - "gentle smile"
+    - "looking away"
+    - "downcast eyes"
+    - "dreamy"
+    - "fascinated"
+  avoid:
+    - "smirk"
+    - "confident"
+    - "arrogant"
+    - "aggressive"
+    - "seductive"
+    - "evil smile"
+    - "wide grin"
+    - "angry"
 
 pose_filter:
-  prefer: ["sitting", "lying on bed", "standing quietly", "head tilt", "hands in lap", "holding own arm", "hugging pillow", "hugging teddy bear"]
-  avoid: ["hands on hips", "arms spread", "power pose", "confident stance", "spread legs"]
+  prefer:
+    - "sitting"
+    - "lying on bed"
+    - "standing quietly"
+    - "head tilt"
+    - "hands in lap"
+    - "holding own arm"
+    - "hugging pillow"
+    - "hugging teddy bear"
+  avoid:
+    - "hands on hips"
+    - "arms spread"
+    - "power pose"
+    - "confident stance"
+    - "spread legs"
 
 # 🌍 ATMOSPHERE PREFERENCES (Влияет на веса при выборе Lighting/Weather)
 atmosphere_preferences:
-  lighting: ["sunset", "golden_hour", "warm_lighting", "window_light", "soft_lighting"]
-  weather: ["rain", "light_rain", "clear_sky"]
+  lighting:
+    - "sunset"
+    - "golden_hour"
+    - "warm_lighting"
+    - "window_light"
+    - "soft_lighting"
+  weather:
+    - "rain"
+    - "light_rain"
+    - "clear_sky"
