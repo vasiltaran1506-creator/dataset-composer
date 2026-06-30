@@ -4,53 +4,15 @@ category = "weather"
 display_name = "Night / Nighttime"
 
 [hard_constraints]
-# Ночью солнце не светит
-excludes_lighting_sources = [
-    "sunlight",
-    "bright_sunlight",
-    "dappled_sunlight",
-    "golden_hour",
-    "sunrise",
-    "sunset"
-]
+excludes_lighting_sources = ["sunlight", "bright_sunlight", "dappled_sunlight", "golden_hour", "sunrise", "sunset"]
 
 [soft_constraints]
-# Ночное освещение
-prefers_lighting_sources = [
-    "moonlight",
-    "starlight",
-    "streetlight",
-    "neon_light",
-    "lamplight",
-    "candlelight",
-    "fairy_lights"
-]
-prefers_lighting_quality = [
-    "low-key_lighting",
-    "cinematic_lighting",
-    "moody_lighting",
-    "dim_lighting"
-]
-
-# Погодные элементы ночи (из clear.txt)
-prefers_weather = [
-    "starry_sky",
-    "full_moon",
-    "crescent_moon",
-    "night_sky",
-    "clear_sky"
-]
-
-# Действия, типичные для ночи
-prefers_actions = [
-    "walking",
-    "sitting",
-    "daydreaming",
-    "reading",
-    "sleeping",
-    "looking_out_window"
-]
+prefers_lighting_sources = ["moonlight", "starlight", "streetlight", "neon_light", "lamplight", "candlelight", "fairy_lights", "screen_glow", "shop_lights"]
+prefers_lighting_quality = ["low-key_lighting", "cinematic_lighting", "moody_lighting", "dramatic_lighting", "dim_lighting", "soft_lighting"]
+prefers_weather = ["starry_sky", "full_moon", "crescent_moon", "milky_way", "shooting_star", "night_sky", "clear_sky"]
+prefers_mood = ["serene", "mysterious", "melancholic", "cozy", "romantic", "lonely"]
+prefers_actions = ["looking_at_stars", "walking", "sitting", "daydreaming", "reading", "sleeping", "looking_out_window"]
 
 [visibility_modifiers]
-reduces_visibility = ["background_details", "distant_objects"]
-adds_effects = ["rim_light", "deep_shadows"]
+reduces_visibility = ["background_details", "distant_objects", "colors"]
+adds_effects = ["rim_light", "glow", "light_falloff", "deep_shadows"]

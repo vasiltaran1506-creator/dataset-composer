@@ -17,6 +17,14 @@ excludes_actions = [
     "taking_bath", "playing_instrument", "studying"
 ]
 
+excludes_props = [
+    "steering_wheel", "dashboard",
+    "frying_pan", "stove", "refrigerator", "knife",
+    "bathtub", "shower", "toilet",
+    "blackboard", "school_desk", "torii_gate",
+    "beach_ball", "surfboard"
+]
+
 [soft_constraints]
 prefers_actions = ["drinking_coffee", "drinking_tea", "looking_out_window", "reading", "watering_plants", "leaning_on_railing", "daydreaming", "taking_photos"]
 
@@ -27,13 +35,23 @@ prefers_furniture = ["balcony_chair", "small_table", "hammock", "railing", "pott
 prefers_props = ["coffee_cup", "teacup", "mug", "book", "smartphone", "camera", "watering_can", "blanket"]
 
 [weather_rules.if_weather_is_rain]
-prefers_actions = ["looking_at_rain", "daydreaming"]
-prefers_props = ["blanket", "hot_drink"]
+prefers_actions = ["looking_at_rain", "daydreaming", "looking_out_window"]
+prefers_props = ["blanket", "hot_drink", "umbrella"]
 prefers_lighting_quality = ["moody_lighting", "soft_lighting"]
 
 [weather_rules.if_weather_is_snow]
 requires_outfit_categories = ["02_clothing/topwear/sweaters.txt", "02_clothing/topwear/jackets.txt"]
-prefers_props = ["blanket", "hot_drink"]
+prefers_props = ["blanket", "hot_drink", "scarf"]
+prefers_lighting_quality = ["soft_lighting", "cold_lighting"]
+
+[weather_rules.if_weather_is_night]
+prefers_actions = ["looking_out_window", "daydreaming", "looking_at_stars"]
+prefers_lighting_sources = ["moonlight", "city_lights", "streetlight"]
+prefers_lighting_quality = ["low-key_lighting", "cinematic_lighting"]
+
+[weather_rules.if_weather_is_sunny]
+prefers_actions = ["drinking_coffee", "reading", "watering_plants"]
+prefers_props = ["sunglasses", "sun_hat"]
 
 [visibility_modifiers]
 conceals_if_leaning_on_railing = ["lower_body", "feet_footwear"]

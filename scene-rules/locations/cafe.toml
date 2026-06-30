@@ -18,6 +18,14 @@ excludes_actions = [
     "taking_bath", "playing_instrument", "shouting"
 ]
 
+excludes_props = [
+    "steering_wheel", "dashboard",
+    "frying_pan", "stove", "refrigerator", "knife",
+    "bathtub", "shower", "toilet",
+    "blackboard", "school_desk", "torii_gate",
+    "beach_ball", "surfboard", "bicycle"
+]
+
 [soft_constraints]
 prefers_actions = ["drinking_coffee", "drinking_tea", "eating", "reading", "studying", "writing", "using_laptop", "chatting", "looking_out_window", "daydreaming"]
 
@@ -26,6 +34,14 @@ prefers_lighting_quality = ["warm_lighting", "soft_lighting", "cozy_lighting", "
 
 prefers_furniture = ["cafe_table", "wooden_chair", "armchair", "sofa", "bookshelf", "counter"]
 prefers_props = ["coffee_cup", "teacup", "latte_art", "pastry", "cake_slice", "croissant", "laptop", "book", "notebook", "pen", "smartphone"]
+
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["drinking_coffee", "reading", "looking_out_window", "daydreaming"]
+prefers_lighting_quality = ["warm_lighting", "cozy_lighting"]
+
+[weather_rules.if_weather_is_night]
+prefers_lighting_sources = ["warm_lamp", "candlelight", "pendant_light"]
+prefers_lighting_quality = ["warm_lighting", "low-key_lighting"]
 
 [visibility_modifiers]
 reveals_features = ["face", "upper_body", "hands"]

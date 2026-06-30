@@ -24,6 +24,13 @@ excludes_actions = [
     "playing_instrument", "walking", "running"
 ]
 
+excludes_props = [
+    "book", "laptop", "smartphone", "tablet",
+    "coffee_cup", "teacup", "food", "bento",
+    "steering_wheel", "bicycle", "shopping_bag",
+    "blackboard", "school_desk", "torii_gate"
+]
+
 [soft_constraints]
 prefers_actions = [
     "brushing_teeth", "washing_face", "washing_hands", "taking_bath",
@@ -35,6 +42,10 @@ prefers_lighting_quality = ["bright_lighting", "soft_lighting", "clean_lighting"
 
 prefers_furniture = ["bathtub", "shower", "sink", "mirror", "toilet", "towel_rack", "bath_mat"]
 prefers_props = ["towel", "bath_towel", "soap", "shampoo", "toothbrush", "toothpaste", "hairbrush", "hair_dryer", "bath_bomb", "rubber_duck", "loofah", "skincare_bottle"]
+
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["taking_bath", "taking_shower", "doing_skincare"]
+prefers_effects = ["steam", "fog_on_mirror"]
 
 [visibility_modifiers]
 conceals_if_taking_bath = ["lower_body", "feet_footwear", "upper_body"] 

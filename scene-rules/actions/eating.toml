@@ -4,71 +4,16 @@ category = "action"
 display_name = "Eating / Having a Meal"
 
 [hard_constraints]
-# Еда требует еду и столовые приборы
-requires_prop_categories = [
-    "09_props/food_drink.txt"
-]
-
-# Несовместимо с несовместимыми действиями
-excludes_actions = [
-    "sleeping",
-    "swimming",
-    "exercising",
-    "running"
-]
+requires_prop_categories = ["09_props/food_drink.txt"]
+excludes_actions = ["sleeping", "swimming", "exercising", "running", "taking_bath"]
+excludes_props = ["steering_wheel", "laptop", "torii_gate", "blackboard"]
 
 [soft_constraints]
-# Позы: обычно сидя за столом
-prefers_poses = [
-    "sitting",
-    "sitting_at_table",
-    "sitting_on_floor",
-    "standing"
-]
-
-# Выражение лица при еде
-prefers_expressions = [
-    "open_mouth",
-    "chewing",
-    "gentle_smile",
-    "happy",
-    "content",
-    "blowing_on_food",
-    "savoring"
-]
-
-# Локации для еды
-prefers_locations = [
-    "kitchen",
-    "cafe",
-    "restaurant",
-    "dining_room",
-    "bedroom",
-    "park",
-    "school_classroom"
-]
-
-# Реквизит для еды
-prefers_props = [
-    "burger",
-    "slice_of_cake",
-    "sandwich",
-    "pizza",
-    "ramen",
-    "sushi",
-    "ice_cream",
-    "donut",
-    "onigiri",
-    "bento",
-    "chopsticks",
-    "fork",
-    "spoon",
-    "plate",
-    "bowl"
-]
+prefers_poses = ["sitting", "sitting_at_table", "sitting_on_floor", "standing"]
+prefers_expressions = ["open_mouth", "chewing", "gentle_smile", "happy", "content", "blowing_on_food", "savoring"]
+prefers_locations = ["kitchen", "cafe", "restaurant", "dining_room", "bedroom", "park", "school_classroom"]
+prefers_props = ["burger", "slice_of_cake", "sandwich", "pizza", "ramen", "sushi", "ice_cream", "donut", "onigiri", "bento", "chopsticks", "fork", "spoon", "plate", "bowl"]
 
 [visibility_modifiers]
-# Руки и лицо всегда видны (держат еду, едят)
 reveals_features = ["hands", "face", "upper_body"]
-# Если сидит за столом - нижняя часть скрыта
 conceals_if_sitting_at_table = ["lower_body", "feet_footwear"]

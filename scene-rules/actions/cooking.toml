@@ -5,20 +5,13 @@ display_name = "Cooking / Preparing Food"
 
 [hard_constraints]
 preferred_locations = ["kitchen"]
-
-requires_prop_categories = [
-    "09_props/kitchen_tools.txt",
-    "09_props/food_drink.txt"
-]
-
-excludes_actions = [
-    "sleeping", "reading", "studying", "swimming", "taking_bath", "exercising"
-]
+requires_prop_categories = ["09_props/kitchen_tools.txt", "09_props/food_drink.txt"]
+excludes_actions = ["sleeping", "reading", "studying", "swimming", "taking_bath", "exercising"]
+excludes_props = ["steering_wheel", "laptop", "book", "beach_ball", "torii_gate"]
 
 [soft_constraints]
 prefers_poses = ["standing", "leaning_on_counter", "leaning_forward"]
 prefers_expressions = ["focused", "concentrated", "gentle_smile", "content"]
-
 prefers_lighting_sources = ["overhead_light", "window_light", "fluorescent_light"]
 prefers_lighting_quality = ["bright_lighting", "natural_lighting"]
 

@@ -4,63 +4,16 @@ category = "action"
 display_name = "Drinking Tea / Coffee"
 
 [hard_constraints]
-# Обязательное наличие напитка
-requires_prop_categories = ["09_props/hot_drinks.txt"]
-excludes_actions = ["running", "sleeping", "swimming", "exercising"]
+requires_prop_categories = ["09_props/food_drink.txt"]
+excludes_actions = ["running", "sleeping", "swimming", "exercising", "cooking"]
 
 [soft_constraints]
-# Позы для чаепития
-prefers_poses = [
-    "sitting",
-    "sitting_on_chair",
-    "sitting_on_floor",
-    "standing",
-    "leaning_back"
-]
-
-# Выражения лица
-prefers_expressions = [
-    "gentle_smile",
-    "relaxed",
-    "eyes_closed_savoring",
-    "blowing_on_cup",
-    "content"
-]
-
-# Локации для чаепития
-prefers_locations = [
-    "cafe",
-    "kitchen",
-    "bedroom",
-    "balcony",
-    "living_room",
-    "garden"
-]
-
-# Реквизит
-prefers_props = [
-    "teacup",
-    "coffee_cup",
-    "mug",
-    "saucer",
-    "pastry",
-    "cookie",
-    "teapot"
-]
-
-# Освещение
-prefers_lighting_sources = [
-    "window_light",
-    "warm_lamp",
-    "sunlight",
-    "candlelight"
-]
-prefers_lighting_quality = [
-    "warm_lighting",
-    "soft_lighting",
-    "cozy_lighting"
-]
+prefers_poses = ["sitting", "sitting_on_chair", "sitting_on_floor", "standing", "leaning_back"]
+prefers_expressions = ["gentle_smile", "relaxed", "eyes_closed_savoring", "blowing_on_cup", "content"]
+prefers_locations = ["cafe", "kitchen", "bedroom", "balcony", "living_room", "garden"]
+prefers_props = ["teacup", "coffee_cup", "mug", "saucer", "pastry", "cookie", "teapot"]
+prefers_lighting_sources = ["window_light", "warm_lamp", "sunlight", "candlelight"]
+prefers_lighting_quality = ["warm_lighting", "soft_lighting", "cozy_lighting"]
 
 [visibility_modifiers]
-# Руки всегда видны (держат чашку)
 reveals_features = ["hands", "face", "upper_body"]

@@ -17,6 +17,12 @@ excludes_actions = [
     "taking_bath", "studying", "playing_instrument"
 ]
 
+excludes_props = [
+    "steering_wheel", "dashboard", "frying_pan", "stove",
+    "bathtub", "shower", "blackboard", "school_desk",
+    "laptop", "desktop_computer", "torii_gate"
+]
+
 [soft_constraints]
 prefers_actions = ["walking", "sitting_on_bench", "reading", "looking_at_trees", "feeding_birds", "picnic", "playing_with_pet", "jogging", "cycling", "taking_photos", "daydreaming"]
 
@@ -27,7 +33,18 @@ prefers_nature = ["tree", "cherry_blossom_tree", "maple_tree", "grass", "flower"
 prefers_props = ["bench", "picnic_blanket", "basket", "book", "camera", "bicycle", "kite", "ball"]
 
 [weather_rules.if_weather_is_rain]
-requires_prop = "umbrella"
+prefers_actions = ["walking", "looking_at_trees", "daydreaming"]
+prefers_props = ["umbrella", "raincoat"]
+prefers_lighting_quality = ["soft_lighting", "moody_lighting"]
+
+[weather_rules.if_weather_is_sunny]
+prefers_actions = ["walking", "sitting_on_bench", "playing_with_pet", "cycling"]
+prefers_props = ["sunglasses", "sun_hat"]
+
+[weather_rules.if_weather_is_snow]
+prefers_actions = ["walking", "looking_at_trees"]
+prefers_props = ["scarf", "gloves"]
+prefers_lighting_quality = ["soft_lighting", "cold_lighting"]
 
 [visibility_modifiers]
 reveals_features = ["face", "upper_body", "lower_body", "feet_footwear"]

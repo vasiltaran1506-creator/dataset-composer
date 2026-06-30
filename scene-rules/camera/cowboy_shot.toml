@@ -4,37 +4,14 @@ category = "camera"
 display_name = "Cowboy Shot (Knee-up)"
 
 [hard_constraints]
-# Показывает тело до колен
-reveals_features = [
-    "face",
-    "upper_body",
-    "mid_body",
-    "thighs"
-]
-conceals_features = [
-    "lower_legs",
-    "feet_footwear"
-]
+reveals_features = ["face", "upper_body", "mid_body", "thighs"]
+conceals_features = ["lower_legs", "feet_footwear"]
 
 [soft_constraints]
-# Позы для ковбойского плана
-prefers_poses = [
-    "standing",
-    "hand_on_hip",
-    "arms_crossed",
-    "leaning",
-    "casual_stance"
-]
-
-# Освещение
-prefers_lighting_quality = [
-    "cinematic_lighting",
-    "dramatic_lighting",
-    "rim_light"
-]
+prefers_poses = ["standing", "hand_on_hip", "arms_crossed", "leaning", "casual_stance"]
+prefers_lighting_quality = ["cinematic_lighting", "dramatic_lighting", "rim_light"]
 
 [coverage_impact]
-# Частичное покрытие
 face_weight = 1.0
 upper_body_weight = 1.0
 mid_body_weight = 1.0

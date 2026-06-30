@@ -4,52 +4,16 @@ category = "weather"
 display_name = "Snow / Winter"
 
 [hard_constraints]
-# Зимняя одежда обязательна на улице
-requires_outfit_categories_if_outdoor = [
-    "02_clothing/topwear/coats.txt",
-    "02_clothing/topwear/jackets.txt",
-    "02_clothing/topwear/sweaters.txt"
-]
-excludes_outfit_categories_if_outdoor = [
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/bottomwear/shorts.txt",
-    "02_clothing/topwear/shirts.txt"
-]
+requires_outfit_categories_if_outdoor = ["02_clothing/topwear/coats.txt", "02_clothing/topwear/jackets.txt", "02_clothing/topwear/sweaters.txt"]
+excludes_outfit_categories_if_outdoor = ["02_clothing/full_body/swimsuits.txt", "02_clothing/bottomwear/shorts.txt", "02_clothing/topwear/shirts.txt"]
 excludes_locations = ["beach", "pool", "tropical"]
 
 [soft_constraints]
-# Зимнее освещение
-prefers_lighting_sources = [
-    "overcast_sky",
-    "soft_winter_light",
-    "blue_hour"
-]
-prefers_lighting_quality = [
-    "cold_lighting",
-    "soft_lighting",
-    "diffused_light"
-]
-
-# Зимний реквизит
-prefers_props_outdoor = [
-    "scarf",
-    "gloves",
-    "winter_hat",
-    "earmuffs",
-    "hot_drink",
-    "snowball"
-]
-
-# Настроение
-prefers_mood = [
-    "cozy",
-    "peaceful",
-    "playful",
-    "serene"
-]
+prefers_lighting_sources = ["overcast_sky", "soft_winter_light", "blue_hour"]
+prefers_lighting_quality = ["cold_lighting", "soft_lighting", "diffused_light"]
+prefers_props_outdoor = ["scarf", "gloves", "winter_hat", "earmuffs", "hot_drink", "snowball"]
+prefers_mood = ["cozy", "peaceful", "playful", "serene"]
 
 [visibility_modifiers]
-# Снег может скрывать ноги
 conceals_if_deep_snow = ["feet_footwear", "lower_legs"]
-# Зимняя одежда скрывает тело
 conceals_features = ["midriff", "arms", "legs"]

@@ -4,45 +4,14 @@ category = "weather"
 display_name = "Sunny / Clear Sky"
 
 [hard_constraints]
-excludes_outfit_categories_if_outdoor = [
-    "02_clothing/topwear/coats.txt",
-    "02_clothing/topwear/heavy_jackets.txt"
-]
+excludes_outfit_categories_if_outdoor = ["02_clothing/topwear/coats.txt", "02_clothing/topwear/heavy_jackets.txt"]
 
 [soft_constraints]
-# Яркое освещение
-prefers_lighting_sources = [
-    "sunlight",
-    "bright_sunlight",
-    "golden_hour",
-    "blue_sky"
-]
-prefers_lighting_quality = [
-    "bright_lighting",
-    "natural_lighting",
-    "hard_lighting",
-    "high_contrast"
-]
-
-# Летний реквизит
-prefers_props_outdoor = [
-    "sunglasses",
-    "sun_hat",
-    "sunscreen",
-    "water_bottle",
-    "fan"
-]
-
-# Настроение
-prefers_mood = [
-    "cheerful",
-    "energetic",
-    "relaxed",
-    "joyful"
-]
+prefers_lighting_sources = ["sunlight", "bright_sunlight", "golden_hour", "blue_sky"]
+prefers_lighting_quality = ["bright_lighting", "natural_lighting", "hard_lighting", "high_contrast"]
+prefers_props_outdoor = ["sunglasses", "sun_hat", "sunscreen", "water_bottle", "fan"]
+prefers_mood = ["cheerful", "energetic", "relaxed", "joyful"]
 
 [visibility_modifiers]
-# Яркий свет подчеркивает все детали
 reveals_features = ["full_body", "skin_texture", "hair_details"]
-# Солнцезащитные очки могут скрывать глаза
 conceals_if_wearing_sunglasses = ["eyes"]

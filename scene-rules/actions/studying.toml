@@ -4,20 +4,14 @@ category = "action"
 display_name = "Studying / Learning"
 
 [hard_constraints]
-requires_prop_categories = [
-    "09_props/stationery.txt",
-    "09_props/electronics.txt"
-]
-
-excludes_actions = [
-    "sleeping", "running", "dancing", "cooking", "swimming", "taking_bath"
-]
+requires_prop_categories = ["09_props/stationery.txt", "09_props/electronics.txt"]
+excludes_actions = ["sleeping", "running", "dancing", "cooking", "swimming", "taking_bath"]
+excludes_props = ["steering_wheel", "beach_ball", "frying_pan"]
 
 [soft_constraints]
 prefers_poses = ["sitting", "sitting_at_desk", "leaning_forward", "hunched_over"]
 prefers_expressions = ["focused", "concentrated", "thoughtful", "biting_pen", "tongue_out_slightly"]
 prefers_locations = ["library", "bedroom", "cafe", "school_classroom", "study_room"]
-
 prefers_lighting_sources = ["desk_lamp", "window_light", "overhead_light"]
 prefers_lighting_quality = ["bright_lighting", "focused_lighting", "warm_lighting"]
 

@@ -31,6 +31,13 @@ excludes_actions = [
     "playing_instrument", "shouting"
 ]
 
+excludes_props = [
+    "beach_ball", "surfboard", "bicycle",
+    "frying_pan", "stove", "refrigerator", "knife",
+    "bathtub", "shower", "toilet",
+    "steering_wheel", "dashboard", "torii_gate"
+]
+
 [soft_constraints]
 prefers_actions = [
     "studying", "reading", "writing", "taking_notes", "listening_to_teacher",
@@ -42,6 +49,14 @@ prefers_lighting_quality = ["bright_lighting", "natural_lighting", "institutiona
 
 prefers_furniture = ["school_desk", "wooden_chair", "blackboard", "bookshelf", "globe", "clock", "window"]
 prefers_props = ["textbook", "notebook", "pen", "pencil", "eraser", "ruler", "school_bag", "lunch_box", "chalk", "calculator"]
+
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["reading", "studying", "writing", "taking_notes"]
+prefers_lighting_quality = ["soft_lighting", "overcast_lighting"]
+
+[weather_rules.if_weather_is_sunny]
+prefers_lighting_sources = ["window_light", "sunlight"]
+prefers_lighting_quality = ["bright_lighting", "natural_lighting"]
 
 [visibility_modifiers]
 reveals_features = ["face", "upper_body", "hands"]

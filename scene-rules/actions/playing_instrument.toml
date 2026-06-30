@@ -4,21 +4,14 @@ category = "action"
 display_name = "Playing Musical Instrument"
 
 [hard_constraints]
-# Инструменты берутся из prefers_props, так как отдельной категории нет
-excludes_actions = [
-    "reading", "cooking", "eating", "holding_umbrella", "typing", "swimming", "taking_bath"
-]
+excludes_actions = ["reading", "cooking", "eating", "holding_umbrella", "typing", "swimming", "taking_bath"]
+excludes_props = ["steering_wheel", "frying_pan", "book"]
 
 [soft_constraints]
 prefers_poses = ["sitting", "sitting_on_stool", "standing", "leaning_forward"]
 prefers_expressions = ["focused", "eyes_closed", "gentle_smile", "concentrated", "peaceful", "passionate"]
 prefers_locations = ["bedroom", "music_room", "concert_hall", "street", "park", "studio"]
-
-prefers_props = [
-    "guitar", "acoustic_guitar", "electric_guitar", "piano", "grand_piano", 
-    "violin", "cello", "flute", "trumpet", "drum_sticks", "keyboard_instrument", "synthesizer"
-]
-
+prefers_props = ["guitar", "acoustic_guitar", "electric_guitar", "piano", "grand_piano", "violin", "cello", "flute", "trumpet", "drum_sticks", "keyboard_instrument", "synthesizer"]
 prefers_lighting_sources = ["spotlight", "stage_lights", "window_light", "warm_lamp", "candlelight"]
 prefers_lighting_quality = ["cinematic_lighting", "dramatic_lighting", "warm_lighting", "spotlight"]
 

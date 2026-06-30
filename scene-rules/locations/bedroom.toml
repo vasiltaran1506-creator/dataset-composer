@@ -31,6 +31,14 @@ excludes_actions = [
     "shouting", "playing_instrument", "taking_bath", "eating"
 ]
 
+# 🛑 Запрещенный реквизит (в спальне нет уличных/общественных предметов)
+excludes_props = [
+    "traffic_light", "crosswalk", "bus_stop", "vending_machine",
+    "beach_ball", "surfboard", "bicycle", "shopping_bag",
+    "steering_wheel", "frying_pan", "stove", "refrigerator",
+    "blackboard", "school_desk", "torii_gate", "stone_lantern"
+]
+
 [soft_constraints]
 prefers_actions = [
     "reading", "sleeping", "waking_up", "daydreaming", 
@@ -43,6 +51,16 @@ prefers_lighting_quality = ["soft_lighting", "warm_lighting", "dim_lighting", "g
 
 prefers_furniture = ["bed", "pillow", "blanket", "nightstand", "dresser", "wardrobe", "full-length_mirror", "desk", "chair", "rug", "curtains"]
 prefers_props = ["book", "smartphone", "teacup", "mug", "laptop", "plush_toy", "pillow", "blanket"]
+
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["reading", "daydreaming", "looking_out_window", "sleeping"]
+prefers_props = ["blanket", "hot_drink", "book"]
+prefers_lighting_quality = ["soft_lighting", "moody_lighting", "dim_lighting"]
+
+[weather_rules.if_weather_is_night]
+prefers_actions = ["sleeping", "reading", "using_smartphone", "daydreaming"]
+prefers_lighting_sources = ["moonlight", "screen_glow", "candlelight", "fairy_lights"]
+prefers_lighting_quality = ["dim_lighting", "low-key_lighting", "soft_lighting"]
 
 [visibility_modifiers]
 conceals_if_sleeping = ["feet_footwear", "lower_body", "hands"]

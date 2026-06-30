@@ -5,39 +5,20 @@ display_name = "Profile / Side View"
 
 [hard_constraints]
 camera_angle = "profile"
+conceals_features = ["one_eye", "front_face_full"]
 
 [soft_constraints]
-# Профиль подчеркивает силуэт
-prefers_framing = [
-    "portrait",
-    "upper_body",
-    "cowboy_shot",
-    "close_up"
-]
-
-# Позы в профиль
-prefers_poses = [
-    "standing",
-    "sitting",
-    "looking_away",
-    "looking_into_distance",
-    "head_tilt"
-]
-
-# Профиль идеально сочетается с контровым светом
-prefers_lighting_direction = [
-    "backlighting",
-    "rim_light",
-    "side_lighting"
-]
-prefers_lighting_quality = [
-    "cinematic_lighting",
-    "dramatic_lighting",
-    "silhouette"
-]
+prefers_framing = ["portrait", "upper_body", "cowboy_shot", "close_up"]
+prefers_poses = ["standing", "sitting", "looking_away", "looking_into_distance", "head_tilt", "leaning"]
+prefers_expressions = ["neutral", "thoughtful", "gentle_smile", "looking_away", "windblown_hair"]
+prefers_lighting_direction = ["backlighting", "rim_light", "side_lighting", "split_lighting"]
+prefers_lighting_quality = ["cinematic_lighting", "dramatic_lighting", "silhouette", "golden_hour"]
+prefers_outfit_visibility = ["silhouette", "collar_detail", "hair_profile", "neckline"]
 
 [coverage_impact]
 face_weight = 0.7
+face_profile_weight = 1.0
 upper_body_weight = 0.8
 lower_body_weight = 0.4
 feet_weight = 0.2
+hair_side_weight = 1.0

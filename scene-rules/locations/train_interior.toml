@@ -17,6 +17,14 @@ excludes_actions = [
     "taking_bath", "playing_instrument", "shouting", "running"
 ]
 
+excludes_props = [
+    "steering_wheel", "dashboard", "car_interior",
+    "frying_pan", "stove", "refrigerator", "knife",
+    "bathtub", "shower", "toilet",
+    "blackboard", "school_desk", "torii_gate",
+    "beach_ball", "surfboard"
+]
+
 [soft_constraints]
 prefers_actions = ["sitting_by_window", "looking_out_window", "reading", "listening_to_music", "using_smartphone", "sleeping", "daydreaming", "holding_strap", "standing"]
 
@@ -27,6 +35,19 @@ prefers_furniture = ["train_seat", "window", "hand_strap", "luggage_rack"]
 prefers_props = ["bag", "backpack", "headphones", "smartphone", "book", "ticket", "bento"]
 
 prefers_scenic_elements = ["scenic_view", "cityscape", "countryside", "sunset_view", "night_city_lights", "mountains_in_distance"]
+
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["looking_out_window", "reading", "using_smartphone"]
+prefers_lighting_quality = ["soft_lighting", "moody_lighting"]
+
+[weather_rules.if_weather_is_night]
+prefers_actions = ["looking_out_window", "sleeping", "using_smartphone"]
+prefers_lighting_sources = ["scenic_light", "overhead_light"]
+prefers_lighting_quality = ["low-key_lighting", "cinematic_lighting"]
+
+[weather_rules.if_weather_is_sunny]
+prefers_actions = ["looking_out_window", "reading", "daydreaming"]
+prefers_lighting_sources = ["window_light", "sunlight"]
 
 [time_of_day]
 prefers = ["morning", "afternoon", "evening", "sunset"]

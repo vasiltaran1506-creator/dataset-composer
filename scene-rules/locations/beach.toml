@@ -23,6 +23,12 @@ excludes_actions = [
     "playing_instrument", "exercising", "writing"
 ]
 
+excludes_props = [
+    "steering_wheel", "dashboard", "frying_pan", "stove",
+    "bathtub", "shower", "blackboard", "school_desk",
+    "laptop", "desktop_computer", "torii_gate"
+]
+
 [soft_constraints]
 prefers_actions = ["walking_along_shore", "swimming", "sunbathing", "collecting_shells", "building_sandcastle", "sitting_on_towel", "looking_at_sea", "playing_in_water", "taking_photos"]
 
@@ -31,6 +37,14 @@ prefers_lighting_quality = ["natural_lighting", "hard_lighting", "golden_hour", 
 
 prefers_props = ["beach_towel", "beach_umbrella", "beach_ball", "sunglasses", "sunscreen", "sandals", "flip_flops", "surfboard", "bucket", "shell"]
 prefers_nature = ["sand", "ocean_waves", "palm_tree", "driftwood", "shell", "seagull"]
+
+[weather_rules.if_weather_is_sunny]
+prefers_actions = ["sunbathing", "swimming", "walking_along_shore"]
+prefers_props = ["sunglasses", "sunscreen", "beach_umbrella"]
+
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["looking_at_sea", "walking_along_shore"]
+prefers_lighting_quality = ["soft_lighting", "overcast_lighting"]
 
 [visibility_modifiers]
 reveals_features = ["face", "upper_body", "lower_body", "feet_footwear", "back_view"]

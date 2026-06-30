@@ -4,67 +4,21 @@ category = "camera"
 display_name = "POV / Point of View"
 
 [hard_constraints]
-# POV всегда от первого лица (зритель = собеседник)
 camera_angle = "pov"
 camera_mode = "first_person"
 
 [soft_constraints]
-# POV предполагает взаимодействие со зрителем
-prefers_actions = [
-    "reaching_towards_viewer",
-    "holding_hands_pov",
-    "talking_to_viewer",
-    "offering_food",
-    "handing_object",
-    "pulling_viewer",
-    "looking_at_viewer",
-    "smiling_at_viewer"
-]
-
-# Позы: обычно крупный или средний план
-prefers_poses = [
-    "leaning_forward",
-    "sitting_across",
-    "standing_close",
-    "reaching_out",
-    "hand_on_viewer"
-]
-
-# Выражения лица: прямое взаимодействие
-prefers_expressions = [
-    "looking_at_viewer",
-    "smile",
-    "gentle_smile",
-    "blush",
-    "shy",
-    "excited",
-    "winking"
-]
-
-# POV фокусируется на лице и руках
-prefers_framing = [
-    "close_up",
-    "upper_body",
-    "cowboy_shot"
-]
-
-# Взаимодействие с предметами (протягивание зрителю)
-prefers_interaction_props = [
-    "coffee_cup",
-    "food",
-    "gift",
-    "book",
-    "hand"
-]
+prefers_actions = ["reaching_towards_viewer", "holding_hands_pov", "talking_to_viewer", "offering_food", "handing_object", "pulling_viewer", "looking_at_viewer", "smiling_at_viewer"]
+prefers_poses = ["leaning_forward", "sitting_across", "standing_close", "reaching_out", "hand_on_viewer"]
+prefers_expressions = ["looking_at_viewer", "smile", "gentle_smile", "blush", "shy", "excited", "winking"]
+prefers_framing = ["close_up", "upper_body", "cowboy_shot"]
+prefers_interaction_props = ["coffee_cup", "food", "gift", "book", "hand"]
 
 [visibility_modifiers]
-# В POV всегда видны лицо и руки (тянутся к зрителю)
 reveals_features = ["face", "hands", "upper_body"]
-# Ноги и нижняя часть обычно вне кадра
 conceals_features = ["feet_footwear", "lower_body"]
 
 [coverage_impact]
-# POV дает максимальное покрытие лица и рук
 face_weight = 1.0
 hands_weight = 1.0
 upper_body_weight = 0.8
