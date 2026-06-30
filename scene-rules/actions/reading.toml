@@ -1,1 +1,25 @@
+[meta]
+id = "reading"
+category = "action"
+display_name = "Reading"
 
+[hard_constraints]
+# 🛑 REQUIRES: Чтение требует объект (если книги нет в сцене - это не чтение)
+requires_props = ["book", "manga", "tablet", "notebook"]
+
+# 🛑 EXCLUDES: С чем чтение несовместимо
+excludes_actions = ["running", "swimming", "sleeping"]
+
+[soft_constraints]
+# ⚖️ PREFERS: Какие позы предпочтительны (с указанием веса!)
+prefers_poses = [
+    { id = "sitting", weight = 0.8 },
+    { id = "lying", weight = 0.6 },
+    { id = "standing", weight = 0.2 }
+]
+
+# ⚖️ PREFERS: Где это действие уместно (повышает шанс выбора этих локаций)
+prefers_environments = ["bedroom", "library", "cafe", "park_bench"]
+
+# 🌊 INFLUENCES: Какое выражение лица/настроение
+influences_expressions = ["focused", "calm", "thoughtful", "slight_smile"]
