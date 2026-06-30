@@ -1,6 +1,7 @@
 """
 Main entry point for Dataset Composer
 """
+import random
 from pathlib import Path
 from config_loader import ConfigLoader
 from prompt_library import PromptLibrary
@@ -40,7 +41,20 @@ def main():
         print(f"\n🎬 Generating test scenes...")
         print("-" * 60)
         
-        test_locations = ["bedroom", "library", "balcony"]
+        # Получаем список всех доступных локаций из загруженных правил
+        all_locations = [
+            key.split('.')[-1] 
+            for key in rules.keys() 
+            if key.startswith('locations.')
+        ]
+        
+        print(f"Available locations: {len(all_locations)}")
+        print(f"   {', '.join(sorted(all_locations))}\n")
+        
+        # Тестируем случайные 5 локаций (оптимально для быстрой проверки)
+        test_locations = random.sample(all_locations, min(5, len(all_locations)))
+        
+        print(f"Testing {len(test_locations)} random locations:\n")
         
         for loc in test_locations:
             print(f"\n📍 Location: {loc.capitalize()}")

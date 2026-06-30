@@ -23,7 +23,7 @@ class SceneBuilder:
         
     def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
         """
-        Умный выбор одежды v4: Полная поддержка full_body, комплектов и swimsuit.
+        Умный выбор одежды v5: Исправлена логика Blacklist режима.
         """
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         whitelist = self._get_outfit_whitelist()
@@ -59,15 +59,31 @@ class SceneBuilder:
                         style_compatible = True
             else:
                 # РЕЖИМ 2: Blacklist (проверяем, не запрещено ли в локации)
+                # ИСПРАВЛЕНО: Теперь правильно проверяем каждый элемент стиля
                 if has_full_body:
-                    if not any("full_body" in cat for cat in excluded_categories):
+                    # Проверяем, не запрещены ли full_body
+                    full_body_excluded = any(
+                        any(exc in cat for exc in ["pajamas", "swimsuits", "loungewear"])
+                        for cat in excluded_categories
+                    )
+                    if not full_body_excluded:
                         style_compatible = True
                 elif has_swimsuit:
-                    if not any("swimsuits" in cat for cat in excluded_categories):
+                    # Проверяем, не запрещены ли swimsuits
+                    swimsuit_excluded = any("swimsuits" in cat for cat in excluded_categories)
+                    if not swimsuit_excluded:
                         style_compatible = True
                 elif has_top_bottom:
-                    top_excluded = any("topwear" in cat for cat in excluded_categories)
-                    bottom_excluded = any("bottomwear" in cat for cat in excluded_categories)
+                    # Проверяем, не запрещены ли topwear или bottomwear
+                    # ИСПРАВЛЕНО: Теперь проверяем конкретные подкатегории
+                    top_excluded = any(
+                        any(exc in cat for exc in ["coats", "jackets"])
+                        for cat in excluded_categories
+                    )
+                    bottom_excluded = any(
+                        any(exc in cat for exc in ["pants"])
+                        for cat in excluded_categories
+                    )
                     if not top_excluded and not bottom_excluded:
                         style_compatible = True
                         
@@ -75,12 +91,19 @@ class SceneBuilder:
                 compatible_styles.append(style_name)
                 
         if not compatible_styles:
+            # ИСПРАВЛЕНО: Если нет совместимых стилей, ВСЕ РАВНО пытаемся выбрать из whitelist
+            # вместо случайной одежды из библиотеки
+            all_styles = list(whitelist.keys())
+            if all_styles:
+                compatible_styles = all_styles
+                
+        if not compatible_styles:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
             
         chosen_style = random.choice(compatible_styles)
         style_data = whitelist[chosen_style]
         
-        # Наполняем outfit в зависимости от типа стиля
+        # Наполняем outfit
         if "full_body" in style_data:
             outfit["full"] = random.choice(style_data["full_body"])
         elif "swimsuit" in style_data:
@@ -91,7 +114,7 @@ class SceneBuilder:
             if "bottomwear" in style_data:
                 outfit["bottom"] = random.choice(style_data["bottomwear"])
                 
-        # Legwear и Footwear (если есть в стиле и не swimsuit)
+        # Legwear и Footwear
         if "legwear" in style_data and random.random() < 0.7:
             outfit["legwear"] = random.choice(style_data["legwear"])
         if "footwear" in style_data and random.random() < 0.5:
