@@ -1,0 +1,58 @@
+[meta]
+id = "walking"
+category = "action"
+display_name = "Walking"
+
+[hard_constraints]
+# Ходьба возможна только в определенных локациях
+allowed_location_types = [
+    "outdoor",
+    "outdoor_urban",
+    "outdoor_public",
+    "indoor_public_large"
+]
+excludes_location_types = ["bedroom", "bathroom", "kitchen"]
+excludes_actions = ["sleeping", "sitting", "lying_down"]
+
+[soft_constraints]
+# Позы при ходьбе
+prefers_poses = [
+    "walking_pose",
+    "one_foot_forward",
+    "arms_swinging",
+    "looking_forward",
+    "looking_around"
+]
+
+# Выражения лица
+prefers_expressions = [
+    "neutral",
+    "thoughtful",
+    "looking_around",
+    "slight_smile"
+]
+
+# Локации
+prefers_locations = [
+    "street",
+    "park",
+    "sidewalk",
+    "shopping_mall",
+    "school_corridor"
+]
+
+# Реквизит для прогулки
+prefers_props = [
+    "bag",
+    "backpack",
+    "smartphone",
+    "coffee_cup",
+    "umbrella",
+    "headphones"
+]
+
+[visibility_modifiers]
+# При ходьбе обычно виден полный рост
+reveals_features = ["full_body", "feet_footwear", "legs"]
+# Руки могут быть частично скрыты, если держат сумку
+conceals_if_holding_bag = ["one_hand"]

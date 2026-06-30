@@ -1,0 +1,67 @@
+[meta]
+id = "studying"
+category = "action"
+display_name = "Studying / Learning"
+
+[hard_constraints]
+# Учеба требует объектов для письма/чтения
+requires_prop_categories = ["09_props/stationery.txt", "09_props/electronics.txt"]
+excludes_location_types = ["beach", "pool", "bathroom"]
+excludes_actions = ["sleeping", "running", "dancing"]
+
+[soft_constraints]
+# Позы для учебы
+prefers_poses = [
+    "sitting",
+    "sitting_at_desk",
+    "leaning_forward",
+    "hunched_over"
+]
+
+# Выражения лица при концентрации
+prefers_expressions = [
+    "focused",
+    "concentrated",
+    "thoughtful",
+    "biting_pen",
+    "tongue_out_slightly"
+]
+
+# Локации, подходящие для учебы
+prefers_locations = [
+    "library",
+    "bedroom",
+    "cafe",
+    "school_classroom",
+    "study_room"
+]
+
+# Реквизит для учебы
+prefers_props = [
+    "book",
+    "notebook",
+    "pen",
+    "pencil",
+    "laptop",
+    "textbook",
+    "highlighter",
+    "stack_of_books"
+]
+
+# Освещение для учебы
+prefers_lighting_sources = [
+    "desk_lamp",
+    "window_light",
+    "overhead_light"
+]
+prefers_lighting_quality = [
+    "bright_lighting",
+    "focused_lighting",
+    "warm_lighting"
+]
+
+[visibility_modifiers]
+# При учебе обычно видны руки и верхняя часть тела
+reveals_features = ["hands", "upper_body", "face"]
+# Если сидит за столом - ноги скрыты
+conceals_if_sitting_at_desk = ["lower_body", "feet_footwear"]
