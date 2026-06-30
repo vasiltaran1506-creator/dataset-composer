@@ -1,51 +1,10 @@
 [meta]
 id = "park"
-category = "location"
 display_name = "Park"
-type = "outdoor_public"
-
-[hard_constraints]
-excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt"
-]
-
-excludes_actions = [
-    "cooking", "sleeping", "showering", "brushing_teeth", 
-    "taking_bath", "studying", "playing_instrument"
-]
-
-excludes_props = [
-    "steering_wheel", "dashboard", "frying_pan", "stove",
-    "bathtub", "shower", "blackboard", "school_desk",
-    "laptop", "desktop_computer", "torii_gate"
-]
+type = "outdoor_recreational"
 
 [soft_constraints]
-prefers_actions = ["walking", "sitting_on_bench", "reading", "looking_at_trees", "feeding_birds", "picnic", "playing_with_pet", "jogging", "cycling", "taking_photos", "daydreaming"]
-
-prefers_lighting_sources = ["sunlight", "dappled_sunlight", "golden_hour", "sunset", "sunrise", "overcast_light"]
+prefers_actions = ["walking", "sitting_on_bench", "reading", "looking_at_trees", "feeding_birds", "picnic", "playing_with_pet", "jogging"]
+prefers_lighting_sources = ["sunlight", "dappled_sunlight", "golden_hour", "sunset", "overcast_light"]
 prefers_lighting_quality = ["natural_lighting", "soft_lighting", "dappled_light", "warm_lighting"]
-
-prefers_nature = ["tree", "cherry_blossom_tree", "maple_tree", "grass", "flower", "bush", "fallen_leaves", "pond", "bench", "path", "fountain"]
 prefers_props = ["bench", "picnic_blanket", "basket", "book", "camera", "bicycle", "kite", "ball"]
-
-[weather_rules.if_weather_is_rain]
-prefers_actions = ["walking", "looking_at_trees", "daydreaming"]
-prefers_props = ["umbrella", "raincoat"]
-prefers_lighting_quality = ["soft_lighting", "moody_lighting"]
-
-[weather_rules.if_weather_is_sunny]
-prefers_actions = ["walking", "sitting_on_bench", "playing_with_pet", "cycling"]
-prefers_props = ["sunglasses", "sun_hat"]
-
-[weather_rules.if_weather_is_snow]
-prefers_actions = ["walking", "looking_at_trees"]
-prefers_props = ["scarf", "gloves"]
-prefers_lighting_quality = ["soft_lighting", "cold_lighting"]
-
-[visibility_modifiers]
-reveals_features = ["face", "upper_body", "lower_body", "feet_footwear"]
-conceals_if_sitting_on_bench = ["feet_footwear"]

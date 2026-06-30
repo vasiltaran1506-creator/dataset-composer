@@ -1,0 +1,14 @@
+[meta]
+id = "indoor_cultural"
+display_name = "Indoor Cultural / Quiet"
+
+[hard_constraints]
+excludes_outfit_categories = [
+    "02_clothing/underwear/",
+    "02_clothing/full_body/pajamas.txt",
+    "02_clothing/full_body/swimsuits.txt",
+    "02_clothing/full_body/loungewear.txt"
+]
+excludes_actions = ["shouting", "singing", "running", "fighting", "sleeping", "cooking", "eating", "taking_bath"]
+excludes_props = ["beach_ball", "frying_pan", "bathtub", "steering_wheel", "torii_gate", "flat screen tv"]
+excludes_lighting_sources = ["neon_light", "streetlight", "stage_lights", "sunlight"]

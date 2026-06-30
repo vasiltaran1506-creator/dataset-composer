@@ -60,44 +60,51 @@ class Exporter:
         }
         
         # Генерируем сцены
-        for i in range(num_scenes):
-            # Выбираем случайную локацию
+        i = 0
+        max_retries = 10 # Максимум попыток сгенерировать одну сцену
+        
+        while i < num_scenes:
             location = random.choice(all_locations)
             
-            # Строим сцену
-            scene = self.builder.build_scene(location)
+            # Получаем hard_constraints для валидации
+            location_rule = self.builder.scene_rules.get(f"locations.{location}", {})
+            type_id = location_rule.get("meta", {}).get("type", "")
+            type_rule = self.builder.location_types.get(type_id, {})
+            merged = self.builder._merge_rules(type_rule, location_rule)
+            hard = merged.get("hard_constraints", {})
             
+            # Пытаемся сгенерировать валидную сцену
+            scene = None
+            for attempt in range(max_retries):
+                candidate_scene = self.builder.build_scene(location)
+                if self.builder.validate_scene(candidate_scene, hard):
+                    scene = candidate_scene
+                    break
+                    
+            if scene is None:
+                # Если за 10 попыток не удалось создать идеальную сцену, пропускаем (очень редко)
+                continue
+                
             # Экспортируем в промпт
             fixed_traits = self.builder.full_profile.get('fixed_traits', [])
             prompt = scene.to_prompt(fixed_traits)
             
-            # Генерируем имя файла
             filename = f"{self.character_name}_{location}_{i+1:04d}.txt"
             filepath = output_path / filename
             
-            # Сохраняем промпт
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(prompt)
                 
-            # Опционально: создаем пустышку для картинки
-            if create_placeholders:
-                img_filename = f"{self.character_name}_{location}_{i+1:04d}.png"
-                img_filepath = output_path / img_filename
-                # Создаем пустой файл (1x1 пиксель PNG)
-                with open(img_filepath, 'wb') as f:
-                    f.write(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
-                           b'\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x01'
-                           b'\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82')
-            
             # Обновляем статистику
             stats["total_scenes"] += 1
             stats["locations"][location] = stats["locations"].get(location, 0) + 1
             stats["actions"][scene.action] = stats["actions"].get(scene.action, 0) + 1
             stats["weathers"][scene.weather] = stats["weathers"].get(scene.weather, 0) + 1
             
-            # Прогресс-бар
-            if (i + 1) % 100 == 0 or i == num_scenes - 1:
-                print(f"   ✓ Generated {i + 1}/{num_scenes} scenes")
+            i += 1
+            
+            if i % 100 == 0 or i == num_scenes:
+                print(f"   ✓ Generated {i}/{num_scenes} scenes")
                 
         print("-" * 60)
         print(f"✅ Dataset generation complete!")

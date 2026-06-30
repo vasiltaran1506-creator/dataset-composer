@@ -1,54 +1,10 @@
 [meta]
 id = "shrine_temple"
-category = "location"
 display_name = "Shrine / Temple"
 type = "outdoor_cultural"
 
-[hard_constraints]
-excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt"
-]
-
-excludes_actions = [
-    "shouting", "running", "fighting", "dancing_wildly", "eating", 
-    "smoking", "cooking", "exercising", "swimming", "taking_bath", 
-    "playing_instrument", "sleeping"
-]
-
-excludes_props = [
-    "steering_wheel", "dashboard",
-    "frying_pan", "stove", "refrigerator", "knife",
-    "bathtub", "shower", "toilet",
-    "blackboard", "school_desk",
-    "beach_ball", "surfboard", "bicycle",
-    "laptop", "desktop_computer", "smartphone"
-]
-
 [soft_constraints]
-prefers_actions = ["walking", "praying", "bowing", "looking_around", "standing_quietly", "climbing_stairs", "admiring_view", "daydreaming"]
-
+prefers_actions = ["walking", "praying", "bowing", "looking_around", "standing_quietly", "climbing_stairs", "admiring_view"]
 prefers_lighting_sources = ["dappled_sunlight", "sunlight", "golden_hour", "soft_overcast_light"]
 prefers_lighting_quality = ["natural_lighting", "soft_lighting", "dappled_light", "ethereal_lighting"]
-
-prefers_architecture = ["torii_gate", "stone_lantern", "wooden_steps", "temple_bell", "shrine_gate", "wooden_shrine", "pagoda"]
-prefers_nature = ["cherry_blossom_tree", "maple_tree", "bamboo_forest", "stone_path", "moss", "gravel_path"]
 prefers_props = ["ema_plaque", "fortune_paper", "prayer_beads", "parasol", "fan"]
-
-[weather_rules.if_weather_is_rain]
-prefers_actions = ["walking", "praying", "looking_around"]
-prefers_props = ["umbrella", "paper_umbrella"]
-prefers_lighting_quality = ["moody_lighting", "soft_lighting"]
-
-[weather_rules.if_weather_is_fog]
-prefers_actions = ["walking", "standing_quietly", "looking_around"]
-prefers_effects = ["mist", "ethereal_atmosphere"]
-prefers_lighting_quality = ["ethereal_lighting", "soft_lighting"]
-
-[weather_rules.if_weather_is_sunny]
-prefers_actions = ["walking", "praying", "admiring_view"]
-prefers_lighting_sources = ["dappled_sunlight", "sunlight"]
-
-[visibility_modifiers]
-reveals_features = ["face", "upper_body", "lower_body", "full_outfit"]

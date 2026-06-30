@@ -1,67 +1,16 @@
 [meta]
 id = "school_classroom"
-category = "location"
 display_name = "School Classroom"
 type = "indoor_institutional"
 
 [hard_constraints]
 allowed_outfit_categories = [
-    "02_clothing/full_body/uniforms.txt",
-    "02_clothing/topwear/shirts.txt",
-    "02_clothing/topwear/blouses.txt",
-    "02_clothing/topwear/sweaters.txt",
-    "02_clothing/bottomwear/skirts.txt",
-    "02_clothing/bottomwear/pants.txt",
-    "02_clothing/legwear/",
-    "02_clothing/footwear/shoes.txt"
-]
-
-excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt",
-    "02_clothing/topwear/coats.txt",
-    "02_clothing/topwear/jackets.txt"
-]
-
-excludes_actions = [
-    "sleeping", "running", "eating", "drinking", "dancing", 
-    "singing", "cooking", "exercising", "swimming", "taking_bath", 
-    "playing_instrument", "shouting"
-]
-
-excludes_props = [
-    "beach_ball", "surfboard", "bicycle",
-    "frying_pan", "stove", "refrigerator", "knife",
-    "bathtub", "shower", "toilet",
-    "steering_wheel", "dashboard", "torii_gate"
+    "02_clothing/full_body/uniforms.txt", "02_clothing/topwear/shirts.txt", "02_clothing/topwear/sweaters.txt",
+    "02_clothing/bottomwear/skirts.txt", "02_clothing/bottomwear/pants.txt", "02_clothing/legwear/"
 ]
 
 [soft_constraints]
-prefers_actions = [
-    "studying", "reading", "writing", "taking_notes", "listening_to_teacher",
-    "looking_at_blackboard", "raising_hand", "thinking", "daydreaming", "chatting_with_classmate"
-]
-
+prefers_actions = ["studying", "reading", "writing", "taking_notes", "looking_at_blackboard", "thinking", "daydreaming"]
 prefers_lighting_sources = ["fluorescent_light", "window_light", "overhead_light"]
 prefers_lighting_quality = ["bright_lighting", "natural_lighting", "institutional_lighting"]
-
-prefers_furniture = ["school_desk", "wooden_chair", "blackboard", "bookshelf", "globe", "clock", "window"]
-prefers_props = ["textbook", "notebook", "pen", "pencil", "eraser", "ruler", "school_bag", "lunch_box", "chalk", "calculator"]
-
-[weather_rules.if_weather_is_rain]
-prefers_actions = ["reading", "studying", "writing", "taking_notes"]
-prefers_lighting_quality = ["soft_lighting", "overcast_lighting"]
-
-[weather_rules.if_weather_is_sunny]
-prefers_lighting_sources = ["window_light", "sunlight"]
-prefers_lighting_quality = ["bright_lighting", "natural_lighting"]
-
-[visibility_modifiers]
-reveals_features = ["face", "upper_body", "hands"]
-conceals_if_sitting_at_desk = ["lower_body", "feet_footwear"]
-
-[time_of_day]
-prefers = ["morning", "afternoon"]
-avoids = ["evening", "night"]
+prefers_props = ["textbook", "notebook", "pen", "pencil", "eraser", "ruler", "school_bag", "chalk"]

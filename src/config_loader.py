@@ -67,6 +67,23 @@ class ConfigLoader:
         if not self.character_profile:
             raise ValueError("Character profile not loaded")
         return self.character_profile.get('outfit_whitelist', {})
+    
+    def load_location_types(self, types_dir: str = "scene-rules/location_types") -> Dict[str, Any]:
+        """Загружает правила типов локаций"""
+        types_path = self.project_root / types_dir
+        self.location_types = {}
+        
+        if not types_path.exists():
+            print(f"⚠ Warning: Location types directory not found: {types_path}")
+            return {}
+            
+        for toml_file in types_path.rglob("*.toml"):
+            key = toml_file.stem # Например, "indoor_cultural"
+            with open(toml_file, 'r', encoding='utf-8') as f:
+                self.location_types[key] = toml.load(f)
+            print(f"✓ Loaded location type: {key}")
+            
+        return self.location_types
 
 
 # Тестовый запуск (если запускать этот файл напрямую)

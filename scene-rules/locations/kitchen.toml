@@ -1,56 +1,16 @@
 [meta]
 id = "kitchen"
-category = "location"
 display_name = "Kitchen"
 type = "indoor_private"
 
 [hard_constraints]
 allowed_outfit_categories = [
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/loungewear.txt",
-    "02_clothing/topwear/shirts.txt",
-    "02_clothing/topwear/sweaters.txt",
-    "02_clothing/bottomwear/shorts.txt",
-    "02_clothing/bottomwear/pants.txt",
-    "02_clothing/bottomwear/skirts.txt",
-    "02_clothing/legwear/socks.txt",
-    "02_clothing/footwear/shoes.txt"
-]
-
-excludes_outfit_categories = [
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/topwear/coats.txt",
-    "02_clothing/topwear/jackets.txt",
-    "02_clothing/full_body/uniforms.txt",
-    "02_clothing/footwear/boots.txt"
-]
-
-excludes_actions = [
-    "sleeping", "studying", "exercising", "bathing", "swimming", 
-    "reading", "playing_instrument", "taking_bath"
-]
-
-excludes_props = [
-    "steering_wheel", "dashboard",
-    "bathtub", "shower", "toilet",
-    "blackboard", "school_desk", "torii_gate",
-    "beach_ball", "surfboard", "bicycle",
-    "bed", "pillow", "blanket"
+    "02_clothing/full_body/pajamas.txt", "02_clothing/full_body/loungewear.txt",
+    "02_clothing/topwear/shirts.txt", "02_clothing/bottomwear/shorts.txt", "02_clothing/bottomwear/pants.txt"
 ]
 
 [soft_constraints]
-prefers_actions = ["cooking", "baking", "eating", "drinking_tea", "drinking_coffee", "washing_dishes", "making_sandwich", "chopping_vegetables", "stirring_pot", "leaning_on_counter"]
-
-prefers_lighting_sources = ["overhead_light", "window_light", "sunlight", "warm_lamp", "fluorescent_light"]
+prefers_actions = ["cooking", "eating", "drinking_tea", "drinking_coffee", "washing_dishes", "leaning_on_counter"]
+prefers_lighting_sources = ["overhead_light", "window_light", "fluorescent_light"]
 prefers_lighting_quality = ["bright_lighting", "natural_lighting", "warm_lighting"]
-
-prefers_furniture = ["kitchen_counter", "dining_table", "wooden_chair", "stool", "refrigerator", "stove", "sink", "cupboard"]
-prefers_props = ["coffee_cup", "teacup", "mug", "plate", "bowl", "fork", "spoon", "knife", "chopsticks", "frying_pan", "pot", "kettle", "toaster", "fruit", "bread", "cutting_board", "apron"]
-
-[weather_rules.if_weather_is_rain]
-prefers_actions = ["cooking", "baking", "drinking_tea", "drinking_coffee"]
-prefers_lighting_quality = ["warm_lighting", "cozy_lighting"]
-
-[visibility_modifiers]
-conceals_if_sitting_at_table = ["lower_body", "feet_footwear"]
-reveals_features = ["face", "upper_body", "hands"]
+prefers_props = ["coffee_cup", "teacup", "plate", "frying_pan", "pot", "kettle", "fruit", "bread", "apron"]

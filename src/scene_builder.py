@@ -1,5 +1,5 @@
 """
-Scene Builder v4 - Полная интеграция всех правил (Locations, Actions, Weather, Camera)
+Scene Builder v5 - С поддержкой наследования правил (Location Types)
 """
 import random
 from scene import Scene
@@ -7,11 +7,12 @@ from prompt_library import PromptLibrary
 
 
 class SceneBuilder:
-    """Строит логически согласованные сцены на основе всех TOML-правил"""
+    """Строит логически согласованные сцены на основе всех TOML-правил и типов локаций"""
     
-    def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict):
+    def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict, location_types: dict):
         self.library = library
         self.scene_rules = scene_rules
+        self.location_types = location_types
         self.full_profile = character_profile
         
         # Кэшируем списки доступных правил по категориям
@@ -24,10 +25,55 @@ class SceneBuilder:
         if 'outfit_whitelist' in self.full_profile:
             return self.full_profile['outfit_whitelist']
         return self.full_profile.get('character', {}).get('outfit_whitelist', {})
+
+    def _merge_rules(self, type_rule: dict, location_rule: dict) -> dict:
+        """
+        Объединяет правила типа локации (базовые) и конкретной локации (специфичные).
+        Приоритет: Specific Location > Location Type
+        """
+        merged = {"hard_constraints": {}, "soft_constraints": {}}
+        
+        type_hard = type_rule.get("hard_constraints", {})
+        loc_hard = location_rule.get("hard_constraints", {})
+        
+        # 1. Объединяем списки исключений (Excludes) - они суммируются
+        for key in ["excludes_outfit_categories", "excludes_actions", "excludes_props", "excludes_lighting_sources", "excludes_weather"]:
+            list1 = type_hard.get(key, [])
+            list2 = loc_hard.get(key, [])
+            # Используем set для удаления дубликатов, затем обратно в list
+            merged["hard_constraints"][key] = list(set(list1 + list2))
+            
+        # 2. Для разрешений (Allowed) приоритет у конкретной локации
+        for key in ["allowed_outfit_categories", "allowed_actions"]:
+            if key in loc_hard:
+                merged["hard_constraints"][key] = loc_hard[key]
+            elif key in type_hard:
+                merged["hard_constraints"][key] = type_hard[key]
+                
+        # 3. Объединяем мягкие предпочтения (Soft Constraints)
+        type_soft = type_rule.get("soft_constraints", {})
+        loc_soft = location_rule.get("soft_constraints", {})
+        
+        all_soft_keys = set(list(type_soft.keys()) + list(loc_soft.keys()))
+        for key in all_soft_keys:
+            list1 = type_soft.get(key, [])
+            list2 = loc_soft.get(key, [])
+            if isinstance(list1, list) and isinstance(list2, list):
+                # Объединяем списки предпочтений
+                merged["soft_constraints"][key] = list(set(list1 + list2))
+            else:
+                # Для строковых или других типов данных приоритет у локации
+                merged["soft_constraints"][key] = loc_soft.get(key, type_soft.get(key))
+                
+        # 4. Переносим weather_rules из локации (они специфичны для места)
+        if "weather_rules" in location_rule:
+            merged["weather_rules"] = location_rule["weather_rules"]
+            
+        return merged
         
     def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
         """
-        Умный выбор одежды v6: Точная проверка совместимости стилей.
+        Умный выбор одежды: учитывает Whitelist/Blacklist режимы и наследование.
         """
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         whitelist = self._get_outfit_whitelist()
@@ -44,38 +90,33 @@ class SceneBuilder:
             style_compatible = False
             
             if allowed_categories:
-                # РЕЖИМ 1: Whitelist - проверяем ТОЧНОЕ соответствие
+                # РЕЖИМ 1: Whitelist
                 if "full_body" in style_data:
-                    # Для full_body стилей (pajamas, loungewear) проверяем, что ИМЕННО этот стиль разрешен
-                    # style_name = "pajamas", "loungewear" и т.д.
                     if any(style_name in cat for cat in allowed_categories):
                         style_compatible = True
                 elif "swimsuit" in style_data:
-                    # Для swimsuit проверяем swimsuits
                     if any("swimsuits" in cat for cat in allowed_categories):
                         style_compatible = True
                 else:
-                    # Для top_bottom комплектов проверяем наличие topwear И bottomwear
                     if any("topwear" in cat for cat in allowed_categories) and any("bottomwear" in cat for cat in allowed_categories):
                         style_compatible = True
             else:
-                # РЕЖИМ 2: Blacklist - проверяем, не запрещен ли стиль
+                # РЕЖИМ 2: Blacklist
                 if "full_body" in style_data:
-                    # Проверяем, не запрещен ли именно этот стиль
                     if not any(style_name in cat for cat in excluded_categories):
                         style_compatible = True
                 elif "swimsuit" in style_data:
                     if not any("swimsuits" in cat for cat in excluded_categories):
                         style_compatible = True
                 else:
-                    # Для top_bottom проверяем, не запрещены ли topwear или bottomwear
-                    if not any(any(exc in cat for exc in ["coats", "jackets"]) for cat in excluded_categories):
+                    general_excluded = any(any(exc in cat for exc in ["coats", "jackets"]) for cat in excluded_categories)
+                    style_excluded = any(style_name in cat for cat in excluded_categories)
+                    if not general_excluded and not style_excluded:
                         style_compatible = True
                         
             if style_compatible:
                 compatible_styles.append(style_name)
                 
-        # Если нет совместимых стилей, берем все из whitelist
         if not compatible_styles:
             compatible_styles = list(whitelist.keys())
             
@@ -103,7 +144,7 @@ class SceneBuilder:
         return outfit
         
     def _choose_random_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
-        """Fallback: случайная сборка одежды из библиотеки"""
+        """Fallback: случайная сборка одежды из библиотеки (если нет whitelist)"""
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         
         if allowed_categories:
@@ -137,40 +178,44 @@ class SceneBuilder:
         return outfit
         
     def build_scene(self, location_id: str) -> Scene:
-        """
-        ГЛАВНЫЙ МЕТОД: Собирает сцену, применяя все правила
-        """
+        """ГЛАВНЫЙ МЕТОД: Собирает сцену, применяя все правила и наследование"""
         scene = Scene()
         scene.location = location_id
         
-        # Загружаем правила для выбранной локации
+        # 1. Загружаем правила локации и её типа
         location_rule = self.scene_rules.get(f"locations.{location_id}", {})
-        location_soft = location_rule.get("soft_constraints", {})
-        location_hard = location_rule.get("hard_constraints", {})
+        type_id = location_rule.get("meta", {}).get("type", "")
+        type_rule = self.location_types.get(type_id, {})
         
-        # 1. ВЫБОР ДЕЙСТВИЯ (Action)
-        # Берем из prefers_actions локации, если есть
-        prefers_actions = location_soft.get("prefers_actions", self.available_actions)
-        scene.action = random.choice(prefers_actions)
+        # 2. МЕРЖИМ ПРАВИЛА!
+        merged = self._merge_rules(type_rule, location_rule)
+        hard = merged.get("hard_constraints", {})
+        soft = merged.get("soft_constraints", {})
         
-        # Загружаем правила для выбранного действия
+        # 3. ВЫБОР ДЕЙСТВИЯ (Action)
+        prefers_actions = soft.get("prefers_actions", self.available_actions)
+        excludes_actions = hard.get("excludes_actions", [])
+        valid_actions = [a for a in prefers_actions if a not in excludes_actions and a in self.available_actions]
+        
+        if valid_actions:
+            scene.action = random.choice(valid_actions)
+        else:
+            scene.action = random.choice(self.available_actions)
+            
         action_rule = self.scene_rules.get(f"actions.{scene.action}", {})
         action_soft = action_rule.get("soft_constraints", {})
         action_hard = action_rule.get("hard_constraints", {})
         
-        # 2. ВЫБОР ПОГОДЫ (Weather) - случайно из доступных
+        # 4. ВЫБОР ПОГОДЫ И КАМЕРЫ
         scene.weather = random.choice(self.available_weathers)
         weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
         weather_soft = weather_rule.get("soft_constraints", {})
         
-        # 3. ВЫБОР КАМЕРЫ (Camera) - случайно из доступных
         scene.camera = random.choice(self.available_cameras)
-        camera_rule = self.scene_rules.get(f"camera.{scene.camera}", {})
-        camera_soft = camera_rule.get("soft_constraints", {})
         
-        # 4. ВЫБОР ОДЕЖДЫ (Outfit)
-        allowed_categories = location_hard.get("allowed_outfit_categories", [])
-        excluded_categories = location_hard.get("excludes_outfit_categories", [])
+        # 5. ВЫБОР ОДЕЖДЫ (Outfit)
+        allowed_categories = hard.get("allowed_outfit_categories", [])
+        excluded_categories = hard.get("excludes_outfit_categories", [])
         
         if allowed_categories or excluded_categories:
             outfit_parts = self._choose_smart_outfit(allowed_categories, excluded_categories)
@@ -180,77 +225,66 @@ class SceneBuilder:
             scene.outfit_legwear = outfit_parts["legwear"]
             scene.outfit_footwear = outfit_parts["footwear"]
             
-        # 5. ВЫБОР ВЫРАЖЕНИЯ ЛИЦА (Expression)
-        # Приоритет: action > location > случайный
-        prefers_expressions = action_soft.get("prefers_expressions", location_soft.get("prefers_expressions", []))
+        # 6. ВЫБОР ВЫРАЖЕНИЯ ЛИЦА (Expression)
+        prefers_expressions = action_soft.get("prefers_expressions", soft.get("prefers_expressions", []))
         if prefers_expressions:
             scene.expression = random.choice(prefers_expressions)
             
-        # 6. ВЫБОР РЕКВИЗИТА (Props)
+        # 7. ВЫБОР РЕКВИЗИТА (Props)
         props = []
         
-        # 6a. Обязательный реквизит из action (requires_prop_categories)
-        requires_prop_cats = action_hard.get("requires_prop_categories", [])
-        for cat in requires_prop_cats:
+        # Обязательный реквизит из action
+        for cat in action_hard.get("requires_prop_categories", []):
             tag = self.library.get_random_tag(cat)
             if tag:
                 props.append(tag)
                 
-        # 6b. Предпочитаемый реквизит из action
-        prefers_props_action = action_soft.get("prefers_props", [])
-        if prefers_props_action and random.random() < 0.7:
-            props.append(random.choice(prefers_props_action))
+        # Предпочитаемый реквизит из action
+        if action_soft.get("prefers_props") and random.random() < 0.7:
+            props.append(random.choice(action_soft["prefers_props"]))
             
-        # 6c. Предпочитаемый реквизит из location
-        prefers_props_location = location_soft.get("prefers_props", [])
-        if prefers_props_location and random.random() < 0.5:
-            props.append(random.choice(prefers_props_location))
+        # Предпочитаемый реквизит из location
+        if soft.get("prefers_props") and random.random() < 0.5:
+            props.append(random.choice(soft["prefers_props"]))
             
-        # 6d. Фильтруем реквизит через excludes_props из локации
-        excludes_props = location_hard.get("excludes_props", [])
-        props = [p for p in props if p not in excludes_props]
+        # Фильтруем реквизит через excludes_props (из типа и локации)
+        excludes_props = hard.get("excludes_props", [])
+        scene.props = [p for p in props if p not in excludes_props]
         
-        scene.props = props
-            
-        scene.props = props
-        
-        # 7. ВЫБОР ОСВЕЩЕНИЯ (Lighting)
-        # Приоритет: weather > action > location
+        # 8. ВЫБОР ОСВЕЩЕНИЯ (Lighting)
         lighting_sources = (
             weather_soft.get("prefers_lighting_sources", []) or
             action_soft.get("prefers_lighting_sources", []) or
-            location_soft.get("prefers_lighting_sources", [])
+            soft.get("prefers_lighting_sources", [])
         )
-        if lighting_sources:
-            scene.lighting_source = random.choice(lighting_sources)
+        excludes_lighting = hard.get("excludes_lighting_sources", [])
+        valid_sources = [s for s in lighting_sources if s not in excludes_lighting]
+        if valid_sources:
+            scene.lighting_source = random.choice(valid_sources)
             
         lighting_quality = (
             weather_soft.get("prefers_lighting_quality", []) or
             action_soft.get("prefers_lighting_quality", []) or
-            location_soft.get("prefers_lighting_quality", [])
+            soft.get("prefers_lighting_quality", [])
         )
         if lighting_quality:
             scene.lighting_quality = random.choice(lighting_quality)
             
-        # 8. ЭФФЕКТЫ И ПОГОДНЫЕ ПРАВИЛА (Effects + Weather Rules)
+        # 9. ЭФФЕКТЫ (Effects) и ПОГОДНЫЕ ПРАВИЛА
         prefers_effects = weather_soft.get("prefers_effects", [])
         if prefers_effects and random.random() < 0.6:
             scene.effects.append(random.choice(prefers_effects))
             
-        # 8a. Читаем weather_rules из LOCATION (например, street.toml имеет if_weather_is_rain)
-        location_weather_rules = location_rule.get("weather_rules", {})
+        # Читаем weather_rules из merged (они пришли из location_rule)
+        weather_rules = merged.get("weather_rules", {})
         weather_key = f"if_weather_is_{scene.weather}"
-        if weather_key in location_weather_rules:
-            weather_specific_rules = location_weather_rules[weather_key]
-            
-            # Добавляем специфичные props для этой погоды в этой локации
+        if weather_key in weather_rules:
+            weather_specific_rules = weather_rules[weather_key]
             if "prefers_props" in weather_specific_rules:
                 for prop in weather_specific_rules["prefers_props"]:
-                    if random.random() < 0.8:  # 80% шанс добавить
+                    if random.random() < 0.8:
                         scene.props.append(prop)
-                        
-            # Добавляем специфичное освещение
             if "prefers_lighting_quality" in weather_specific_rules:
                 scene.lighting_quality = random.choice(weather_specific_rules["prefers_lighting_quality"])
-            
+                
         return scene

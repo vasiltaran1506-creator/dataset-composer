@@ -1,46 +1,10 @@
 [meta]
 id = "library"
-category = "location"
 display_name = "Library"
-type = "indoor_public"
-
-[hard_constraints]
-excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt"
-]
-
-excludes_actions = [
-    "shouting", "singing", "running", "dancing", "fighting", 
-    "sleeping", "cooking", "eating", "exercising", "swimming", 
-    "playing_instrument", "taking_bath"
-]
-
-excludes_props = [
-    "beach_ball", "surfboard", "bicycle",
-    "frying_pan", "stove", "knife", "refrigerator",
-    "bathtub", "shower", "toilet",
-    "steering_wheel", "dashboard", "torii_gate"
-]
+type = "indoor_cultural"
 
 [soft_constraints]
 prefers_actions = ["reading", "studying", "writing", "looking_for_book", "browsing_bookshelf", "taking_notes", "thinking"]
-
-prefers_lighting_sources = ["lamplight", "desk_lamp", "window_light", "fluorescent_light", "warm_lamp"]
+prefers_lighting_sources = ["lamplight", "desk_lamp", "window_light", "warm_lamp"]
 prefers_lighting_quality = ["soft_lighting", "warm_lighting", "cinematic_lighting", "chiaroscuro"]
-
-prefers_furniture = ["bookshelf", "desk", "chair", "reading_table", "armchair", "ladder", "globe"]
 prefers_props = ["book", "notebook", "pen", "reading_glasses", "laptop", "stack_of_books", "bookmark"]
-
-[weather_rules.if_weather_is_rain]
-prefers_actions = ["reading", "studying", "writing"]
-prefers_lighting_quality = ["soft_lighting", "warm_lighting"]
-
-[weather_rules.if_weather_is_night]
-prefers_lighting_sources = ["desk_lamp", "warm_lamp"]
-prefers_lighting_quality = ["warm_lighting", "low-key_lighting"]
-
-[visibility_modifiers]
-reveals_features = ["hands", "upper_body", "face"]

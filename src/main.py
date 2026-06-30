@@ -11,13 +11,9 @@ from exporter import Exporter
 
 
 def main():
-    print("🚀 Dataset Composer v0.4 - Export Mode")
+    print("🚀 Dataset Composer v1.0 - Rule Inheritance Architecture")
     print("=" * 60)
     
-    # Проверяем аргументы командной строки
-    # python main.py              → test mode (5 сцен)
-    # python main.py generate     → generate mode (1000 сцен)
-    # python main.py generate 500 → generate mode (500 сцен)
     mode = "test"
     num_scenes = 5
     
@@ -40,6 +36,9 @@ def main():
         # 1. Загрузка данных
         profile = loader.load_character_profile()
         rules = loader.load_scene_rules()
+        
+        # 👇 НОВАЯ СТРОКА: Загружаем 10 типов локаций
+        loader.load_location_types()  
         library.load_library()
         
         character_name = loader.get_character_name()
@@ -47,17 +46,18 @@ def main():
         
         print(f"\n✅ System initialized for: {character_name}")
         print(f"   Rules loaded: {len(rules)}")
+        print(f"   Location types loaded: {len(loader.location_types)}") # 👈 Показываем количество типов
         print(f"   Tags available: {library.get_stats()['total_tags']}")
         
         # 2. Инициализация компонентов
         builder = SceneBuilder(
             library=library, 
             scene_rules=rules, 
-            character_profile=profile
+            character_profile=profile,
+            location_types=loader.location_types  # 👈 ПЕРЕДАЕМ ТИПЫ ЛОКАЦИЙ!
         )
         
         if mode == "test":
-            # TEST MODE: Генерируем 5 случайных сцен для проверки
             print(f"\n🎬 Test Mode: Generating 5 random scenes...")
             print("-" * 60)
             
@@ -84,27 +84,20 @@ def main():
             print("\n🎉 Test complete!")
             
         elif mode == "generate":
-            # GENERATE MODE: Массовая генерация датасета
             print(f"\n📦 Generate Mode: Creating dataset with {num_scenes} scenes...")
             
             exporter = Exporter(builder, character_name)
             
-            # Генерируем и сохраняем датасет
             stats = exporter.export_dataset(
                 num_scenes=num_scenes,
                 output_dir=str(project_root / "dataset"),
-                create_placeholders=False  # Можно включить для визуализации
+                create_placeholders=False
             )
             
-            # Выводим статистику
             exporter.print_statistics(stats)
             
             print("\n🎉 Dataset generation complete!")
             print(f"📂 Dataset location: {(project_root / 'dataset').absolute()}")
-            print("\nNext steps:")
-            print("   1. Generate images using your preferred tool (ComfyUI, A1111, etc.)")
-            print("   2. Train LoRA using Kohya_ss or OneTrainer")
-            print("   3. Enjoy your high-quality character model!")
         
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")

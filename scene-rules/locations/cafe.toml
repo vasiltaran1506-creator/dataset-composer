@@ -1,52 +1,10 @@
 [meta]
 id = "cafe"
-category = "location"
 display_name = "Cafe"
-type = "indoor_public"
-
-[hard_constraints]
-excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt",
-    "02_clothing/topwear/coats.txt"
-]
-
-excludes_actions = [
-    "sleeping", "running", "exercising", "cooking", "swimming", 
-    "taking_bath", "playing_instrument", "shouting"
-]
-
-excludes_props = [
-    "steering_wheel", "dashboard",
-    "frying_pan", "stove", "refrigerator", "knife",
-    "bathtub", "shower", "toilet",
-    "blackboard", "school_desk", "torii_gate",
-    "beach_ball", "surfboard", "bicycle"
-]
+type = "indoor_commercial"
 
 [soft_constraints]
-prefers_actions = ["drinking_coffee", "drinking_tea", "eating", "reading", "studying", "writing", "using_laptop", "chatting", "looking_out_window", "daydreaming"]
-
-prefers_lighting_sources = ["window_light", "warm_lamp", "pendant_light", "candlelight", "soft_overhead_light"]
+prefers_actions = ["drinking_coffee", "drinking_tea", "eating", "reading", "studying", "using_laptop", "chatting", "looking_out_window"]
+prefers_lighting_sources = ["window_light", "warm_lamp", "pendant_light", "candlelight"]
 prefers_lighting_quality = ["warm_lighting", "soft_lighting", "cozy_lighting", "cinematic_lighting"]
-
-prefers_furniture = ["cafe_table", "wooden_chair", "armchair", "sofa", "bookshelf", "counter"]
-prefers_props = ["coffee_cup", "teacup", "latte_art", "pastry", "cake_slice", "croissant", "laptop", "book", "notebook", "pen", "smartphone"]
-
-[weather_rules.if_weather_is_rain]
-prefers_actions = ["drinking_coffee", "reading", "looking_out_window", "daydreaming"]
-prefers_lighting_quality = ["warm_lighting", "cozy_lighting"]
-
-[weather_rules.if_weather_is_night]
-prefers_lighting_sources = ["warm_lamp", "candlelight", "pendant_light"]
-prefers_lighting_quality = ["warm_lighting", "low-key_lighting"]
-
-[visibility_modifiers]
-reveals_features = ["face", "upper_body", "hands"]
-conceals_if_sitting_at_table = ["lower_body", "feet_footwear"]
-
-[time_of_day]
-prefers = ["morning", "afternoon", "evening"]
-avoids = ["night"]
+prefers_props = ["coffee_cup", "teacup", "latte_art", "pastry", "cake_slice", "laptop", "book", "smartphone"]
