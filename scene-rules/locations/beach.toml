@@ -5,8 +5,10 @@ display_name = "Beach"
 type = "outdoor"
 
 [hard_constraints]
+# ✅ Разрешенные стили (Character Profile)
+allowed_outfit_styles = ["bikini", "casual_shirt_skirt", "sportswear"]
+
 # ✅ Разрешенные стили одежды для Луны
-allowed_outfit_styles = ["bikini", "casual_shirt_skirt"]
 
 # ✅ WHITELIST: Что носят на пляже
 

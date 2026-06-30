@@ -5,8 +5,10 @@ display_name = "Balcony"
 type = "outdoor_semi_private"
 
 [hard_constraints]
+# ✅ Разрешенные стили (Character Profile)
+allowed_outfit_styles = ["pajamas", "loungewear", "casual_shirt_skirt", "sportswear"]
+
 # ✅ Разрешенные стили одежды для Луны
-allowed_outfit_styles = ["loungewear", "casual_shirt_skirt", "sportswear"]
 
 # ✅ WHITELIST: Домашняя или легкая повседневная одежда
 

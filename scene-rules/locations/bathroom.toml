@@ -5,8 +5,10 @@ display_name = "Bathroom"
 type = "indoor_private"
 
 [hard_constraints]
+# ✅ Разрешенные стили (Character Profile)
+allowed_outfit_styles = ["bikini", "pajamas", "loungewear"]
+
 # ✅ Разрешенные стили одежды для Луны
-allowed_outfit_styles = ["bikini"]
 
 # ✅ WHITELIST: Только то, в чем можно находиться в ванной
 # Примечание: В будущем можно добавить категорию "towels" и "robes"

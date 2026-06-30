@@ -5,12 +5,10 @@ display_name = "Bedroom"
 type = "indoor_private"  # Приватное помещение
 
 [hard_constraints]
+# ✅ Разрешенные стили (Character Profile)
+allowed_outfit_styles = ["pajamas", "loungewear", "casual_shirt_skirt", "sportswear"]
+
 # ✅ Разрешены только эти СТИЛИ из character-profile.yaml
-allowed_outfit_styles = [
-    "pajamas",
-    "loungewear",
-    "casual_shirt_skirt"
-]
 
 # 🛑 BLACKLIST: Категорически неуместно в спальне
 excludes_outfit_categories = [

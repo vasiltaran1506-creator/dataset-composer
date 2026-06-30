@@ -5,8 +5,10 @@ display_name = "Kitchen"
 type = "indoor_private"
 
 [hard_constraints]
+# ✅ Разрешенные стили (Character Profile)
+allowed_outfit_styles = ["pajamas", "loungewear", "casual_shirt_skirt", "sportswear"]
+
 # ✅ Разрешенные стили одежды для Луны
-allowed_outfit_styles = ["pajamas", "loungewear", "casual_shirt_skirt"]
 
 # ✅ WHITELIST: В кухне уместна домашняя или повседневная одежда
 

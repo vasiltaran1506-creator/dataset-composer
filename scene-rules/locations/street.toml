@@ -5,8 +5,10 @@ display_name = "City Street"
 type = "outdoor_urban"
 
 [hard_constraints]
+# ✅ Разрешенные стили (Character Profile)
+allowed_outfit_styles = ["casual_shirt_skirt", "sportswear", "loungewear"]
+
 # ✅ Разрешенные стили одежды для Луны
-allowed_outfit_styles = ["casual_shirt_skirt", "sportswear"]
 
 # 🛑 BLACKLIST: Что неуместно на улице
 excludes_outfit_categories = [
