@@ -59,13 +59,14 @@ class ConfigLoader:
         """Возвращает неизменяемые черты персонажа"""
         if not self.character_profile:
             raise ValueError("Character profile not loaded")
-        return self.character_profile['character'].get('fixed_traits', [])
+        # fixed_traits лежит на корневом уровне, не внутри character
+        return self.character_profile.get('fixed_traits', [])
     
     def get_outfit_whitelist(self) -> Dict[str, Any]:
         """Возвращает разрешенные стили одежды"""
         if not self.character_profile:
             raise ValueError("Character profile not loaded")
-        return self.character_profile['character'].get('outfit_whitelist', {})
+        return self.character_profile.get('outfit_whitelist', {})
 
 
 # Тестовый запуск (если запускать этот файл напрямую)

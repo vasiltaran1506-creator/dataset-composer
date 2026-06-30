@@ -61,15 +61,14 @@ prefers_props = [
 
 [weather_rules]
 # Балкон сильно зависит от погоды (динамические правила!)
-if_weather_is_rain = { 
-    prefers_actions = ["looking_at_rain", "daydreaming"],
-    prefers_props = ["blanket", "hot_drink"],
-    prefers_lighting_quality = ["moody_lighting", "soft_lighting"]
-}
-if_weather_is_snow = { 
-    requires_outfit_categories = ["02_clothing/topwear/sweaters.txt", "02_clothing/topwear/jackets.txt"],
-    prefers_props = ["blanket", "hot_drink"]
-}
+[weather_rules.if_weather_is_rain]
+prefers_actions = ["looking_at_rain", "daydreaming"]
+prefers_props = ["blanket", "hot_drink"]
+prefers_lighting_quality = ["moody_lighting", "soft_lighting"]
+
+[weather_rules.if_weather_is_snow]
+requires_outfit_categories = ["02_clothing/topwear/sweaters.txt", "02_clothing/topwear/jackets.txt"]
+prefers_props = ["blanket", "hot_drink"]
 
 [visibility_modifiers]
 # На балконе перила могут скрывать ноги

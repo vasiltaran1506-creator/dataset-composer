@@ -54,11 +54,10 @@ excludes_actions = [
 
 [soft_constraints]
 # ⚖️ Предпочитаемая одежда
-prefers_outfit_categories = [
-    { id = "02_clothing/full_body/uniforms.txt", weight = 0.5 },  # 50% — форма
-    { id = "02_clothing/topwear/shirts.txt", weight = 0.25 },     # 25% — рубашки
-    { id = "02_clothing/topwear/sweaters.txt", weight = 0.25 }    # 25% — свитера
-]
+[soft_constraints.prefers_outfit_categories_weights]
+"02_clothing/full_body/uniforms.txt" = 0.5
+"02_clothing/topwear/shirts.txt" = 0.25
+"02_clothing/topwear/sweaters.txt" = 0.25
 
 # 💡 Освещение: школьное, флуоресцентное + окно
 prefers_lighting_sources = [

@@ -38,12 +38,11 @@ excludes_actions = [
 
 [soft_constraints]
 # ⚖️ Предпочитаемая одежда для кафе
-prefers_outfit_categories = [
-    { id = "02_clothing/topwear/shirts.txt", weight = 0.3 },
-    { id = "02_clothing/topwear/blouses.txt", weight = 0.25 },
-    { id = "02_clothing/topwear/sweaters.txt", weight = 0.25 },
-    { id = "02_clothing/full_body/dresses.txt", weight = 0.2 }
-]
+[soft_constraints.prefers_outfit_categories_weights]
+"02_clothing/topwear/shirts.txt" = 0.3
+"02_clothing/topwear/blouses.txt" = 0.25
+"02_clothing/topwear/sweaters.txt" = 0.25
+"02_clothing/full_body/dresses.txt" = 0.2
 
 # 💡 Освещение: теплое, уютное, кафе-атмосфера
 prefers_lighting_sources = [
