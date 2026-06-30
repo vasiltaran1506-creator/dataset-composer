@@ -4,30 +4,69 @@ category = "action"
 display_name = "Reading"
 
 [hard_constraints]
-# 🛑 Чтение ТРЕБУЕТ объект для чтения. Без него сцена невалидна.
-requires_prop_categories = ["reading_material"] # Программа пойдет в props/books.txt
-
-# 🛑 С чем чтение несовместимо
-excludes_actions = ["running", "swimming", "sleeping", "eating"]
-excludes_expressions = ["shouting", "crying", "angry"]
-
-[soft_constraints]
-# ⚖️ Позы: читать стоя можно, но сидя/лежа — в 90% случаев
-prefers_poses = [
-    { id = "sitting", weight = 0.6 },
-    { id = "lying_on_stomach", weight = 0.2 },
-    { id = "lying_on_back", weight = 0.1 },
-    { id = "standing", weight = 0.1 }
+# Чтение ТРЕБУЕТ объект для чтения (теперь у нас есть books.txt!)
+requires_prop_categories = [
+    "09_props/books.txt",
+    "09_props/electronics.txt"
 ]
 
-# ⚖️ Где она обычно читает
-prefers_locations = ["bedroom", "library", "park_bench", "cafe", "balcony"]
+# Чтение несовместимо с активными физическими действиями
+excludes_actions = [
+    "running",
+    "swimming",
+    "jumping",
+    "exercising",
+    "dancing"
+]
 
-# 🎭 Выражение лица: сосредоточенность, легкая улыбка, задумчивость
-prefers_expressions = ["focused", "thoughtful", "gentle_smile", "downcast_eyes", "looking_at_object"]
+[soft_constraints]
+# Позы: читать можно сидя, лежа, стоя
+prefers_poses = [
+    "sitting",
+    "sitting_on_chair",
+    "sitting_on_floor",
+    "sitting_cross_legged",
+    "lying_on_stomach",
+    "lying_on_side",
+    "leaning_back",
+    "standing"
+]
 
-[luna_specific_rules]
-# 🎀 Особое правило из её Character Profile
-# Когда Луна читает, она иногда собирает волосы, чтобы не мешали
-hair_override_probability = 0.3 # В 30% случаев при чтении
-hair_override_style = "ponytail" # (вместо стандартного "hair down")
+# Выражение лица при чтении
+prefers_expressions = [
+    "focused",
+    "concentrated",
+    "thoughtful",
+    "gentle_smile",
+    "downcast_eyes",
+    "looking_down"
+]
+
+# Типичные локации для чтения
+prefers_locations = [
+    "bedroom",
+    "library",
+    "cafe",
+    "park",
+    "balcony",
+    "living_room",
+    "train_interior"
+]
+
+# Освещение для чтения
+prefers_lighting_sources = [
+    "desk_lamp",
+    "window_light",
+    "lamplight",
+    "overhead_light",
+    "sunlight"
+]
+prefers_lighting_quality = [
+    "warm_lighting",
+    "soft_lighting",
+    "bright_lighting"
+]
+
+[visibility_modifiers]
+reveals_features = ["hands", "face", "upper_body"]
+conceals_if_sitting = ["lower_body", "feet_footwear"]

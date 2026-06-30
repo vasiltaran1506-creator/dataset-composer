@@ -1,0 +1,43 @@
+[meta]
+id = "profile_view"
+category = "camera"
+display_name = "Profile / Side View"
+
+[hard_constraints]
+camera_angle = "profile"
+
+[soft_constraints]
+# Профиль подчеркивает силуэт
+prefers_framing = [
+    "portrait",
+    "upper_body",
+    "cowboy_shot",
+    "close_up"
+]
+
+# Позы в профиль
+prefers_poses = [
+    "standing",
+    "sitting",
+    "looking_away",
+    "looking_into_distance",
+    "head_tilt"
+]
+
+# Профиль идеально сочетается с контровым светом
+prefers_lighting_direction = [
+    "backlighting",
+    "rim_light",
+    "side_lighting"
+]
+prefers_lighting_quality = [
+    "cinematic_lighting",
+    "dramatic_lighting",
+    "silhouette"
+]
+
+[coverage_impact]
+face_weight = 0.7
+upper_body_weight = 0.8
+lower_body_weight = 0.4
+feet_weight = 0.2

@@ -1,0 +1,34 @@
+[meta]
+id = "from_above"
+category = "camera"
+display_name = "High Angle / Bird's Eye View"
+
+[hard_constraints]
+camera_angle = "high_angle"
+excludes_framing = ["extreme_close_up", "face_shot"]
+
+[soft_constraints]
+# Позы, которые хорошо смотрятся сверху
+prefers_poses = [
+    "sitting_on_floor",
+    "lying_on_back",
+    "lying_on_side",
+    "sitting_cross_legged",
+    "curled_up"
+]
+
+# Типичные сценарии для вида сверху
+prefers_actions = [
+    "lying_on_bed",
+    "reading",
+    "sitting",
+    "sleeping",
+    "looking_up"
+]
+
+[coverage_impact]
+# Вид сверху показывает верхнюю часть тела и волосы, но лицо частично скрыто
+face_weight = 0.5
+upper_body_weight = 0.8
+lower_body_weight = 0.6
+feet_weight = 0.3

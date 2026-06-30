@@ -1,0 +1,53 @@
+[meta]
+id = "cooking"
+category = "action"
+display_name = "Cooking / Preparing Food"
+
+[hard_constraints]
+# Готовка возможна преимущественно на кухне
+preferred_locations = ["kitchen"]
+
+# Готовка требует кухонный реквизит (теперь у нас есть kitchen_tools.txt!)
+requires_prop_categories = [
+    "09_props/kitchen_tools.txt",
+    "09_props/food_drink.txt"
+]
+
+# Что нельзя делать во время готовки
+excludes_actions = [
+    "sleeping",
+    "reading",
+    "studying",
+    "swimming"
+]
+
+[soft_constraints]
+# Позы при готовке
+prefers_poses = [
+    "standing",
+    "leaning_on_counter",
+    "leaning_forward"
+]
+
+# Выражение лица
+prefers_expressions = [
+    "focused",
+    "concentrated",
+    "gentle_smile",
+    "content"
+]
+
+# Освещение на кухне
+prefers_lighting_sources = [
+    "overhead_light",
+    "window_light",
+    "fluorescent_light"
+]
+prefers_lighting_quality = [
+    "bright_lighting",
+    "natural_lighting"
+]
+
+[visibility_modifiers]
+reveals_features = ["hands", "upper_body", "face"]
+conceals_if_behind_counter = ["lower_body", "feet_footwear"]
