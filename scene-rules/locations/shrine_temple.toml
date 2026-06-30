@@ -1,0 +1,88 @@
+[meta]
+id = "shrine_temple"
+category = "location"
+display_name = "Shrine / Temple"
+type = "outdoor_cultural"
+
+[hard_constraints]
+# 🛑 BLACKLIST: Что неуместно в храме (требуется уважение к месту)
+excludes_outfit_categories = [
+    "02_clothing/underwear/",
+    "02_clothing/full_body/swimsuits.txt",
+    "02_clothing/full_body/loungewear.txt"
+]
+
+# 🛑 Запрещенные действия (нужно уважение)
+excludes_actions = [
+    "shouting",
+    "running",
+    "fighting",
+    "dancing_wildly",
+    "eating",
+    "smoking"
+]
+
+[soft_constraints]
+# Типичные действия в храме
+prefers_actions = [
+    "walking",
+    "praying",
+    "bowing",
+    "looking_around",
+    "standing_quietly",
+    "climbing_stairs",
+    "admiring_view",
+    "daydreaming"
+]
+
+# Освещение: природное, часто сквозь деревья
+prefers_lighting_sources = [
+    "dappled_sunlight",
+    "sunlight",
+    "golden_hour",
+    "soft_overcast_light"
+]
+prefers_lighting_quality = [
+    "natural_lighting",
+    "soft_lighting",
+    "dappled_light",
+    "ethereal_lighting"
+]
+
+# Архитектурные элементы храма
+prefers_architecture = [
+    "torii_gate",
+    "stone_lantern",
+    "wooden_steps",
+    "temple_bell",
+    "shrine_gate",
+    "wooden_shrine",
+    "pagoda"
+]
+
+# Природные элементы
+prefers_nature = [
+    "cherry_blossom_tree",
+    "maple_tree",
+    "bamboo_forest",
+    "stone_path",
+    "moss",
+    "gravel_path"
+]
+
+# Реквизит
+prefers_props = [
+    "ema_plaque",
+    "fortune_paper",
+    "prayer_beads",
+    "parasol",
+    "fan"
+]
+
+[weather_rules.if_weather_is_rain]
+prefers_props = ["umbrella", "paper_umbrella"]
+prefers_lighting_quality = ["moody_lighting", "soft_lighting"]
+
+[visibility_modifiers]
+# В храме обычно виден полный силуэт на фоне архитектуры
+reveals_features = ["face", "upper_body", "lower_body", "full_outfit"]

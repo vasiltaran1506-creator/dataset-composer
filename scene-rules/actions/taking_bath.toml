@@ -1,0 +1,102 @@
+[meta]
+id = "taking_bath"
+category = "action"
+display_name = "Taking a Bath"
+
+[hard_constraints]
+# Прием ванны возможен только в ванной
+preferred_locations = ["bathroom"]
+
+# Одежда неуместна
+excludes_outfit_categories = [
+    "02_clothing/topwear/",
+    "02_clothing/bottomwear/",
+    "02_clothing/full_body/dresses.txt",
+    "02_clothing/full_body/uniforms.txt",
+    "02_clothing/footwear/"
+]
+
+# Купальники возможны, но не обязательны (зависит от Run Config)
+optional_outfit_categories = [
+    "02_clothing/full_body/swimsuits.txt"
+]
+
+[soft_constraints]
+# Позы в ванной: вариативные (от скромных до открытых)
+prefers_poses = [
+    "sitting_in_tub",
+    "reclining_in_tub",
+    "knees_to_chest",
+    "legs_crossed_in_water",
+    "lying_in_tub",
+    "arms_on_tub_edge",
+    "leaning_back"
+]
+
+# Выражение лица: расслабленность, удовольствие
+prefers_expressions = [
+    "relaxed",
+    "eyes_closed",
+    "gentle_smile",
+    "peaceful",
+    "content",
+    "dreamy",
+    "blush"
+]
+
+# Атмосферные эффекты (из effects.txt)
+prefers_effects = [
+    "bubbles",
+    "steam",
+    "wet_skin",
+    "water_droplets",
+    "wet_hair"
+]
+
+# Реквизит для ванной
+prefers_props = [
+    "bathtub",
+    "bath_bomb",
+    "rubber_duck",
+    "soap",
+    "bath_towel",
+    "candlelight",
+    "wine_glass",
+    "bath_salts",
+    "loofah"
+]
+
+# Освещение: мягкое, интимное
+prefers_lighting_sources = [
+    "candlelight",
+    "warm_lamp",
+    "window_light",
+    "dim_light"
+]
+prefers_lighting_quality = [
+    "soft_lighting",
+    "warm_lighting",
+    "moody_lighting",
+    "low-key_lighting"
+]
+
+[visibility_modifiers]
+# ВАРИАТИВНОЕ скрытие тела! Разные режимы для разных сцен
+
+# Режим 1: Скромный (пузыри и пар скрывают тело)
+conceals_if_bubbles = ["upper_body", "lower_body", "breasts"]
+conceals_if_steam = ["background", "lower_body"]
+
+# Режим 2: Художественный (плечи и ключицы открыты)
+reveals_if_arms_on_tub_edge = ["shoulders", "collarbone", "upper_chest", "face"]
+
+# Режим 3: Открытый (для suggestive/artistic_nude режима через Run Config)
+reveals_if_reclining = ["legs", "upper_body", "face"]
+reveals_if_knees_up = ["knees", "shoulders", "face"]
+
+# Всегда видны лицо и мокрые волосы
+reveals_features = ["face", "hair", "wet_hair"]
+
+[run_config_options]
+# Эти опции можно будет переопределить через Run Config
+visibility_modes = ["modest", "suggestive", "artistic_nude", "swimsuit"]

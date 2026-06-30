@@ -1,0 +1,85 @@
+[meta]
+id = "playing_instrument"
+category = "action"
+display_name = "Playing Musical Instrument"
+
+[hard_constraints]
+# Игра на инструменте требует сам инструмент
+requires_prop_categories = [
+    "09_props/electronics.txt"
+]
+
+# Несовместимо с действиями, занимающими руки
+excludes_actions = [
+    "reading",
+    "cooking",
+    "eating",
+    "holding_umbrella",
+    "typing"
+]
+
+[soft_constraints]
+# Позы: сидя или стоя с инструментом
+prefers_poses = [
+    "sitting",
+    "sitting_on_stool",
+    "standing",
+    "leaning_forward"
+]
+
+# Выражение лица: сосредоточенность, погруженность в музыку
+prefers_expressions = [
+    "focused",
+    "eyes_closed",
+    "gentle_smile",
+    "concentrated",
+    "peaceful",
+    "passionate"
+]
+
+# Локации для музыки
+prefers_locations = [
+    "bedroom",
+    "music_room",
+    "concert_hall",
+    "street",
+    "park",
+    "studio"
+]
+
+# Инструменты (теги из общей библиотеки)
+prefers_props = [
+    "guitar",
+    "acoustic_guitar",
+    "electric_guitar",
+    "piano",
+    "grand_piano",
+    "violin",
+    "cello",
+    "flute",
+    "trumpet",
+    "drum_sticks",
+    "keyboard_instrument",
+    "synthesizer"
+]
+
+# Освещение: атмосферное, часто сценическое
+prefers_lighting_sources = [
+    "spotlight",
+    "stage_lights",
+    "window_light",
+    "warm_lamp",
+    "candlelight"
+]
+prefers_lighting_quality = [
+    "cinematic_lighting",
+    "dramatic_lighting",
+    "warm_lighting",
+    "spotlight"
+]
+
+[visibility_modifiers]
+# Руки всегда видны (играют на инструменте)
+reveals_features = ["hands", "arms", "face", "upper_body"]
+# Если играет на фортепиано - ноги скрыты
+conceals_if_playing_piano = ["lower_body", "feet_footwear"]

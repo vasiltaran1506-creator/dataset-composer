@@ -1,0 +1,63 @@
+[meta]
+id = "from_below"
+category = "camera"
+display_name = "Low Angle / From Below"
+
+[hard_constraints]
+# Вид снизу жестко определяет перспективу
+camera_angle = "low_angle"
+
+# Не подходит для съемки крупным планом лица сверху
+excludes_angles = ["from_above", "bird_eye_view"]
+
+[soft_constraints]
+# Позы, которые хорошо смотрятся снизу
+prefers_poses = [
+    "standing",
+    "looking_down_at_viewer",
+    "hand_on_hip",
+    "arms_crossed",
+    "walking",
+    "looking_over_shoulder"
+]
+
+# Выражение лица: часто уверенное, доминирующее (но может быть и удивленное)
+prefers_expressions = [
+    "looking_down",
+    "confident",
+    "smirk",
+    "gentle_smile",
+    "surprised",
+    "serious"
+]
+
+# Ракурсы
+prefers_angles = [
+    "from_below",
+    "low_angle",
+    "worm_eye_view"
+]
+
+# Вид снизу отлично подчеркивает обувь и ноги
+prefers_outfit_focus = [
+    "shoes",
+    "boots",
+    "legwear",
+    "skirt_hem",
+    "pants_cuff"
+]
+
+# Освещение: часто с небом или высоким потолком
+prefers_lighting_sources = [
+    "sunlight",
+    "blue_sky",
+    "overhead_light"
+]
+
+[coverage_impact]
+# Вид снизу дает отличное покрытие ног и низа одежды
+face_weight = 0.8
+upper_body_weight = 0.7
+lower_body_weight = 1.0
+feet_weight = 1.0
+shoes_focus_weight = 1.0
