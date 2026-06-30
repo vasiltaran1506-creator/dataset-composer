@@ -25,11 +25,12 @@ fixed_traits:
 # 👗 OUTFIT WHITELIST (Фирменные наряды и их маппинг на prompt-library)
 # Движок будет использовать эти теги, игнорируя всё остальное в соответствующих файлах
 outfit_whitelist:
-  casual_shirt_skirt:
-    topwear: ["white cotton shirt", "white shirt", "rolled-up sleeves"]
+    casual_shirt_skirt:
+    # Убрали "rolled-up sleeves", оставили только сами рубашки
+    topwear: ["white cotton shirt", "white shirt"] 
     bottomwear: ["black skirt", "pleated skirt", "black pleated skirt"]
     legwear: ["white ankle socks", "black knee-high socks"]
-    footwear: ["loafers", "mary janes", "white sneakers"]
+    footwear: ["loafers", "mary janes"]
   
   sportswear:
     topwear: ["white oversized t-shirt", "white t-shirt"]

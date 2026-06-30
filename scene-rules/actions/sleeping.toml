@@ -1,0 +1,21 @@
+[meta]
+id = "sleeping"
+category = "action"
+display_name = "Sleeping"
+
+[hard_constraints]
+# Сон возможен только в приватных помещениях или на природе в спец. условиях
+allowed_location_types = ["indoor_private", "outdoor_semi_private"]
+excludes_outfit_styles = ["casual_shirt_skirt", "sportswear"]
+excludes_props = ["smartphone", "laptop", "book", "teacup"]
+
+[soft_constraints]
+prefers_poses = ["lying_on_back", "lying_on_side", "fetal_position", "curled_up"]
+prefers_expressions = ["closed_eyes", "peaceful", "sleepy", "soft_breathing"]
+prefers_lighting_quality = ["dim_lighting", "soft_lighting", "moonlight", "warm_lamp"]
+prefers_props = ["pillow", "blanket", "plush_toy", "bed", "nightstand"]
+
+[visibility_modifiers]
+# Одеяло скрывает нижнюю часть тела и обувь
+conceals_features = ["lower_body", "feet_footwear", "hands"]
+reveals_features = ["face", "hair_front", "upper_chest"]

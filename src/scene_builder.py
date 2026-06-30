@@ -12,12 +12,15 @@ class SceneBuilder:
     def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict):
         self.library = library
         self.scene_rules = scene_rules
-        # Извлекаем профиль персонажа (поддерживаем оба формата YAML)
-        self.char_profile = character_profile.get('character', character_profile)
+        # ИСПРАВЛЕНО: Храним ВЕСЬ словарь конфигурации, а не только блок 'character'
+        self.full_profile = character_profile 
         
     def _get_outfit_whitelist(self) -> dict:
         """Возвращает whitelist одежды из character-profile"""
-        return self.char_profile.get('outfit_whitelist', {})
+        # Ищем либо в корне YAML, либо внутри блока character (на всякий случай)
+        if 'outfit_whitelist' in self.full_profile:
+            return self.full_profile['outfit_whitelist']
+        return self.full_profile.get('character', {}).get('outfit_whitelist', {})
         
     def _choose_smart_outfit(self, allowed_styles: list) -> dict:
         """

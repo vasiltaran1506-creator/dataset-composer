@@ -1,0 +1,20 @@
+[meta]
+id = "rain"
+category = "weather"
+display_name = "Rain"
+
+[hard_constraints]
+excludes_lighting_quality = ["hard_lighting", "bright_sunlight", "harsh_shadows"]
+excludes_outfit_styles = ["bikini"]
+
+[soft_constraints]
+prefers_lighting_quality = ["soft_lighting", "moody_lighting", "overcast", "diffused_light"]
+prefers_mood = ["cozy", "melancholic", "calm", "thoughtful"]
+
+# Реквизит зависит от того, где находится персонаж
+prefers_props_outdoor = ["umbrella", "raincoat", "puddles", "wet_ground"]
+prefers_props_indoor = ["window_drops", "hot_drink", "blanket", "book", "fairy_lights"]
+
+[visibility_modifiers]
+reduces_visibility = ["background_details", "distant_objects"]
+adds_effects = ["raindrops", "wet_surface_reflections", "gloomy_atmosphere"]
