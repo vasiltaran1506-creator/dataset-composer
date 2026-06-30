@@ -26,7 +26,9 @@ class SceneBuilder:
         return self.full_profile.get('character', {}).get('outfit_whitelist', {})
         
     def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
-        """Умный выбор одежды с двойной фильтрацией (TOML + Character Profile)"""
+        """
+        Умный выбор одежды v6: Точная проверка совместимости стилей.
+        """
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         whitelist = self._get_outfit_whitelist()
         
@@ -40,34 +42,40 @@ class SceneBuilder:
                 continue
                 
             style_compatible = False
-            has_full_body = "full_body" in style_data
-            has_swimsuit = "swimsuit" in style_data
-            has_top_bottom = "topwear" in style_data or "bottomwear" in style_data
             
             if allowed_categories:
-                # Whitelist режим
-                if has_full_body and any("full_body" in cat for cat in allowed_categories):
-                    style_compatible = True
-                elif has_swimsuit and any("swimsuits" in cat for cat in allowed_categories):
-                    style_compatible = True
-                elif has_top_bottom:
+                # РЕЖИМ 1: Whitelist - проверяем ТОЧНОЕ соответствие
+                if "full_body" in style_data:
+                    # Для full_body стилей (pajamas, loungewear) проверяем, что ИМЕННО этот стиль разрешен
+                    # style_name = "pajamas", "loungewear" и т.д.
+                    if any(style_name in cat for cat in allowed_categories):
+                        style_compatible = True
+                elif "swimsuit" in style_data:
+                    # Для swimsuit проверяем swimsuits
+                    if any("swimsuits" in cat for cat in allowed_categories):
+                        style_compatible = True
+                else:
+                    # Для top_bottom комплектов проверяем наличие topwear И bottomwear
                     if any("topwear" in cat for cat in allowed_categories) and any("bottomwear" in cat for cat in allowed_categories):
                         style_compatible = True
             else:
-                # Blacklist режим
-                if has_full_body:
-                    if not any(any(exc in cat for exc in ["pajamas", "swimsuits", "loungewear"]) for cat in excluded_categories):
+                # РЕЖИМ 2: Blacklist - проверяем, не запрещен ли стиль
+                if "full_body" in style_data:
+                    # Проверяем, не запрещен ли именно этот стиль
+                    if not any(style_name in cat for cat in excluded_categories):
                         style_compatible = True
-                elif has_swimsuit:
+                elif "swimsuit" in style_data:
                     if not any("swimsuits" in cat for cat in excluded_categories):
                         style_compatible = True
-                elif has_top_bottom:
+                else:
+                    # Для top_bottom проверяем, не запрещены ли topwear или bottomwear
                     if not any(any(exc in cat for exc in ["coats", "jackets"]) for cat in excluded_categories):
                         style_compatible = True
                         
             if style_compatible:
                 compatible_styles.append(style_name)
                 
+        # Если нет совместимых стилей, берем все из whitelist
         if not compatible_styles:
             compatible_styles = list(whitelist.keys())
             
