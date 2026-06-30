@@ -206,6 +206,12 @@ class SceneBuilder:
         if prefers_props_location and random.random() < 0.5:
             props.append(random.choice(prefers_props_location))
             
+        # 6d. Фильтруем реквизит через excludes_props из локации
+        excludes_props = location_hard.get("excludes_props", [])
+        props = [p for p in props if p not in excludes_props]
+        
+        scene.props = props
+            
         scene.props = props
         
         # 7. ВЫБОР ОСВЕЩЕНИЯ (Lighting)
@@ -226,9 +232,25 @@ class SceneBuilder:
         if lighting_quality:
             scene.lighting_quality = random.choice(lighting_quality)
             
-        # 8. ЭФФЕКТЫ (Effects) - из weather
+        # 8. ЭФФЕКТЫ И ПОГОДНЫЕ ПРАВИЛА (Effects + Weather Rules)
         prefers_effects = weather_soft.get("prefers_effects", [])
         if prefers_effects and random.random() < 0.6:
             scene.effects.append(random.choice(prefers_effects))
+            
+        # 8a. Читаем weather_rules из LOCATION (например, street.toml имеет if_weather_is_rain)
+        location_weather_rules = location_rule.get("weather_rules", {})
+        weather_key = f"if_weather_is_{scene.weather}"
+        if weather_key in location_weather_rules:
+            weather_specific_rules = location_weather_rules[weather_key]
+            
+            # Добавляем специфичные props для этой погоды в этой локации
+            if "prefers_props" in weather_specific_rules:
+                for prop in weather_specific_rules["prefers_props"]:
+                    if random.random() < 0.8:  # 80% шанс добавить
+                        scene.props.append(prop)
+                        
+            # Добавляем специфичное освещение
+            if "prefers_lighting_quality" in weather_specific_rules:
+                scene.lighting_quality = random.choice(weather_specific_rules["prefers_lighting_quality"])
             
         return scene
