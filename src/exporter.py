@@ -12,10 +12,12 @@ from scene_builder import SceneBuilder
 class Exporter:
     """Экспортирует сцены в файлы для обучения LoRA"""
     
-    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict | None = None):
+    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict | None = None, log_callback=None, verbose: bool = True):
         self.builder = builder
         self.character_name = character_name.lower().replace(' ', '_')
         self.generation_weights = generation_weights or {}
+        self.log = log_callback if log_callback else print
+        self.verbose = verbose
         
     def export_dataset(
         self, 
@@ -38,9 +40,10 @@ class Exporter:
         output_path = Path(output_dir)
         output_path.mkdir(exist_ok=True)
         
-        print(f"\n📁 Output directory: {output_path.absolute()}")
-        print(f"🎬 Generating {num_scenes} scenes for {self.character_name}...")
-        print("-" * 60)
+        if self.verbose:
+            self.log(f"\n📁 Output directory: {output_path.absolute()}\n")
+            self.log(f"🎬 Generating {num_scenes} scenes for {self.character_name}...\n")
+            self.log("-" * 60 + "\n")
         
         # Получаем список всех доступных локаций
         all_locations = [
@@ -110,16 +113,17 @@ class Exporter:
             
             i += 1
             
-            if i % 100 == 0 or i == num_scenes:
-                print(f"   ✓ Generated {i}/{num_scenes} scenes")
+            if self.verbose and (i % 100 == 0 or i == num_scenes):
+                self.log(f"   ✓ Generated {i}/{num_scenes} scenes\n")
                 
-        print("-" * 60)
-        print(f"✅ Dataset generation complete!")
+        if self.verbose:
+            self.log("-" * 60 + "\n")
+            self.log(f"✅ Dataset generation complete!\n")
         
         return stats
         
     def print_statistics(self, stats: dict):
-        """Выводит статистику по сгенерированному датасету"""
+        """Выводит статистику по сгенерированному датасету (только для консоли)"""
         print("\n📊 Dataset Statistics:")
         print("=" * 60)
         print(f"Total scenes: {stats['total_scenes']}")

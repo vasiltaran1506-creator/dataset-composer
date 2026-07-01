@@ -89,3 +89,24 @@ dataset-composer/
     ├── config_loader.py        # YAML & TOML parser
     ├── prompt_library.py       # Tag indexer
     └── exporter.py             # Dataset file generator
+
+# Quick Start
+
+## Installation
+
+git clone https://github.com/your-username/dataset-composer.git
+cd dataset-composer
+python -m venv .venv
+# Activate virtual environment
+pip install pyyaml toml
+
+## Test Mode (Generate 5 random scenes in console)
+
+cd src
+python main.py
+
+## Generate Mode (Create a massive dataset)
+
+python main.py generate [number of generated files]
+
+This will create a dataset/ folder containing 1,000 perfectly formatted .txt files, ready to be paired with your generated images for LoRA training.
