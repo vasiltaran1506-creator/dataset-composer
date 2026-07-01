@@ -217,34 +217,139 @@ class SceneBuilder:
         type_rule = self.location_types.get(type_id, {})
         merged = self._merge_rules(type_rule, location_rule)
         return merged.get("hard_constraints", {})
+    
+    def _get_location_type(self, location_id: str) -> str:
+        """Возвращает тип локации (например, 'indoor_private', 'outdoor_urban')"""
+        loc_rule = self.scene_rules.get(f"locations.{location_id}", {})
+        return loc_rule.get("meta", {}).get("type", "")
+
+    def _get_action_compatibility(self, action_id: str) -> dict:
+        """
+        Парсит TOML-правила действия и возвращает словарь ограничений совместимости.
+        Использует кэш для производительности.
+        """
+        if action_id in self._compatibility_cache:
+            return self._compatibility_cache[action_id]
         
-    def build_scene(self, location_id: str) -> Scene:
-        """ГЛАВНЫЙ МЕТОД: Собирает сцену"""
+        action_rule = self.scene_rules.get(f"actions.{action_id}", {})
+        hard = action_rule.get("hard_constraints", {})
+        soft = action_rule.get("soft_constraints", {})
+        
+        result = {
+            "preferred": hard.get("preferred_locations", []),         # Жёсткий whitelist (cooking → kitchen)
+            "excluded": hard.get("excludes_locations", []),           # Жёсткий blacklist (exercising → library)
+            "allowed_types": hard.get("allowed_location_types", []),  # Фильтр по типам (sleeping → indoor_private)
+            "excluded_types": hard.get("excludes_location_types", []),# Чёрный список типов
+            "preferred_soft": soft.get("prefers_locations", []),      # Мягкие предпочтения (reading → library, cafe)
+        }
+        
+        self._compatibility_cache[action_id] = result
+        return result
+
+    def get_compatible_locations(self, action_id: str, aggressive: bool = False) -> list:
+        """
+        Возвращает список локаций, совместимых с данным действием.
+        
+        В Natural Mode (aggressive=False):
+            - Если есть hard.preferred_locations → только они
+            - Иначе если есть soft.prefers_locations → только они
+            - Иначе → все доступные локации
+            - Во всех случаях применяются жёсткие фильтры excludes и allowed_types
+        
+        В Aggressive Mode (aggressive=True):
+            - Берём ВСЕ локации, которые проходят жёсткие фильтры
+            - Игнорируем preferred/prefers — главное, чтобы не было запретов
+        """
+        compat = self._get_action_compatibility(action_id)
+        
+        all_locations = [
+            k.split('.')[-1] 
+            for k in self.scene_rules.keys() 
+            if k.startswith('locations.')
+        ]
+        
+        # Вспомогательная функция: проверка через жёсткие ограничения
+        def passes_hard_filters(loc):
+            if loc in compat['excluded']:
+                return False
+            loc_type = self._get_location_type(loc)
+            if compat['allowed_types'] and loc_type not in compat['allowed_types']:
+                return False
+            if loc_type in compat['excluded_types']:
+                return False
+            return True
+        
+        if aggressive:
+            # Aggressive Mode: всё, что не запрещено
+            return [loc for loc in all_locations if passes_hard_filters(loc)]
+        else:
+            # Natural Mode: предпочитаем preferred/prefers, применяя жёсткие фильтры
+            if compat['preferred']:
+                candidates = compat['preferred']
+            elif compat['preferred_soft']:
+                candidates = compat['preferred_soft']
+            else:
+                candidates = all_locations
+            
+            return [loc for loc in candidates 
+                    if loc in all_locations and passes_hard_filters(loc)]    
+        
+    def build_scene(self, location_id: str, forced_action: str | None = None) -> Scene:
+        """
+        ГЛАВНЫЙ МЕТОД: Собирает сцену, применяя все правила и наследование.
+        
+        Args:
+            location_id: ID локации
+            forced_action: Если передано и совместимо с локацией — используется вместо случайного выбора
+                          (нужно для инверсии приоритетов: Action → Location)
+        """
         scene = Scene()
         scene.location = location_id
         
+        # 1. Загружаем правила локации и её типа
         location_rule = self.scene_rules.get(f"locations.{location_id}", {})
         type_id = location_rule.get("meta", {}).get("type", "")
         type_rule = self.location_types.get(type_id, {})
         
+        # 2. МЕРЖИМ ПРАВИЛА!
         merged = self._merge_rules(type_rule, location_rule)
         hard = merged.get("hard_constraints", {})
         soft = merged.get("soft_constraints", {})
         
-        # 3. ВЫБОР ДЕЙСТВИЯ (Action) с учетом весов балансировки
-        prefers_actions = soft.get("prefers_actions", self.available_actions)
+        # 3. ВЫБОР ДЕЙСТВИЯ (с поддержкой forced_action)
         excludes_actions = hard.get("excludes_actions", [])
-        valid_actions = [a for a in prefers_actions if a not in excludes_actions and a in self.available_actions]
         
-        if not valid_actions:
-            valid_actions = self.available_actions
-            
-        action_weights = self.generation_weights.get('action')
-        if action_weights and valid_actions:
-            a_list = [action_weights.get(a, 0.01) for a in valid_actions]
-            scene.action = random.choices(valid_actions, weights=a_list, k=1)[0]
+        if forced_action and self.force_deficit_closure:
+            # ⚡ AGGRESSIVE MODE: проверяем только через excludes_actions
+            if forced_action not in excludes_actions and forced_action in self.available_actions:
+                scene.action = forced_action
+            else:
+                # Fallback: если forced_action запрещён в этой локации
+                # 👇 Логирование для диагностики
+                print(f"⚠️ FALLBACK: '{forced_action}' incompatible with '{location_id}'. "
+                      f"Reason: {'in excludes_actions' if forced_action in excludes_actions else 'not in available_actions'}")
+                valid_actions = [a for a in self.available_actions if a not in excludes_actions]
+                if not valid_actions:
+                    valid_actions = self.available_actions
+                scene.action = random.choice(valid_actions)
         else:
-            scene.action = random.choice(valid_actions)
+            # 🌿 NATURAL MODE: стандартная логика через prefers_actions
+            prefers_actions = soft.get("prefers_actions", self.available_actions)
+            valid_actions = [a for a in prefers_actions if a not in excludes_actions and a in self.available_actions]
+            
+            if not valid_actions:
+                valid_actions = self.available_actions
+            
+            # Если передан forced_action И он в valid_actions (для Natural)
+            if forced_action and forced_action in valid_actions:
+                scene.action = forced_action
+            else:
+                action_weights = self.generation_weights.get('action')
+                if action_weights and valid_actions:
+                    a_list = [action_weights.get(a, 0.01) for a in valid_actions]
+                    scene.action = random.choices(valid_actions, weights=a_list, k=1)[0]
+                else:
+                    scene.action = random.choice(valid_actions)
             
         action_rule = self.scene_rules.get(f"actions.{scene.action}", {})
         action_soft = action_rule.get("soft_constraints", {})

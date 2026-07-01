@@ -234,9 +234,26 @@ class CoverageTracker:
             if total_deficit > 0:
                 # Нормализуем и добавляем минимальный "пол" (0.02)
                 weights[dimension] = {}
+                raw_weights = {}
                 for category, score in deficit_scores.items():
                     normalized = (score / total_deficit) * 0.98 + 0.02
-                    weights[dimension][category] = normalized
+                    raw_weights[category] = normalized
+                
+                # 👇 ОЧЕНЬ АГРЕССИВНОЕ СГЛАЖИВАНИЕ: макс. вес 15%
+                # Это гарантирует, что ни одно действие не будет генерироваться чаще 15%
+                # даже если оно в критическом дефиците
+                MAX_WEIGHT = 0.15
+                MIN_WEIGHT = 0.05  # Минимальный вес для всех категорий
+                
+                # Применяем min-max ограничения
+                capped_weights = {}
+                for k, v in raw_weights.items():
+                    capped_weights[k] = max(MIN_WEIGHT, min(v, MAX_WEIGHT))
+                
+                # Перенормализуем после сглаживания
+                total_capped = sum(capped_weights.values())
+                for category, weight in capped_weights.items():
+                    weights[dimension][category] = weight / total_capped
             else:
                 # Если дефицита нет, равномерное распределение
                 weights[dimension] = {cat: 1.0 / len(percentages) for cat in percentages}

@@ -179,7 +179,7 @@ class MainWindow(ctk.CTk):
         force_checkbox = ctk.CTkCheckBox(force_frame, 
                                           text="⚡ Force Deficit Closure",
                                           variable=self.force_deficit_closure_var,
-                                          font=ctk.CTkFont(size=13))
+                                          font=ctk.CTkFont(size=13, weight="bold"))
         force_checkbox.pack(side="left")
         
         help_btn = ctk.CTkButton(force_frame, text="?", width=25, height=25,
@@ -371,25 +371,6 @@ class MainWindow(ctk.CTk):
             f"Теперь просто нажмите '🚀 Generate Batch'!"
         )
 
-    def _show_force_closure_help(self):
-        """Показывает описание агрессивного режима"""
-        messagebox.showinfo(
-            "⚡ Force Deficit Closure",
-            "Этот режим меняет порядок генерации сцен:\n\n"
-            
-            "🌿 Natural Mode (выключено):\n"
-            "Сначала выбирается локация, затем из её предпочтительных действий "
-            "берётся конкретное действие. Это даёт естественные, кинематографичные сцены.\n\n"
-            
-            "⚡ Aggressive Mode (включено):\n"
-            "Если в датасете есть дефицит действий, программа сначала выбирает "
-            "ДЕФИЦИТНОЕ ДЕЙСТВИЕ, а затем подбирает под него подходящую локацию "
-            "(даже если это действие там не является предпочтительным).\n\n"
-            
-            "Рекомендуется включать при добалансировке датасета после курирования, "
-            "чтобы гарантированно закрыть дыры в покрытии."
-        )
-
     # ============================================================
     # ВКЛАДКА: SETTINGS (Заглушка)
     # ============================================================
@@ -414,6 +395,25 @@ class MainWindow(ctk.CTk):
                 profiles.append("luna")  # default name
 
         return profiles if profiles else ["No profiles found"]
+    
+    def _show_force_closure_help(self):
+        """Показывает описание агрессивного режима"""
+        messagebox.showinfo(
+            "⚡ Force Deficit Closure",
+            "Этот режим меняет порядок генерации сцен:\n\n"
+            
+            "🌿 Natural Mode (выключено):\n"
+            "Сначала выбирается локация, затем из её предпочтительных действий "
+            "берётся конкретное действие. Это даёт естественные, кинематографичные сцены.\n\n"
+            
+            "⚡ Aggressive Mode (включено):\n"
+            "Если в датасете есть дефицит действий, программа сначала выбирает "
+            "ДЕФИЦИТНОЕ ДЕЙСТВИЕ, а затем подбирает под него подходящую локацию "
+            "(даже если это действие там не является предпочтительным).\n\n"
+            
+            "Рекомендуется включать при добалансировке датасета после курирования, "
+            "чтобы гарантированно закрыть дыры в покрытии."
+        )
 
     def _browse_balance_folder(self):
         """Открывает диалог выбора папки для балансировки"""
@@ -734,9 +734,15 @@ class MainWindow(ctk.CTk):
 
             self._log(f"🎬 Generating {num_scenes} scenes...\n")
             self._log(f"📂 Output: {output_dir}\n")
-
-            # 👇 ИСПРАВЛЕНИЕ 4: Передаем log_callback и verbose=False
+            
+            # 👇 КРИТИЧНО: читаем состояние галочки
             force_closure = self.force_deficit_closure_var.get()
+            if force_closure:
+                self._log("⚡ Режим: AGGRESSIVE (инверсия приоритетов Action → Location)\n")
+            else:
+                self._log("🌿 Режим: NATURAL (стандартная логика Location → Action)\n")
+            
+            # 👇 КРИТИЧНО: передаём force_deficit_closure
             exporter = Exporter(
                 builder, 
                 profile_name, 
@@ -744,6 +750,12 @@ class MainWindow(ctk.CTk):
                 log_callback=self._log,
                 verbose=False,
                 force_deficit_closure=force_closure
+            )
+            
+            stats = exporter.export_dataset(
+                num_scenes=num_scenes,
+                output_dir=output_dir,
+                create_placeholders=False
             )
             
             if force_closure:
