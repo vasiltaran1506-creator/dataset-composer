@@ -63,11 +63,146 @@ class MainWindow(ctk.CTk):
         label.pack(expand=True)
 
     # ============================================================
-    # ВКЛАДКА: PROFILES (Заглушка)
+    # ВКЛАДКА: PROFILES 
     # ============================================================
     def _create_profiles_tab(self):
+        """Создает вкладку управления профилями персонажей"""
         tab = self.tabview.tab("Profiles")
-        self._create_placeholder(tab, "👤 Profiles\n\nЗдесь будет управление ДНК персонажей.")
+        
+        # Двухколоночный layout
+        tab.grid_columnconfigure(0, weight=1)  # Список персонажей (узкая)
+        tab.grid_columnconfigure(1, weight=3)  # Редактор (широкая)
+        tab.grid_rowconfigure(0, weight=1)
+        
+        # === ЛЕВАЯ ПАНЕЛЬ: Список персонажей ===
+        left_frame = ctk.CTkFrame(tab)
+        left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        left_frame.grid_rowconfigure(1, weight=1)
+        left_frame.grid_columnconfigure(0, weight=1)
+        
+        list_title = ctk.CTkLabel(left_frame, text="📋 Characters",
+                                   font=ctk.CTkFont(size=16, weight="bold"))
+        list_title.grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
+        
+        # Список персонажей (CTkScrollableFrame)
+        self.profiles_listbox = ctk.CTkScrollableFrame(left_frame, width=200)
+        self.profiles_listbox.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
+        
+        # Кнопки управления
+        buttons_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
+        buttons_frame.grid(row=2, column=0, padx=15, pady=(0, 15), sticky="ew")
+        buttons_frame.grid_columnconfigure((0, 1, 2), weight=1)
+        
+        create_btn = ctk.CTkButton(buttons_frame, text="➕ New", width=70,
+                                     fg_color="green", hover_color="darkgreen",
+                                     command=self._create_new_profile)
+        create_btn.grid(row=0, column=0, padx=(0, 3))
+        
+        import_btn = ctk.CTkButton(buttons_frame, text="📥", width=40,
+                                    fg_color="gray40", hover_color="gray50",
+                                    command=self._import_profile)
+        import_btn.grid(row=0, column=1, padx=3)
+        
+        delete_btn = ctk.CTkButton(buttons_frame, text="🗑️", width=40,
+                                    fg_color="#dc2626", hover_color="#991b1b",
+                                    command=self._delete_profile)
+        delete_btn.grid(row=0, column=2, padx=(3, 0))
+        
+        # === ПРАВАЯ ПАНЕЛЬ: Редактор (скроллируемый) ===
+        right_frame = ctk.CTkFrame(tab)
+        right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        right_frame.grid_rowconfigure(1, weight=1)
+        right_frame.grid_columnconfigure(0, weight=1)
+        
+        # Заголовок редактора
+        self.editor_title = ctk.CTkLabel(right_frame, text="👤 Editing: (no selection)",
+                                          font=ctk.CTkFont(size=18, weight="bold"))
+        self.editor_title.grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
+        
+        # Скроллируемая область редактора
+        self.editor_scroll = ctk.CTkScrollableFrame(right_frame)
+        self.editor_scroll.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
+        self.editor_scroll.grid_columnconfigure(0, weight=1)
+        
+        # --- СЕКЦИЯ 1: Basic Info ---
+        basic_frame = ctk.CTkFrame(self.editor_scroll)
+        basic_frame.pack(fill="x", pady=5, padx=5)
+        
+        ctk.CTkLabel(basic_frame, text="📌 Basic Info",
+                      font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        
+        name_row = ctk.CTkFrame(basic_frame, fg_color="transparent")
+        name_row.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(name_row, text="Name:", width=80, anchor="w").pack(side="left")
+        self.profile_name_entry = ctk.CTkEntry(name_row, placeholder_text="Character name")
+        self.profile_name_entry.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        
+        # --- СЕКЦИЯ 2: Fixed Traits ---
+        traits_frame = ctk.CTkFrame(self.editor_scroll)
+        traits_frame.pack(fill="x", pady=5, padx=5)
+        
+        ctk.CTkLabel(traits_frame, text="🧬 Fixed Traits (DNA)",
+                      font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        
+        # Создаём 4 группы чекбоксов (Hair Style, Hair Color, Eye Color, Body Type)
+        self.traits_vars = {}  # {tag_name: BooleanVar}
+        self.traits_checkboxes = {}  # {category: [checkbox_widgets]}
+        
+        categories = [
+            ("Hair Style", "01_character/hair/style.txt"),
+            ("Hair Color", "01_character/hair/color.txt"),
+            ("Eye Color", "01_character/eyes/color.txt"),
+            # Body Type пока отключаем - такого файла нет в структуре
+        ]
+        
+        for cat_name, cat_file in categories:
+            cat_label = ctk.CTkLabel(traits_frame, text=f"  {cat_name}:",
+                                      font=ctk.CTkFont(weight="bold"), anchor="w")
+            cat_label.pack(anchor="w", padx=20, pady=(10, 2))
+            
+            cat_frame = ctk.CTkFrame(traits_frame, fg_color="transparent")
+            cat_frame.pack(fill="x", padx=30, pady=2)
+            
+            # Получаем теги из библиотеки
+            tags = self._load_tags_from_library(cat_file)
+            self.traits_checkboxes[cat_name] = []
+            
+            # Создаём чекбоксы (3 в ряд)
+            for i, tag in enumerate(tags):
+                var = ctk.BooleanVar(value=False)
+                self.traits_vars[tag] = var
+                # 👇 Показываем компактный вид (без пробелов), но сохраняем оригинал
+                display_text = tag.replace(' ', '_')
+                cb = ctk.CTkCheckBox(cat_frame, text=display_text, variable=var)
+                cb.grid(row=i // 3, column=i % 3, sticky="w", padx=5, pady=2)
+                self.traits_checkboxes[cat_name].append(cb)
+        
+        # --- СЕКЦИЯ 3: Other Traits (свободный ввод) ---
+        other_frame = ctk.CTkFrame(self.editor_scroll)
+        other_frame.pack(fill="x", pady=5, padx=5)
+        
+        ctk.CTkLabel(other_frame, text="✍️ Other Traits (comma-separated)",
+                      font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        
+        self.other_traits_text = ctk.CTkTextbox(other_frame, height=80)
+        self.other_traits_text.pack(fill="x", padx=10, pady=(0, 10))
+        
+        # --- СЕКЦИЯ 4: Кнопка Save ---
+        save_frame = ctk.CTkFrame(self.editor_scroll, fg_color="transparent")
+        save_frame.pack(fill="x", pady=15, padx=5)
+        
+        save_btn = ctk.CTkButton(save_frame, text="💾 Save Profile",
+                                   fg_color="green", hover_color="darkgreen",
+                                   font=ctk.CTkFont(size=14, weight="bold"),
+                                   height=40,
+                                   command=self._save_profile)
+        save_btn.pack(fill="x")
+        
+        # Текущий выбранный профиль
+        self.current_profile_name = None
+        
+        # Заполняем список персонажей
+        self._refresh_profiles_list()
 
     # ============================================================
     # ВКЛАДКА: LIBRARY (Заглушка)
@@ -381,6 +516,172 @@ class MainWindow(ctk.CTk):
     # ============================================================
     # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     # ============================================================
+
+    def _refresh_profiles_list(self):
+        """Обновляет список персонажей в левой панели"""
+        # Очищаем текущий список
+        for widget in self.profiles_listbox.winfo_children():
+            widget.destroy()
+        
+        # Получаем все профили
+        profiles = self._get_available_profiles()
+        
+        for profile_name in profiles:
+            if profile_name == "No profiles found":
+                continue
+                
+            # Создаём кнопку-элемент списка
+            btn = ctk.CTkButton(
+                self.profiles_listbox,
+                text=f"👤 {profile_name}",
+                anchor="w",
+                height=35,
+                fg_color="transparent",
+                text_color=("gray10", "gray90"),
+                hover_color=("gray85", "gray30"),
+                command=lambda p=profile_name: self._select_profile(p)
+            )
+            btn.pack(fill="x", pady=2)
+
+    def _load_tags_from_library(self, relative_path: str) -> list:
+        """Загружает список тегов из файла библиотеки тегов"""
+        file_path = self.project_root / "prompt-library" / relative_path
+        tags = []
+        
+        if not file_path.exists():
+            # 👇 Логируем, если файл не найден
+            self._log(f"⚠️ Файл не найден: {relative_path}\n")
+            return tags
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Игнорируем комментарии и пустые строки
+                    if line and not line.startswith('#'):
+                        # Теги могут содержать пробелы (например "high ponytail")
+                        # Берём всю строку целиком как один тег
+                        tags.append(line)
+            
+            # 👇 Логируем успешную загрузку
+            self._log(f"✅ Загружено {len(tags)} тегов из {relative_path}\n")
+        except Exception as e:
+            self._log(f"❌ Ошибка чтения {relative_path}: {e}\n")
+        
+        return tags
+    
+    def _load_profile_to_editor(self, profile_name: str):
+        """Загружает данные профиля в редактор"""
+        import yaml
+        
+        profile_path = self.profiles_directory / f"{profile_name}.yaml"
+        if not profile_path.exists():
+            profile_path = self.project_root / "character-profile.yaml"
+        
+        if not profile_path.exists():
+            messagebox.showerror("Error", f"Profile file not found: {profile_name}")
+            return
+        
+        with open(profile_path, 'r', encoding='utf-8') as f:
+            profile = yaml.safe_load(f)
+        
+        # Заполняем имя
+        self.profile_name_entry.delete(0, "end")
+        self.profile_name_entry.insert(0, profile_name)
+        
+        # Сбрасываем все чекбоксы
+        for var in self.traits_vars.values():
+            var.set(False)
+        
+        # Получаем fixed_traits из профиля
+        fixed_traits = profile.get('fixed_traits', [])
+        
+        # Помечаем галочками теги, которые есть в профиле
+        other_traits = []
+        for trait in fixed_traits:
+            if trait in self.traits_vars:
+                self.traits_vars[trait].set(True)
+            else:
+                other_traits.append(trait)
+        
+        # Заполняем "Other Traits"
+        self.other_traits_text.delete("1.0", "end")
+        if other_traits:
+            self.other_traits_text.insert("1.0", ", ".join(other_traits))
+        
+        self.current_profile_name = profile_name
+        self._log(f"📥 Загружен профиль: {profile_name} ({len(fixed_traits)} traits)\n")
+    
+    def _save_profile(self):
+        """Сохраняет текущий профиль в YAML-файл"""
+        if not self.current_profile_name:
+            messagebox.showwarning("Warning", "No profile selected")
+            return
+        
+        import yaml
+        
+        # Собираем все выбранные теги
+        selected_traits = [tag for tag, var in self.traits_vars.items() if var.get()]
+        
+        # Добавляем теги из "Other Traits"
+        other_text = self.other_traits_text.get("1.0", "end").strip()
+        if other_text:
+            other_traits = [t.strip() for t in other_text.split(',') if t.strip()]
+            selected_traits.extend(other_traits)
+        
+        # Загружаем существующий профиль (чтобы сохранить другие поля)
+        profile_path = self.profiles_directory / f"{self.current_profile_name}.yaml"
+        if not profile_path.exists():
+            profile_path = self.project_root / "character-profile.yaml"
+        
+        if profile_path.exists():
+            with open(profile_path, 'r', encoding='utf-8') as f:
+                profile = yaml.safe_load(f) or {}
+        else:
+            profile = {}
+        
+        # Обновляем fixed_traits
+        profile['fixed_traits'] = selected_traits
+        
+        # Сохраняем обратно
+        with open(profile_path, 'w', encoding='utf-8') as f:
+            yaml.dump(profile, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        
+        self._log(f"💾 Профиль '{self.current_profile_name}' сохранён ({len(selected_traits)} traits)\n")
+        messagebox.showinfo("Success", f"Profile '{self.current_profile_name}' saved successfully!")
+    
+    def _select_profile(self, profile_name):
+        """Вызывается при клике на персонажа в списке"""
+        self.editor_title.configure(text=f"👤 Editing: {profile_name}")
+        self._load_profile_to_editor(profile_name)
+    
+    def _create_new_profile(self):
+        """Создает новый профиль персонажа"""
+        from tkinter import simpledialog
+        name = simpledialog.askstring("New Profile", "Enter character name:")
+        if name:
+            name = name.strip().lower().replace(' ', '_')
+            self._log(f"➕ Создание нового профиля: {name}\n")
+            # TODO (Итерация 3): создать пустой YAML-файл
+            messagebox.showinfo("Coming Soon", 
+                               f"Profile '{name}' will be created in the next iteration.")
+    
+    def _import_profile(self):
+        """Импортирует профиль из внешнего YAML-файла"""
+        file_path = filedialog.askopenfilename(
+            title="Import Character Profile",
+            filetypes=[("YAML files", "*.yaml *.yml"), ("All files", "*.*")]
+        )
+        if file_path:
+            self._log(f"📥 Импорт профиля из: {file_path}\n")
+            # TODO (Итерация 3): скопировать файл в character-profiles/
+            messagebox.showinfo("Coming Soon", "Import will be available in the next iteration.")
+    
+    def _delete_profile(self):
+        """Удаляет выбранный профиль"""
+        # TODO: получить выбранный профиль из списка
+        messagebox.showinfo("Coming Soon", "Delete will be available in the next iteration.")
+
     def _get_available_profiles(self):
         """Сканирует папку character-profiles и возвращает список имен"""
         profiles = []
