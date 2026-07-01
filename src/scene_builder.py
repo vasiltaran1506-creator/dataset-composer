@@ -9,7 +9,7 @@ from prompt_library import PromptLibrary
 class SceneBuilder:
     """Строит логически согласованные сцены на основе всех TOML-правил и типов локаций"""
     
-    def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict, location_types: dict, generation_weights: dict = None):
+    def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict, location_types: dict, generation_weights: dict | None = None):
         self.library = library
         self.scene_rules = scene_rules
         self.location_types = location_types
@@ -205,6 +205,14 @@ class SceneBuilder:
             return False
             
         return True # Сцена идеальна!
+    
+    def get_hard_constraints_for_location(self, location_id: str) -> dict:
+        """Публичный метод для получения объединенных hard_constraints (нужен для Экспортера)"""
+        location_rule = self.scene_rules.get(f"locations.{location_id}", {})
+        type_id = location_rule.get("meta", {}).get("type", "")
+        type_rule = self.location_types.get(type_id, {})
+        merged = self._merge_rules(type_rule, location_rule)
+        return merged.get("hard_constraints", {})
         
     def build_scene(self, location_id: str) -> Scene:
         """ГЛАВНЫЙ МЕТОД: Собирает сцену"""
@@ -228,7 +236,7 @@ class SceneBuilder:
             valid_actions = self.available_actions
             
         action_weights = self.generation_weights.get('action')
-        if action_weights:
+        if action_weights and valid_actions:
             a_list = [action_weights.get(a, 0.01) for a in valid_actions]
             scene.action = random.choices(valid_actions, weights=a_list, k=1)[0]
         else:

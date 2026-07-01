@@ -12,7 +12,7 @@ from scene_builder import SceneBuilder
 class Exporter:
     """Экспортирует сцены в файлы для обучения LoRA"""
     
-    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict = None):
+    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict | None = None):
         self.builder = builder
         self.character_name = character_name.lower().replace(' ', '_')
         self.generation_weights = generation_weights or {}
@@ -78,11 +78,7 @@ class Exporter:
                 location = random.choice(all_locations)
             
             # Получаем hard_constraints для валидации
-            location_rule = self.builder.scene_rules.get(f"locations.{location}", {})
-            type_id = location_rule.get("meta", {}).get("type", "")
-            type_rule = self.builder.location_types.get(type_id, {})
-            merged = self.builder._merge_rules(type_rule, location_rule)
-            hard = merged.get("hard_constraints", {})
+            hard = self.builder.get_hard_constraints_for_location(location)
             
             # Пытаемся сгенерировать валидную сцену
             scene = None

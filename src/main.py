@@ -18,8 +18,8 @@ def main():
     # 1. Парсинг аргументов командной строки
     mode = "test"
     num_scenes = 5
-    analyze_folder = None
-    balance_from_folder = None
+    analyze_folder: str | None = None
+    balance_from_folder: str | None = None
     
     if len(sys.argv) > 1:
         if sys.argv[1] == "generate":
@@ -79,6 +79,11 @@ def main():
 
         # 4. Роутинг по режимам
         if mode == "analyze":
+            # Явная проверка для Pylance: если папка не передалась, выходим
+            if not analyze_folder:
+                print("❌ Error: Folder path is missing.")
+                sys.exit(1)
+                
             print(f"\n🔍 Analyze Mode: Scanning folder '{analyze_folder}'...")
             tracker = CoverageTracker(
                 available_locations=available_locs,
@@ -93,7 +98,7 @@ def main():
         elif mode == "generate":
             # ЗАХАРКОЖЕННЫЙ ПУТЬ ДЛЯ СОХРАНЕНИЯ (вне репозитория)
             output_directory = r"D:\VASILY\MY GENERATION\Test Generations"
-            weights = None # Инициализируем переменную весов
+            weights: dict | None = None # Явная типизация для Pylance
             
             # Если указан --balance-from, сначала анализируем папку
             if balance_from_folder:
