@@ -12,12 +12,16 @@ from scene_builder import SceneBuilder
 class Exporter:
     """Экспортирует сцены в файлы для обучения LoRA"""
     
-    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict | None = None, log_callback=None, verbose: bool = True):
+    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict | None = None, log_callback=None, verbose: bool = True, force_deficit_closure: bool = False):
         self.builder = builder
         self.character_name = character_name.lower().replace(' ', '_')
         self.generation_weights = generation_weights or {}
         self.log = log_callback if log_callback else print
         self.verbose = verbose
+        self.force_deficit_closure = force_deficit_closure
+        
+        # Передаём флаг в SceneBuilder
+        self.builder.force_deficit_closure = force_deficit_closure
         
     def export_dataset(
         self, 

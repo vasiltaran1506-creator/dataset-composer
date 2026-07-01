@@ -15,6 +15,10 @@ class SceneBuilder:
         self.location_types = location_types
         self.full_profile = character_profile
         self.generation_weights = generation_weights or {}
+        self.force_deficit_closure = False  # Устанавливается из Exporter
+        
+        # Кэш матрицы совместимости (локация → список разрешенных действий)
+        self._compatibility_cache = {}
         
         # Кэшируем списки доступных правил по категориям
         self.available_actions = [k.split('.')[-1] for k in scene_rules.keys() if k.startswith('actions.')]
