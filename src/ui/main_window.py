@@ -687,6 +687,9 @@ class MainWindow(ctk.CTk):
     def _run_generation(self, profile_name, num_scenes, balance_folder):
         """Основная логика генерации (выполняется в фоне)"""
         self._log(f"\n{'='*60}\n")
+        self._log(f"🚀 _run_generation STARTED\n")
+        self._log(f"   num_scenes = {num_scenes}\n")
+        self._log(f"   profile_name = {profile_name}\n")
         self._log(f"🚀 Starting generation: {num_scenes} scenes for '{profile_name}'\n")
 
         try:
@@ -699,13 +702,13 @@ class MainWindow(ctk.CTk):
             if balance_folder:
                 self._log(f"⚖️ Analyzing balance folder: {balance_folder}\n")
                 available_locs = [k.split('.')[-1] for k in builder.scene_rules.keys()
-                                 if k.startswith('locations.')]
+                                  if k.startswith('locations.')]
                 available_acts = [k.split('.')[-1] for k in builder.scene_rules.keys()
-                                 if k.startswith('actions.')]
+                                  if k.startswith('actions.')]
                 available_weaths = [k.split('.')[-1] for k in builder.scene_rules.keys()
-                                   if k.startswith('weather.')]
+                                    if k.startswith('weather.')]
                 available_cams = [k.split('.')[-1] for k in builder.scene_rules.keys()
-                                 if k.startswith('camera.')]
+                                  if k.startswith('camera.')]
 
                 tracker = CoverageTracker(
                     available_locations=available_locs,
@@ -727,41 +730,30 @@ class MainWindow(ctk.CTk):
                 builder.generation_weights = filtered_weights
                 self._log("✅ Weights calculated and applied.\n")
 
-            # 3. Генерация
+            # 3. Генерация (ОДИН РАЗ!)
             output_dir = self.output_path_entry.get().strip()
             if not output_dir:
                 raise ValueError("Output directory is not specified")
 
             self._log(f"🎬 Generating {num_scenes} scenes...\n")
             self._log(f"📂 Output: {output_dir}\n")
-            
-            # 👇 КРИТИЧНО: читаем состояние галочки
+
+            # 👇 Читаем состояние галочки Force Deficit Closure
             force_closure = self.force_deficit_closure_var.get()
             if force_closure:
                 self._log("⚡ Режим: AGGRESSIVE (инверсия приоритетов Action → Location)\n")
             else:
                 self._log("🌿 Режим: NATURAL (стандартная логика Location → Action)\n")
-            
-            # 👇 КРИТИЧНО: передаём force_deficit_closure
+
+            # 👇 ЕДИНСТВЕННЫЙ вызов Exporter
             exporter = Exporter(
-                builder, 
-                profile_name, 
+                builder,
+                profile_name,
                 generation_weights=builder.generation_weights,
                 log_callback=self._log,
                 verbose=False,
                 force_deficit_closure=force_closure
             )
-            
-            stats = exporter.export_dataset(
-                num_scenes=num_scenes,
-                output_dir=output_dir,
-                create_placeholders=False
-            )
-            
-            if force_closure:
-                self._log("⚡ Force Deficit Closure: ENABLED\n")
-            else:
-                self._log("🌿 Natural Mode (standard generation)\n")
 
             stats = exporter.export_dataset(
                 num_scenes=num_scenes,
@@ -770,14 +762,12 @@ class MainWindow(ctk.CTk):
             )
 
             self._log(f"\n✅ Generation complete!\n")
-            # 👇 ИСПРАВЛЕНИЕ 3: Вызываем метод для вывода статистики
-            self._log_statistics(stats)
-            # 👇 ИСПРАВЛЕНИЕ 5: Используем output_dir вместо hardcoded self.output_directory
+            self._log(f"📊 Total: {stats['total_scenes']} scenes\n")
             self._log(f"📂 Saved to: {output_dir}\n")
 
             messagebox.showinfo("Success",
-                               f"Successfully generated {stats['total_scenes']} scenes!\n\n"
-                               f"Saved to:\n{output_dir}")
+                                f"Successfully generated {stats['total_scenes']} scenes!\n\n"
+                                f"Saved to:\n{output_dir}")
 
         except Exception as e:
             self._log(f"\n❌ ERROR: {e}\n")

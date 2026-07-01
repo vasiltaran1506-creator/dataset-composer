@@ -43,6 +43,11 @@ class Exporter:
         # Создаем папку для датасета
         output_path = Path(output_dir)
         output_path.mkdir(exist_ok=True)
+         # 👇 НОВОЕ: Логируем вызов метода
+        self.log(f"\n📦 export_dataset CALLED\n")
+        self.log(f"   num_scenes = {num_scenes}\n")
+        self.log(f"   output_dir = {output_dir}\n")
+        self.log(f"   force_deficit_closure = {self.force_deficit_closure}\n")
         
         if self.verbose:
             self.log(f"\n📁 Output directory: {output_path.absolute()}\n")
@@ -98,6 +103,13 @@ class Exporter:
             self.builder.generation_weights = self.generation_weights
             self.log("🔕 Веса для weather и camera отключены (равномерное распределение)\n")
         
+            # Получаем веса для действий (нужны для инверсии приоритетов)
+            action_weights_dict = self.generation_weights.get('action') or {}
+
+            # КРИТЕРИЙ ИНВЕРСИИ: включён Force Deficit Closure И есть дефицит в actions
+            use_inverted_logic = self.force_deficit_closure and bool(action_weights_dict)
+
+
         # 👇 Счётчики для диагностики
         inverted_count = 0
         standard_count = 0
@@ -220,6 +232,11 @@ class Exporter:
             self.generation_weights = self._original_weights
             self.builder.generation_weights = self._original_weights  # 👈 И в SceneBuilder тоже!
             del self._original_weights
+
+        # 👇 НОВОЕ: Считаем фактическое количество файлов в папке
+        actual_files = list(output_path.glob("*.txt"))
+        self.log(f"\n📊 ФАКТИЧЕСКОЕ количество файлов в папке: {len(actual_files)}\n")
+        self.log(f"   (Должно быть: {num_scenes} + файлы от предыдущих генераций)\n")
 
         return stats
         
