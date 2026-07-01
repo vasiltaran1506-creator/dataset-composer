@@ -252,10 +252,13 @@ class MainWindow(ctk.CTk):
             self.output_path_entry.insert(0, folder)
 
     def _log(self, message):
-        """Добавляет сообщение в лог-окно"""
+        """Добавляет сообщение в лог-окно (с учетом read-only режима)"""
+        self.log_textbox.configure(state="normal")
         self.log_textbox.insert("end", message)
         self.log_textbox.see("end")
-        self.update_idletasks()  # Обновляем UI, чтобы лог отображался сразу
+        self.log_textbox.configure(state="disabled")
+        self.update_idletasks()
+        self.log_textbox.configure(state="disabled")  # Обновляем UI, чтобы лог отображался сразу
 
     def _roll_dice(self):
         """Генерирует одну тестовую сцену"""
