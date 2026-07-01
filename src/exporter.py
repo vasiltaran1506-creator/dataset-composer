@@ -12,9 +12,10 @@ from scene_builder import SceneBuilder
 class Exporter:
     """Экспортирует сцены в файлы для обучения LoRA"""
     
-    def __init__(self, builder: SceneBuilder, character_name: str):
+    def __init__(self, builder: SceneBuilder, character_name: str, generation_weights: dict = None):
         self.builder = builder
         self.character_name = character_name.lower().replace(' ', '_')
+        self.generation_weights = generation_weights or {}
         
     def export_dataset(
         self, 
@@ -63,8 +64,18 @@ class Exporter:
         i = 0
         max_retries = 10 # Максимум попыток сгенерировать одну сцену
         
+        # Подготовка весов для локаций
+        location_weights = self.generation_weights.get('location')
+        if location_weights:
+            loc_weights_list = [location_weights.get(loc, 0.01) for loc in all_locations]
+        else:
+            loc_weights_list = None
+        
         while i < num_scenes:
-            location = random.choice(all_locations)
+            if loc_weights_list:
+                location = random.choices(all_locations, weights=loc_weights_list, k=1)[0]
+            else:
+                location = random.choice(all_locations)
             
             # Получаем hard_constraints для валидации
             location_rule = self.builder.scene_rules.get(f"locations.{location}", {})

@@ -9,11 +9,12 @@ from prompt_library import PromptLibrary
 class SceneBuilder:
     """Строит логически согласованные сцены на основе всех TOML-правил и типов локаций"""
     
-    def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict, location_types: dict):
+    def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict, location_types: dict, generation_weights: dict = None):
         self.library = library
         self.scene_rules = scene_rules
         self.location_types = location_types
         self.full_profile = character_profile
+        self.generation_weights = generation_weights or {}
         
         # Кэшируем списки доступных правил по категориям
         self.available_actions = [k.split('.')[-1] for k in scene_rules.keys() if k.startswith('actions.')]
@@ -218,24 +219,42 @@ class SceneBuilder:
         hard = merged.get("hard_constraints", {})
         soft = merged.get("soft_constraints", {})
         
+        # 3. ВЫБОР ДЕЙСТВИЯ (Action) с учетом весов балансировки
         prefers_actions = soft.get("prefers_actions", self.available_actions)
         excludes_actions = hard.get("excludes_actions", [])
         valid_actions = [a for a in prefers_actions if a not in excludes_actions and a in self.available_actions]
         
-        if valid_actions:
-            scene.action = random.choice(valid_actions)
+        if not valid_actions:
+            valid_actions = self.available_actions
+            
+        action_weights = self.generation_weights.get('action')
+        if action_weights:
+            a_list = [action_weights.get(a, 0.01) for a in valid_actions]
+            scene.action = random.choices(valid_actions, weights=a_list, k=1)[0]
         else:
-            scene.action = random.choice(self.available_actions)
+            scene.action = random.choice(valid_actions)
             
         action_rule = self.scene_rules.get(f"actions.{scene.action}", {})
         action_soft = action_rule.get("soft_constraints", {})
         action_hard = action_rule.get("hard_constraints", {})
         
-        scene.weather = random.choice(self.available_weathers)
+        # 4. ВЫБОР ПОГОДЫ И КАМЕРЫ с учетом весов балансировки
+        weather_weights = self.generation_weights.get('weather')
+        if weather_weights:
+            w_list = [weather_weights.get(w, 0.01) for w in self.available_weathers]
+            scene.weather = random.choices(self.available_weathers, weights=w_list, k=1)[0]
+        else:
+            scene.weather = random.choice(self.available_weathers)
+            
         weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
         weather_soft = weather_rule.get("soft_constraints", {})
         
-        scene.camera = random.choice(self.available_cameras)
+        camera_weights = self.generation_weights.get('camera')
+        if camera_weights:
+            c_list = [camera_weights.get(c, 0.01) for c in self.available_cameras]
+            scene.camera = random.choices(self.available_cameras, weights=c_list, k=1)[0]
+        else:
+            scene.camera = random.choice(self.available_cameras)
         
         allowed_categories = hard.get("allowed_outfit_categories", [])
         excluded_categories = hard.get("excludes_outfit_categories", [])
