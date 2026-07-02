@@ -94,6 +94,19 @@ class MainWindow(ctk.CTk):
         self.signature_props: list[dict] = []
         self.hair_rules_data: dict = {'default': '', 'conditional': []}
 
+        # Atmosphere UI
+        self.atmosphere_scroll: ctk.CTkScrollableFrame | None = None
+        self.lighting_tree_frame: ctk.CTkFrame | None = None
+        self.weather_tree_frame: ctk.CTkFrame | None = None
+        self.selected_lighting_container: ctk.CTkScrollableFrame | None = None
+        self.selected_weather_container: ctk.CTkScrollableFrame | None = None
+        
+        # Atmosphere состояние
+        self.selected_lighting_tags: list[str] = []
+        self.selected_weather_tags: list[str] = []
+        self.lighting_tag_ui_elements: dict[str, dict] = {}
+        self.weather_tag_ui_elements: dict[str, dict] = {}
+
         # 4. Создание системы вкладок
         self.tabview = ctk.CTkTabview(self)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -211,8 +224,12 @@ class MainWindow(ctk.CTk):
         self.signature_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("✨ Signature"))
         self.signature_scroll.pack(fill="both", expand=True, padx=5, pady=5)
         
+        # 👇 Atmosphere вкладка — реальная (не заглушка!)
+        self.atmosphere_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("🌍 Atmosphere"))
+        self.atmosphere_scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        
         # Заглушки для остальных вкладок
-        for tab_name in ["🌍 Atmosphere", "📄 Preview"]:
+        for tab_name in ["📄 Preview"]:
             placeholder = ctk.CTkLabel(
                 self.editor_tabview.tab(tab_name),
                 text=f"{tab_name}\n\nДоступно в следующей итерации.",
@@ -421,6 +438,68 @@ class MainWindow(ctk.CTk):
         
         self._refresh_signature_props_display()
         self._refresh_hair_rules_display()
+
+        # --- Atmosphere секция ---
+        atmosphere_frame = ctk.CTkFrame(self.atmosphere_scroll)
+        atmosphere_frame.pack(fill="x", pady=5, padx=5)
+        
+        ctk.CTkLabel(atmosphere_frame, text="🌍 Atmosphere Preferences",
+                      font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        
+        ctk.CTkLabel(atmosphere_frame, 
+                      text="   Предпочтения по освещению и погоде. Выбранные теги будут иметь больший вес при генерации.",
+                      text_color="gray").pack(anchor="w", padx=20, pady=(0, 5))
+        
+        # === ПОДСЕКЦИЯ 1: Lighting ===
+        lighting_section = ctk.CTkFrame(atmosphere_frame)
+        lighting_section.pack(fill="x", padx=10, pady=10)
+        
+        ctk.CTkLabel(lighting_section, text="💡 Lighting Preferences",
+                      font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=10, pady=(5, 5))
+        
+        self.lighting_tree_frame = ctk.CTkFrame(lighting_section, fg_color="transparent")
+        self.lighting_tree_frame.pack(fill="x", padx=10, pady=5)
+        
+        self._build_lighting_tree()
+        
+        # Selected Lighting Tags
+        selected_lighting_frame = ctk.CTkFrame(lighting_section)
+        selected_lighting_frame.pack(fill="x", padx=10, pady=(5, 10))
+        
+        ctk.CTkLabel(selected_lighting_frame, text="✅ Selected Lighting:",
+                      font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=10, pady=(5, 5))
+        
+        self.selected_lighting_container = ctk.CTkScrollableFrame(
+            selected_lighting_frame, fg_color="transparent", height=100
+        )
+        self.selected_lighting_container.pack(fill="x", padx=10, pady=(0, 10))
+        
+        # === ПОДСЕКЦИЯ 2: Weather ===
+        weather_section = ctk.CTkFrame(atmosphere_frame)
+        weather_section.pack(fill="x", padx=10, pady=10)
+        
+        ctk.CTkLabel(weather_section, text="🌦️ Weather Preferences",
+                      font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=10, pady=(5, 5))
+        
+        self.weather_tree_frame = ctk.CTkFrame(weather_section, fg_color="transparent")
+        self.weather_tree_frame.pack(fill="x", padx=10, pady=5)
+        
+        self._build_weather_tree()
+        
+        # Selected Weather Tags
+        selected_weather_frame = ctk.CTkFrame(weather_section)
+        selected_weather_frame.pack(fill="x", padx=10, pady=(5, 10))
+        
+        ctk.CTkLabel(selected_weather_frame, text="✅ Selected Weather:",
+                      font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=10, pady=(5, 5))
+        
+        self.selected_weather_container = ctk.CTkScrollableFrame(
+            selected_weather_frame, fg_color="transparent", height=100
+        )
+        self.selected_weather_container.pack(fill="x", padx=10, pady=(0, 10))
+        
+        self._refresh_selected_lighting_display()
+        self._refresh_selected_weather_display()
 
         self._refresh_profiles_list()
 
@@ -790,6 +869,12 @@ class MainWindow(ctk.CTk):
             self.hair_rules_data = {'default': 'hair down', 'conditional': []}
             self._refresh_signature_props_display()
             self._refresh_hair_rules_display()
+
+            # Очищаем Atmosphere
+            self.selected_lighting_tags = []
+            self.selected_weather_tags = []
+            self._refresh_selected_lighting_display()
+            self._refresh_selected_weather_display()
             
             self._refresh_profiles_list()
             messagebox.showinfo("Success", "Profile deleted successfully!")
@@ -1794,6 +1879,301 @@ class MainWindow(ctk.CTk):
             pass
 
     # ════════════════════════════════════════════════════════════════════════════
+    # 4.5 PROFILES: Редактор Atmosphere (Lighting и Weather)
+    # ════════════════════════════════════════════════════════════════════════════
+    
+    def _build_lighting_tree(self):
+        """Строит дерево тегов для Lighting"""
+        if self.lighting_tree_frame is None: return
+        for widget in self.lighting_tree_frame.winfo_children():
+            widget.destroy()
+        self.lighting_tag_ui_elements = {}
+        
+        lighting_dir = self.project_root / "prompt-library" / "07_lighting"
+        if not lighting_dir.exists():
+            self._log(f"⚠️ Папка не найдена: {lighting_dir}\n")
+            return
+        
+        # Группируем по папкам
+        categories = {}
+        for txt_file in sorted(lighting_dir.rglob("*.txt")):
+            parts = txt_file.relative_to(lighting_dir).parts
+            if len(parts) >= 2:
+                main_cat = parts[0]
+            else:
+                main_cat = "general"
+            if main_cat not in categories:
+                categories[main_cat] = []
+            categories[main_cat].append(txt_file)
+        
+        for cat_name, files in sorted(categories.items()):
+            self._create_lighting_category(cat_name, files)
+    
+    def _create_lighting_category(self, cat_name: str, files: list):
+        """Создаёт категорию Lighting с тегами"""
+        if self.lighting_tree_frame is None: return
+        
+        cat_frame = ctk.CTkFrame(self.lighting_tree_frame, fg_color="transparent")
+        cat_frame.pack(fill="x", pady=2)
+        
+        header_btn = ctk.CTkButton(
+            cat_frame, text=f"➤ {cat_name.replace('_', ' ').title()}", anchor="w",
+            fg_color="gray30", hover_color="gray40", height=30,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=lambda: self._toggle_lighting_category(cat_name)
+        )
+        header_btn.pack(fill="x")
+        
+        tags_frame = ctk.CTkFrame(cat_frame, fg_color="transparent")
+        tags_frame.pack(fill="x", padx=(20, 0))
+        tags_frame.pack_forget()
+        
+        key = f"lighting.{cat_name}"
+        if not hasattr(self, 'atmosphere_sections_expanded'):
+            self.atmosphere_sections_expanded = {}
+        self.atmosphere_sections_expanded[key] = {'frame': tags_frame, 'expanded': False}
+        
+        # Загружаем теги из всех файлов категории
+        all_tags = []
+        for file_path in files:
+            all_tags.extend(self._load_tags_from_file(file_path))
+        
+        for tag in all_tags:
+            tag_key = f"lighting::{tag}"
+            tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
+            tag_row.pack(fill="x", pady=1)
+            
+            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250)
+            tag_label.pack(side="left", padx=(5, 0))
+            
+            action_btn = ctk.CTkButton(
+                tag_row, text="+", width=30, height=25,
+                fg_color="green", hover_color="darkgreen",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                command=lambda t=tag, tk=tag_key: self._toggle_lighting_tag(t, tk)
+            )
+            action_btn.pack(side="right", padx=(0, 5))
+            
+            self.lighting_tag_ui_elements[tag_key] = {
+                'label': tag_label, 'button': action_btn, 'tag': tag
+            }
+    
+    def _toggle_lighting_category(self, cat_name: str):
+        key = f"lighting.{cat_name}"
+        if not hasattr(self, 'atmosphere_sections_expanded') or key not in self.atmosphere_sections_expanded:
+            return
+        section = self.atmosphere_sections_expanded[key]
+        if section['expanded']:
+            section['frame'].pack_forget()
+            section['expanded'] = False
+        else:
+            section['frame'].pack(fill="x", padx=(20, 0))
+            section['expanded'] = True
+    
+    def _toggle_lighting_tag(self, tag: str, tag_key: str):
+        if tag_key not in self.lighting_tag_ui_elements: return
+        ui = self.lighting_tag_ui_elements[tag_key]
+        
+        if tag in self.selected_lighting_tags:
+            self.selected_lighting_tags.remove(tag)
+            ui['label'].configure(text_color=("gray10", "gray90"))
+            ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+            self._log(f"➖ Удалён lighting: {tag}\n")
+        else:
+            self.selected_lighting_tags.append(tag)
+            ui['label'].configure(text_color="green")
+            ui['button'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+            self._log(f"➕ Добавлен lighting: {tag}\n")
+        
+        self._refresh_selected_lighting_display()
+    
+    def _refresh_selected_lighting_display(self):
+        if self.selected_lighting_container is None: return
+        for widget in self.selected_lighting_container.winfo_children():
+            widget.destroy()
+        
+        if not self.selected_lighting_tags:
+            empty_label = ctk.CTkLabel(self.selected_lighting_container,
+                                        text="(No lighting selected)",
+                                        text_color="gray")
+            empty_label.grid(row=0, column=0, sticky="w", padx=10, pady=5)
+            return
+        
+        COLS = 4
+        for i, tag in enumerate(self.selected_lighting_tags):
+            row = i // COLS
+            col = i % COLS
+            chip = ctk.CTkFrame(self.selected_lighting_container, fg_color="gray30", corner_radius=15)
+            chip.grid(row=row, column=col, padx=3, pady=3, sticky="ew")
+            self.selected_lighting_container.grid_columnconfigure(col, weight=1)
+            
+            tag_label = ctk.CTkLabel(chip, text=f"  {tag.replace('_', ' ')}  ", font=ctk.CTkFont(size=11))
+            tag_label.pack(side="left", padx=(8, 5), pady=4)
+            
+            remove_btn = ctk.CTkButton(
+                chip, text="×", width=22, height=22,
+                fg_color="transparent", hover_color="#dc2626", text_color="white",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                command=lambda t=tag: self._remove_lighting_tag(t)
+            )
+            remove_btn.pack(side="right", padx=(0, 5), pady=2)
+    
+    def _remove_lighting_tag(self, tag: str):
+        if tag in self.selected_lighting_tags:
+            self.selected_lighting_tags.remove(tag)
+            tag_key = f"lighting::{tag}"
+            if tag_key in self.lighting_tag_ui_elements:
+                ui = self.lighting_tag_ui_elements[tag_key]
+                ui['label'].configure(text_color=("gray10", "gray90"))
+                ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+            self._refresh_selected_lighting_display()
+            self._log(f"➖ Удалён lighting: {tag}\n")
+    
+    def _build_weather_tree(self):
+        """Строит дерево тегов для Weather"""
+        if self.weather_tree_frame is None: return
+        for widget in self.weather_tree_frame.winfo_children():
+            widget.destroy()
+        self.weather_tag_ui_elements = {}
+        
+        weather_dir = self.project_root / "prompt-library" / "10_weather"
+        if not weather_dir.exists():
+            self._log(f"⚠️ Папка не найдена: {weather_dir}\n")
+            return
+        
+        categories = {}
+        for txt_file in sorted(weather_dir.rglob("*.txt")):
+            parts = txt_file.relative_to(weather_dir).parts
+            if len(parts) >= 2:
+                main_cat = parts[0]
+            else:
+                main_cat = "general"
+            if main_cat not in categories:
+                categories[main_cat] = []
+            categories[main_cat].append(txt_file)
+        
+        for cat_name, files in sorted(categories.items()):
+            self._create_weather_category(cat_name, files)
+    
+    def _create_weather_category(self, cat_name: str, files: list):
+        if self.weather_tree_frame is None: return
+        
+        cat_frame = ctk.CTkFrame(self.weather_tree_frame, fg_color="transparent")
+        cat_frame.pack(fill="x", pady=2)
+        
+        header_btn = ctk.CTkButton(
+            cat_frame, text=f"➤ {cat_name.replace('_', ' ').title()}", anchor="w",
+            fg_color="gray30", hover_color="gray40", height=30,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=lambda: self._toggle_weather_category(cat_name)
+        )
+        header_btn.pack(fill="x")
+        
+        tags_frame = ctk.CTkFrame(cat_frame, fg_color="transparent")
+        tags_frame.pack(fill="x", padx=(20, 0))
+        tags_frame.pack_forget()
+        
+        key = f"weather.{cat_name}"
+        if not hasattr(self, 'atmosphere_sections_expanded'):
+            self.atmosphere_sections_expanded = {}
+        self.atmosphere_sections_expanded[key] = {'frame': tags_frame, 'expanded': False}
+        
+        all_tags = []
+        for file_path in files:
+            all_tags.extend(self._load_tags_from_file(file_path))
+        
+        for tag in all_tags:
+            tag_key = f"weather::{tag}"
+            tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
+            tag_row.pack(fill="x", pady=1)
+            
+            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250)
+            tag_label.pack(side="left", padx=(5, 0))
+            
+            action_btn = ctk.CTkButton(
+                tag_row, text="+", width=30, height=25,
+                fg_color="green", hover_color="darkgreen",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                command=lambda t=tag, tk=tag_key: self._toggle_weather_tag(t, tk)
+            )
+            action_btn.pack(side="right", padx=(0, 5))
+            
+            self.weather_tag_ui_elements[tag_key] = {
+                'label': tag_label, 'button': action_btn, 'tag': tag
+            }
+    
+    def _toggle_weather_category(self, cat_name: str):
+        key = f"weather.{cat_name}"
+        if not hasattr(self, 'atmosphere_sections_expanded') or key not in self.atmosphere_sections_expanded:
+            return
+        section = self.atmosphere_sections_expanded[key]
+        if section['expanded']:
+            section['frame'].pack_forget()
+            section['expanded'] = False
+        else:
+            section['frame'].pack(fill="x", padx=(20, 0))
+            section['expanded'] = True
+    
+    def _toggle_weather_tag(self, tag: str, tag_key: str):
+        if tag_key not in self.weather_tag_ui_elements: return
+        ui = self.weather_tag_ui_elements[tag_key]
+        
+        if tag in self.selected_weather_tags:
+            self.selected_weather_tags.remove(tag)
+            ui['label'].configure(text_color=("gray10", "gray90"))
+            ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+            self._log(f"➖ Удалён weather: {tag}\n")
+        else:
+            self.selected_weather_tags.append(tag)
+            ui['label'].configure(text_color="green")
+            ui['button'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+            self._log(f"➕ Добавлен weather: {tag}\n")
+        
+        self._refresh_selected_weather_display()
+    
+    def _refresh_selected_weather_display(self):
+        if self.selected_weather_container is None: return
+        for widget in self.selected_weather_container.winfo_children():
+            widget.destroy()
+        
+        if not self.selected_weather_tags:
+            empty_label = ctk.CTkLabel(self.selected_weather_container,
+                                        text="(No weather selected)",
+                                        text_color="gray")
+            empty_label.grid(row=0, column=0, sticky="w", padx=10, pady=5)
+            return
+        
+        COLS = 4
+        for i, tag in enumerate(self.selected_weather_tags):
+            row = i // COLS
+            col = i % COLS
+            chip = ctk.CTkFrame(self.selected_weather_container, fg_color="gray30", corner_radius=15)
+            chip.grid(row=row, column=col, padx=3, pady=3, sticky="ew")
+            self.selected_weather_container.grid_columnconfigure(col, weight=1)
+            
+            tag_label = ctk.CTkLabel(chip, text=f"  {tag.replace('_', ' ')}  ", font=ctk.CTkFont(size=11))
+            tag_label.pack(side="left", padx=(8, 5), pady=4)
+            
+            remove_btn = ctk.CTkButton(
+                chip, text="×", width=22, height=22,
+                fg_color="transparent", hover_color="#dc2626", text_color="white",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                command=lambda t=tag: self._remove_weather_tag(t)
+            )
+            remove_btn.pack(side="right", padx=(0, 5), pady=2)
+    
+    def _remove_weather_tag(self, tag: str):
+        if tag in self.selected_weather_tags:
+            self.selected_weather_tags.remove(tag)
+            tag_key = f"weather::{tag}"
+            if tag_key in self.weather_tag_ui_elements:
+                ui = self.weather_tag_ui_elements[tag_key]
+                ui['label'].configure(text_color=("gray10", "gray90"))
+                ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+            self._refresh_selected_weather_display()
+            self._log(f"➖ Удалён weather: {tag}\n")
+
+    # ════════════════════════════════════════════════════════════════════════════
     # 5. PROFILES: Загрузка и сохранение профиля
     # ════════════════════════════════════════════════════════════════════════════
     
@@ -1864,6 +2244,35 @@ class MainWindow(ctk.CTk):
         self._refresh_signature_props_display()
         self._refresh_hair_rules_display()
 
+        # === ATMOSPHERE ===
+        atmosphere = profile.get('atmosphere_preferences', {})
+        self.selected_lighting_tags = atmosphere.get('lighting', [])
+        self.selected_weather_tags = atmosphere.get('weather', [])
+        
+        # Синхронизируем UI
+        if self.lighting_tag_ui_elements:
+            for tag_key, ui in self.lighting_tag_ui_elements.items():
+                tag = ui['tag']
+                if tag in self.selected_lighting_tags:
+                    ui['label'].configure(text_color="green")
+                    ui['button'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+                else:
+                    ui['label'].configure(text_color=("gray10", "gray90"))
+                    ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+        
+        if self.weather_tag_ui_elements:
+            for tag_key, ui in self.weather_tag_ui_elements.items():
+                tag = ui['tag']
+                if tag in self.selected_weather_tags:
+                    ui['label'].configure(text_color="green")
+                    ui['button'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+                else:
+                    ui['label'].configure(text_color=("gray10", "gray90"))
+                    ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+        
+        self._refresh_selected_lighting_display()
+        self._refresh_selected_weather_display()
+
         self.current_profile_name = profile_name
         self._log(f"📥 Загружен профиль: {profile_name} "
                   f"({len(self.selected_dna_tags)} DNA, {len(self.selected_wardrobe_tags)} wardrobe)\n")
@@ -1912,6 +2321,12 @@ class MainWindow(ctk.CTk):
         profile['hair_rules'] = {
             'default': self.hair_rules_data.get('default', 'hair down'),
             'conditional': self.hair_rules_data['conditional']
+        }
+
+        # === Собираем atmosphere ===
+        profile['atmosphere_preferences'] = {
+            'lighting': self.selected_lighting_tags,
+            'weather': self.selected_weather_tags
         }
 
         with open(profile_path, 'w', encoding='utf-8') as f:

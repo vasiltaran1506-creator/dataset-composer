@@ -148,5 +148,21 @@ pose_filter:
   - duck stance
   - one knee up
 atmosphere_preferences:
-  lighting: []
-  weather: []
+  lighting:
+  - front lighting
+  - underlighting
+  - crepuscular rays
+  - silhouette
+  - artificial lighting
+  - misty lighting
+  - candlelight
+  - monitor glow
+  - store lights
+  weather:
+  - clear sky
+  - cloudy
+  - milky way
+  - twilight
+  - cumulus clouds
+  - sunburst
+  - chimney_smoke
