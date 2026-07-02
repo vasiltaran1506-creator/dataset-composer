@@ -77,10 +77,22 @@ outfit_whitelist:
     - beige panties
     - blue panties
 underwear_whitelist: {}
-signature_props: []
+signature_props:
+- name: Pensil
+  tags:
+  - Penis
+  - Hui
 hair_rules:
-  default: hair down
-  conditional: []
+  default: disheveled hair
+  conditional:
+  - if_action:
+    - Running
+    style: crown braid
+    probability: 0.15
+  - if_action:
+    - holding cup
+    style: french braid
+    probability: 1.0
 expression_filter:
   prefer:
   - closed eyes
