@@ -1,0 +1,92 @@
+# Character Profile: test1
+# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules
+# Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь
+
+character:
+  name: test1
+  age: 18
+  archetype: custom character
+fixed_traits:
+- low ponytail
+- side ponytail
+- low twintails
+- blonde hair
+- bright blue eyes
+- deep blue eyes
+- ice blue eyes
+outfit_whitelist:
+  default:
+    handwear:
+    - white gloves
+    - brown gloves
+    pants:
+    - light wash jeans
+    - white jeans
+    - black jeans
+    shorts:
+    - denim shorts
+    - short shorts
+    - high-waisted shorts
+    skirts:
+    - pencil skirt
+    - miniskirt
+    - pleated skirt
+    boots:
+    - ankle boots
+    - black ankle boots
+    - brown ankle boots
+    shoes:
+    - white sneakers
+    - high-top sneakers
+    - canvas sneakers
+    dresses:
+    - black dress
+    loungewear:
+    - casual loungewear
+    - sweatpants and hoodie
+    pajamas:
+    - silk pajamas
+    - satin pajamas
+    swimsuits:
+    - black one-piece swimsuit
+    - red one-piece swimsuit
+    uniforms:
+    - japanese school uniform
+    pantyhose:
+    - black pantyhose
+    - sheer black pantyhose
+    socks:
+    - white knee-high socks
+    - black crew socks
+    thighhighs:
+    - white thighhighs
+    - navy thighhighs
+    blouses:
+    - white blouse
+    - light blue blouse
+    - black blouse
+    coats:
+    - trench coat
+    - winter coat
+    bras:
+    - black bra
+    - pink bra
+    - red bra
+    panties:
+    - white panties
+    - beige panties
+    - blue panties
+underwear_whitelist: {}
+signature_props: []
+hair_rules:
+  default: hair down
+  conditional: []
+expression_filter:
+  prefer: []
+  avoid: []
+pose_filter:
+  prefer: []
+  avoid: []
+atmosphere_preferences:
+  lighting: []
+  weather: []

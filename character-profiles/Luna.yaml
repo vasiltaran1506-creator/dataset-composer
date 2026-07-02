@@ -3,162 +3,145 @@
 # Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь
 
 character:
-  name: "Luna"
+  name: Luna
   age: 18
-  archetype: "quiet intellectual dreamer"
-
-# 🔒 FIXED TRAITS (Добавляются в КАЖДЫЙ промпт без исключений)
+  archetype: quiet intellectual dreamer
 fixed_traits:
-  - "1girl"
-  - "solo"
-  - "young woman"
-  - "long straight light blue hair"
-  - "brown eyes"
-  - "round face"
-  - "soft features"
-  - "petite"
-  - "narrow shoulders"
-  - "slender waist"
-  - "small breasts"
-  - "pale skin"
-
-# 👗 OUTFIT WHITELIST (Фирменные наряды и их маппинг на prompt-library)
+- brown eyes
+- 1girl
+- solo
+- young woman
+- long straight light blue hair
+- round face
+- soft features
+- petite
+- narrow shoulders
+- slender waist
+- small breasts
+- pale skin
 outfit_whitelist:
   casual_shirt_skirt:
     topwear:
-      - "white cotton shirt"
-      - "white shirt"
+    - white cotton shirt
+    - white shirt
     bottomwear:
-      - "black skirt"
-      - "pleated skirt"
-      - "black pleated skirt"
+    - black skirt
+    - pleated skirt
+    - black pleated skirt
     legwear:
-      - "white ankle socks"
-      - "black knee-high socks"
+    - white ankle socks
+    - black knee-high socks
     footwear:
-      - "white sneakers"
-  
+    - white sneakers
   sportswear:
     topwear:
-      - "white oversized t-shirt"
-      - "white t-shirt"
+    - white oversized t-shirt
+    - white t-shirt
     bottomwear:
-      - "green shorts"
-      - "athletic shorts"
+    - green shorts
+    - athletic shorts
     footwear:
-      - "white sneakers"
-  
+    - white sneakers
   pajamas:
     full_body:
-      - "pink pajamas"
-      - "silk pajamas"
-      - "pink silk pajamas"
-      - "cute pajamas"
-  
+    - pink pajamas
+    - silk pajamas
+    - pink silk pajamas
+    - cute pajamas
   loungewear:
     topwear:
-      - "casual t-shirt"
-      - "oversized t-shirt"
+    - casual t-shirt
+    - oversized t-shirt
     bottomwear:
-      - "short shorts"
-      - "cotton shorts"
-    
+    - short shorts
+    - cotton shorts
   bikini:
     swimsuit:
-      - "bikini"
-      - "two-piece swimsuit"
-
-# 👙 UNDERWEAR WHITELIST (Простое белье)
+    - bikini
+    - two-piece swimsuit
 underwear_whitelist:
   bras:
-    - "white cotton bra"
-    - "simple bra"
-    - "plain bra"
-    - "cotton bra"
+  - white cotton bra
+  - simple bra
+  - plain bra
+  - cotton bra
   panties:
-    - "plain white panties"
-    - "white cotton panties"
-    - "simple panties"
-    - "plain panties"
-
-# 🧸 SIGNATURE PROPS (Фирменные предметы)
+  - plain white panties
+  - white cotton panties
+  - simple panties
+  - plain panties
 signature_props:
-  - name: "teddy bear"
-    tags:
-      - "teddy bear"
-      - "plush teddy bear"
-      - "stuffed animal"
-      - "holding teddy bear"
-  - name: "book"
-    tags:
-      - "book"
-      - "novel"
-      - "reading book"
-  - name: "teacup"
-    tags:
-      - "teacup"
-      - "cup of tea"
-      - "mug"
-
-# 💇‍♀️ HAIR RULES (Правила для прически)
+- name: teddy bear
+  tags:
+  - teddy bear
+  - plush teddy bear
+  - stuffed animal
+  - holding teddy bear
+- name: book
+  tags:
+  - book
+  - novel
+  - reading book
+- name: teacup
+  tags:
+  - teacup
+  - cup of tea
+  - mug
 hair_rules:
-  default: "hair down"
+  default: hair down
   conditional:
-    - if_action:
-        - "reading"
-        - "studying"
-        - "brushing hair"
-      style: "ponytail"
-      probability: 0.4
-
-# 🎭 EXPRESSION & POSE FILTERS (Фильтры выражений и поз)
+  - if_action:
+    - reading
+    - studying
+    - brushing hair
+    style: ponytail
+    probability: 0.4
 expression_filter:
   prefer:
-    - "blush"
-    - "light blush"
-    - "shy"
-    - "thoughtful"
-    - "gentle smile"
-    - "looking away"
-    - "downcast eyes"
-    - "dreamy"
-    - "fascinated"
+  - blush
+  - light blush
+  - shy
+  - thoughtful
+  - gentle smile
+  - looking away
+  - downcast eyes
+  - dreamy
+  - fascinated
   avoid:
-    - "smirk"
-    - "confident"
-    - "arrogant"
-    - "aggressive"
-    - "seductive"
-    - "evil smile"
-    - "wide grin"
-    - "angry"
-
+  - smirk
+  - confident
+  - arrogant
+  - aggressive
+  - seductive
+  - evil smile
+  - wide grin
+  - angry
 pose_filter:
   prefer:
-    - "sitting"
-    - "lying on bed"
-    - "standing quietly"
-    - "head tilt"
-    - "hands in lap"
-    - "holding own arm"
-    - "hugging pillow"
-    - "hugging teddy bear"
+  - sitting
+  - lying on bed
+  - standing quietly
+  - head tilt
+  - hands in lap
+  - holding own arm
+  - hugging pillow
+  - hugging teddy bear
   avoid:
-    - "hands on hips"
-    - "arms spread"
-    - "power pose"
-    - "confident stance"
-    - "spread legs"
-
-# 🌍 ATMOSPHERE PREFERENCES (Влияет на веса при выборе Lighting/Weather)
+  - hands on hips
+  - arms spread
+  - power pose
+  - confident stance
+  - spread legs
 atmosphere_preferences:
   lighting:
-    - "sunset"
-    - "golden_hour"
-    - "warm_lighting"
-    - "window_light"
-    - "soft_lighting"
+  - sunset
+  - golden_hour
+  - warm_lighting
+  - window_light
+  - soft_lighting
   weather:
-    - "rain"
-    - "light_rain"
-    - "clear_sky"
+  - rain
+  - light_rain
+  - clear_sky
+wardrobe:
+  whitelist: []
