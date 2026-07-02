@@ -16,14 +16,14 @@ from coverage_tracker import CoverageTracker
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-# Цветовая палитра для UI-полировки
 COLORS = {
-    'primary_blue': '#3b82f6',       # Голубой (Browse, Refresh)
+    'primary_blue': '#3b82f6',
     'primary_blue_hover': '#2563eb',
     'success_green': 'green',
     'success_green_hover': 'darkgreen',
     'danger_red': '#dc2626',
     'danger_red_hover': '#991b1b',
+    'border_color': 'gray50',
 }
 
 
@@ -48,38 +48,34 @@ class MainWindow(ctk.CTk):
         self.profiles_directory = self.project_root / "character-profiles"
         self.profiles_directory.mkdir(exist_ok=True)
 
-        # Состояние
         self.current_profile_name: str | None = None
+        self.profile_character_data: dict = {}
         
-        # DNA
         self.selected_dna_tags: list[dict] = []
         self.dna_tag_ui_elements: dict[str, dict] = {}
         
-        # Wardrobe
         self.selected_wardrobe_tags: list[dict] = []
         self.tag_ui_elements: dict[str, dict] = {}
         self.wardrobe_sections_expanded: dict[str, dict] = {}
         
-        # Personality
         self.preferred_personality_tags: list[dict] = []
         self.avoided_personality_tags: list[dict] = []
         self.personality_tag_ui_elements: dict[str, dict] = {}
         self.personality_sections_expanded: dict[str, dict] = {}
         
-        # Signature
         self.signature_props: list[dict] = []
         self.hair_rules_data: dict = {'default': '', 'conditional': []}
         
-        # Atmosphere
         self.selected_lighting_tags: list[str] = []
         self.selected_weather_tags: list[str] = []
         self.lighting_tag_ui_elements: dict[str, dict] = {}
         self.weather_tag_ui_elements: dict[str, dict] = {}
         self.atmosphere_sections_expanded: dict[str, dict] = {}
         
-        # UI элементы (с типизацией для Pylance)
+        # UI
         self.profiles_listbox: ctk.CTkScrollableFrame | None = None
         self.editor_title: ctk.CTkLabel | None = None
+        self.edit_name_btn: ctk.CTkButton | None = None
         self.editor_tabview: ctk.CTkTabview | None = None
         self.dna_scroll: ctk.CTkScrollableFrame | None = None
         self.dna_tree_frame: ctk.CTkFrame | None = None
@@ -105,7 +101,6 @@ class MainWindow(ctk.CTk):
         self.preview_scroll: ctk.CTkScrollableFrame | None = None
         self.yaml_textbox: ctk.CTkTextbox | None = None
 
-        # Вкладки
         self.tabview = ctk.CTkTabview(self)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         self.tabview.add("Profiles")
@@ -134,38 +129,31 @@ class MainWindow(ctk.CTk):
         tab.grid_columnconfigure(1, weight=3)
         tab.grid_rowconfigure(0, weight=1)
         
-        # === ЛЕВАЯ ПАНЕЛЬ: Список персонажей ===
+        # === ЛЕВАЯ ПАНЕЛЬ ===
         left_frame = ctk.CTkFrame(tab)
         left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         left_frame.grid_rowconfigure(1, weight=1)
         left_frame.grid_columnconfigure(0, weight=1)
         
-        list_title = ctk.CTkLabel(left_frame, text="📋 Characters",
-                                   font=ctk.CTkFont(size=16, weight="bold"))
-        list_title.grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
+        ctk.CTkLabel(left_frame, text="📋 Characters",
+                      font=ctk.CTkFont(size=16, weight="bold")).grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
         
         self.profiles_listbox = ctk.CTkScrollableFrame(left_frame, width=200)
         self.profiles_listbox.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
         
-        # 👇 ПОЛИРОВКА: Кнопки с текстом, равные промежутки, выравнивание по границам Characters
         buttons_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         buttons_frame.grid(row=2, column=0, padx=15, pady=(0, 15), sticky="ew")
         buttons_frame.grid_columnconfigure((0, 1, 2), weight=1)
         
-        create_btn = ctk.CTkButton(buttons_frame, text="➕ New",
-                                     fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                                     command=self._create_new_profile)
-        create_btn.grid(row=0, column=0, padx=(0, 3), sticky="ew")
-        
-        import_btn = ctk.CTkButton(buttons_frame, text="📥 Upload",
-                                    fg_color=COLORS['primary_blue'], hover_color=COLORS['primary_blue_hover'],
-                                    command=self._import_profile)
-        import_btn.grid(row=0, column=1, padx=3, sticky="ew")
-        
-        delete_btn = ctk.CTkButton(buttons_frame, text="🗑️ Delete",
-                                    fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
-                                    command=self._delete_profile)
-        delete_btn.grid(row=0, column=2, padx=(3, 0), sticky="ew")
+        ctk.CTkButton(buttons_frame, text="➕ New",
+                       fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
+                       command=self._create_new_profile).grid(row=0, column=0, padx=(0, 3), sticky="ew")
+        ctk.CTkButton(buttons_frame, text="📥 Upload",
+                       fg_color=COLORS['primary_blue'], hover_color=COLORS['primary_blue_hover'],
+                       command=self._import_profile).grid(row=0, column=1, padx=3, sticky="ew")
+        ctk.CTkButton(buttons_frame, text="🗑️ Delete",
+                       fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
+                       command=self._delete_profile).grid(row=0, column=2, padx=(3, 0), sticky="ew")
         
         # === ПРАВАЯ ПАНЕЛЬ ===
         right_frame = ctk.CTkFrame(tab)
@@ -175,20 +163,25 @@ class MainWindow(ctk.CTk):
         
         title_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
         title_frame.grid(row=0, column=0, pady=(15, 10), padx=15, sticky="ew")
-        title_frame.grid_columnconfigure(0, weight=1)
+        title_frame.grid_columnconfigure(1, weight=1)
         
         self.editor_title = ctk.CTkLabel(title_frame, text="👤 Editing: (no selection)",
                                           font=ctk.CTkFont(size=18, weight="bold"))
-        self.editor_title.grid(row=0, column=0, sticky="w")
+        self.editor_title.grid(row=0, column=0, sticky="w", padx=(0, 5))
         
-        save_btn = ctk.CTkButton(title_frame, text="💾 Save Profile",
-                                   fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                                   font=ctk.CTkFont(size=13, weight="bold"),
-                                   width=130, height=35,
-                                   command=self._save_profile)
-        save_btn.grid(row=0, column=1)
+        # 👇 ПОЛИРОВКА: Карандаш для переименования
+        self.edit_name_btn = ctk.CTkButton(title_frame, text="✏️", width=35, height=30,
+                                            fg_color="transparent", hover_color="gray40",
+                                            text_color="gray70", font=ctk.CTkFont(size=16),
+                                            command=self._edit_profile_name)
+        self.edit_name_btn.grid(row=0, column=1, sticky="w", padx=(0, 10))
         
-        # Субвкладки
+        ctk.CTkButton(title_frame, text="💾 Save Profile",
+                       fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
+                       font=ctk.CTkFont(size=13, weight="bold"),
+                       width=130, height=35,
+                       command=self._save_profile).grid(row=0, column=2)
+        
         self.editor_tabview = ctk.CTkTabview(right_frame)
         self.editor_tabview.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
         
@@ -202,38 +195,33 @@ class MainWindow(ctk.CTk):
         
         self.dna_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("🧬 DNA"))
         self.dna_scroll.pack(fill="both", expand=True, padx=5, pady=5)
-        
         self.outfits_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("👗 Outfits"))
         self.outfits_scroll.pack(fill="both", expand=True, padx=5, pady=5)
-        
         self.personality_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("🎭 Personality"))
         self.personality_scroll.pack(fill="both", expand=True, padx=5, pady=5)
-        
         self.signature_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("✨ Signature"))
         self.signature_scroll.pack(fill="both", expand=True, padx=5, pady=5)
-        
         self.atmosphere_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("🌍 Atmosphere"))
         self.atmosphere_scroll.pack(fill="both", expand=True, padx=5, pady=5)
-        
         self.custom_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("✍️ Custom"))
         self.custom_scroll.pack(fill="both", expand=True, padx=5, pady=5)
-        
         self.preview_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("📄 Preview"))
         self.preview_scroll.pack(fill="both", expand=True, padx=5, pady=5)
         
         # === DNA ===
         dna_frame = ctk.CTkFrame(self.dna_scroll)
-        dna_frame.pack(fill="x", pady=5, padx=5)
+        dna_frame.pack(fill="both", expand=True, pady=5, padx=5)
         
         ctk.CTkLabel(dna_frame, text="🧬 Character DNA",
                       font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
         
         self.dna_tree_frame = ctk.CTkFrame(dna_frame, fg_color="transparent")
-        self.dna_tree_frame.pack(fill="x", padx=20, pady=5)
+        # 👇 ПОЛИРОВКА: Растянуть до границ
+        self.dna_tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
         self._build_dna_tree()
         
-        # 👇 ПОЛИРОВКА: Selected DNA Tags растянуты до границы (expand=True)
         selected_dna_frame = ctk.CTkFrame(dna_frame)
+        # 👇 ПОЛИРОВКА: Растянуть вниз (expand=True + pady как в Outfits)
         selected_dna_frame.pack(fill="both", expand=True, padx=10, pady=(10, 10))
         
         ctk.CTkLabel(selected_dna_frame, text="✅ Selected DNA Tags:",
@@ -257,12 +245,11 @@ class MainWindow(ctk.CTk):
         
         ctk.CTkLabel(description_frame, 
                       text="⚙️ Для продвинутых пользователей\n\n"
-                           "Эта вкладка позволяет добавить произвольные теги, которые не помещаются "
-                           "в стандартные категории.\n\n"
+                           "Эта вкладка позволяет добавить произвольные теги.\n\n"
                            "💡 Примеры:\n"
                            "• Составные описания: 'long straight light blue hair'\n"
-                           "• Редкие теги: 'freckles', 'beauty mark', 'heterochromia'\n"
-                           "• Модификаторы: 'cinematic lighting', 'film grain'",
+                           "• Редкие теги: 'freckles', 'beauty mark'\n"
+                           "• Модификаторы: 'cinematic lighting'",
                       text_color="gray80", justify="left", wraplength=600).pack(anchor="w", padx=15, pady=15)
         
         ctk.CTkLabel(custom_frame, text="   Введите теги через запятую:",
@@ -273,13 +260,14 @@ class MainWindow(ctk.CTk):
         
         # === Outfits ===
         wardrobe_frame = ctk.CTkFrame(self.outfits_scroll)
-        wardrobe_frame.pack(fill="x", pady=5, padx=5)
+        wardrobe_frame.pack(fill="both", expand=True, pady=5, padx=5)
         
         ctk.CTkLabel(wardrobe_frame, text="👗 Wardrobe (Whitelist)",
                       font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
         
         self.wardrobe_tree_frame = ctk.CTkFrame(wardrobe_frame, fg_color="transparent")
-        self.wardrobe_tree_frame.pack(fill="x", padx=20, pady=5)
+        # 👇 ПОЛИРОВКА: Растянуть до границ
+        self.wardrobe_tree_frame.pack(fill="both", expand=True, padx=10, pady=5)
         self._build_wardrobe_tree()
         
         selected_wardrobe_frame = ctk.CTkFrame(wardrobe_frame)
@@ -305,16 +293,14 @@ class MainWindow(ctk.CTk):
         self.personality_tree_frame.pack(fill="x", padx=20, pady=5)
         self._build_personality_tree()
         
-        # 👇 ПОЛИРОВКА: Prefer/Avoid растянуты до нижней границы (expand=True в summary_frame)
         summary_frame = ctk.CTkFrame(personality_frame, fg_color="transparent")
         summary_frame.pack(fill="both", expand=True, padx=10, pady=(10, 10))
         summary_frame.grid_columnconfigure(0, weight=1)
         summary_frame.grid_columnconfigure(1, weight=1)
-        summary_frame.grid_rowconfigure(1, weight=1)  # Растягиваем контейнеры
+        summary_frame.grid_rowconfigure(1, weight=1)
         
         prefer_frame = ctk.CTkFrame(summary_frame)
         prefer_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 5))
-        # 👇 ПОЛИРОВКА: Крупнее заголовок (size=14)
         ctk.CTkLabel(prefer_frame, text="✅ Preferred:", 
                       font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(8, 5))
         self.prefer_container = ctk.CTkScrollableFrame(prefer_frame, fg_color="transparent")
@@ -341,11 +327,15 @@ class MainWindow(ctk.CTk):
         
         props_header = ctk.CTkFrame(props_section, fg_color="transparent")
         props_header.pack(fill="x", padx=10, pady=(5, 5))
+        props_header.grid_columnconfigure(0, weight=1)
+        
         ctk.CTkLabel(props_header, text="🧸 Signature Props",
-                      font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
-        ctk.CTkButton(props_header, text="➕ Add Prop", width=100,
-                      fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                      command=self._add_signature_prop).pack(side="right")
+                      font=ctk.CTkFont(size=13, weight="bold")).grid(row=0, column=0, sticky="w")
+        
+        # 👇 ПОЛИРОВКА: Add Prop справа, но растянутый
+        ctk.CTkButton(props_header, text="➕ Add Prop", height=28,
+                       fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
+                       command=self._add_signature_prop).grid(row=0, column=1, sticky="e")
         
         self.props_container = ctk.CTkFrame(props_section, fg_color="transparent")
         self.props_container.pack(fill="x", padx=10, pady=(0, 10))
@@ -361,7 +351,6 @@ class MainWindow(ctk.CTk):
         
         ctk.CTkLabel(default_frame, text="Default Style:", width=120, anchor="w").pack(side="left")
         
-        # 👇 ПОЛИРОВКА: Треугольник ▼ перед текстом
         self.hair_default_btn = ctk.CTkButton(default_frame, text="▼ hair down", width=300, height=28,
                                                fg_color="gray40", hover_color="gray50",
                                                font=ctk.CTkFont(size=11),
@@ -370,11 +359,15 @@ class MainWindow(ctk.CTk):
         
         cond_header = ctk.CTkFrame(hair_section, fg_color="transparent")
         cond_header.pack(fill="x", padx=10, pady=(10, 5))
+        cond_header.grid_columnconfigure(0, weight=1)
+        
         ctk.CTkLabel(cond_header, text="Conditional Rules:",
-                      font=ctk.CTkFont(size=12, weight="bold")).pack(side="left")
-        ctk.CTkButton(cond_header, text="➕ Add Rule", width=100,
-                      fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                      command=self._add_hair_rule).pack(side="right")
+                      font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, sticky="w")
+        
+        # 👇 ПОЛИРОВКА: Add Rule справа, растянутый
+        ctk.CTkButton(cond_header, text="➕ Add Rule", height=28,
+                       fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
+                       command=self._add_hair_rule).grid(row=0, column=1, sticky="e")
         
         self.hair_rules_container = ctk.CTkFrame(hair_section, fg_color="transparent")
         self.hair_rules_container.pack(fill="x", padx=10, pady=(0, 10))
@@ -436,7 +429,6 @@ class MainWindow(ctk.CTk):
         buttons_frame = ctk.CTkFrame(preview_frame, fg_color="transparent")
         buttons_frame.pack(fill="x", padx=10, pady=10)
         
-        # 👇 ПОЛИРОВКА: Refresh синего цвета
         ctk.CTkButton(buttons_frame, text="🔄 Refresh from Editor", width=180,
                        fg_color=COLORS['primary_blue'], hover_color=COLORS['primary_blue_hover'],
                        command=self._refresh_yaml_preview).pack(side="left", padx=(0, 5))
@@ -461,11 +453,10 @@ class MainWindow(ctk.CTk):
         self._create_placeholder(tab, "📚 Library\n\nЗдесь будет редактор тегов и TOML-правил.")
 
     def _create_generate_tab(self):
-        # ... (код без изменений, как в предыдущей версии — оставляю заглушку для экономии места)
-        # ВСТАВЬ СЮДА код вкладки Generate из твоего текущего файла
         tab = self.tabview.tab("Generate")
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_columnconfigure(1, weight=2)
+        # 👇 ПОЛИРОВКА: row 2 растягивается (где лог и кнопки)
         tab.grid_rowconfigure(2, weight=1)
         
         left_frame = ctk.CTkFrame(tab)
@@ -530,13 +521,18 @@ class MainWindow(ctk.CTk):
         
         ctk.CTkFrame(left_frame, height=2).pack(pady=15, padx=15, fill="x")
         
+        # 👇 ПОЛИРОВКА: Кнопки растягиваются, высота увеличена, sticky="nsew"
         buttons_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
-        buttons_frame.pack(pady=10, padx=15, fill="x")
+        buttons_frame.pack(fill="both", expand=True, padx=15, pady=10)
         buttons_frame.grid_columnconfigure((0, 1), weight=1)
-        ctk.CTkButton(buttons_frame, text="🎲 Roll Dice", fg_color="gray", hover_color="darkgray",
-                       command=self._roll_dice).grid(row=0, column=0, padx=(0, 5), sticky="ew")
-        ctk.CTkButton(buttons_frame, text="🚀 Generate Batch", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                       command=self._start_generation).grid(row=0, column=1, padx=(5, 0), sticky="ew")
+        buttons_frame.grid_rowconfigure(0, weight=1)
+        
+        ctk.CTkButton(buttons_frame, text="🎲 Roll Dice", 
+                       fg_color=COLORS['primary_blue'], hover_color=COLORS['primary_blue_hover'],
+                       command=self._roll_dice).grid(row=0, column=0, padx=(0, 5), sticky="nsew")
+        ctk.CTkButton(buttons_frame, text="🚀 Generate Batch", 
+                       fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
+                       command=self._start_generation).grid(row=0, column=1, padx=(5, 0), sticky="nsew")
         
         right_frame = ctk.CTkFrame(tab)
         right_frame.grid(row=0, column=1, rowspan=3, padx=10, pady=10, sticky="nsew")
@@ -569,8 +565,13 @@ class MainWindow(ctk.CTk):
         left_frame = ctk.CTkFrame(tab)
         left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
+        # 👇 ПОЛИРОВКА: Описание сразу под заголовком
         ctk.CTkLabel(left_frame, text="📊 Analyzer Settings",
-                      font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(15, 10), padx=15, anchor="w")
+                      font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(15, 5), padx=15, anchor="w")
+        
+        ctk.CTkLabel(left_frame, 
+                      text="ℹ️ Анализатор просканирует папку, построит матрицу покрытия с детекцией дефицита/переизбытка.",
+                      wraplength=280, justify="left", anchor="w", text_color="gray").pack(pady=(0, 10), padx=15, fill="x")
         
         ctk.CTkLabel(left_frame, text="📂 Analyze folder:", anchor="w").pack(pady=(10, 0), padx=15, fill="x")
         folder_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
@@ -583,15 +584,9 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(left_frame, text="🔍 Analyze Dataset", fg_color="#2563eb", hover_color="#1d4ed8",
                        font=ctk.CTkFont(size=14, weight="bold"), height=45,
                        command=self._run_analysis).pack(pady=20, padx=15, fill="x")
-        ctk.CTkButton(left_frame, text="🗑️ Clear Log", fg_color="gray", hover_color="darkgray",
-                       command=self._clear_analyzer_log).pack(pady=5, padx=15, fill="x")
         ctk.CTkButton(left_frame, text="⚡ Auto-Fix Deficit", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
                        font=ctk.CTkFont(size=13, weight="bold"), height=40,
                        command=self._auto_fix_deficit).pack(pady=(15, 5), padx=15, fill="x")
-        
-        ctk.CTkLabel(left_frame, 
-                      text="ℹ️ Анализатор просканирует папку, построит матрицу покрытия с детекцией дефицита/переизбытка.",
-                      wraplength=280, justify="left", anchor="w", text_color="gray").pack(pady=(20, 10), padx=15, fill="x")
         
         right_frame = ctk.CTkFrame(tab)
         right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
@@ -603,8 +598,13 @@ class MainWindow(ctk.CTk):
         log_header.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(log_header, text="📈 Coverage Matrix",
                       font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, sticky="w")
+        
+        # 👇 ПОЛИРОВКА: Clear Log рядом с Copy Matrix
+        ctk.CTkButton(log_header, text="🗑️ Clear Log", width=100,
+                       fg_color="gray40", hover_color="gray50",
+                       command=self._clear_analyzer_log).grid(row=0, column=1, padx=(0, 5))
         ctk.CTkButton(log_header, text="📋 Copy Matrix", width=120,
-                       command=self._copy_analyzer_to_clipboard).grid(row=0, column=1)
+                       command=self._copy_analyzer_to_clipboard).grid(row=0, column=2)
         
         self.analyzer_textbox = ctk.CTkTextbox(right_frame, font=ctk.CTkFont(family="Consolas", size=12))
         self.analyzer_textbox.grid(row=1, column=0, padx=15, pady=(0, 15), sticky="nsew")
@@ -639,10 +639,12 @@ class MainWindow(ctk.CTk):
         for profile_name in self._get_available_profiles():
             if profile_name == "No profiles found":
                 continue
+            # 👇 ПОЛИРОВКА: Обводка вокруг кнопки
             btn = ctk.CTkButton(
                 self.profiles_listbox, text=f"👤 {profile_name}", anchor="w", height=35,
                 fg_color="transparent", text_color=("gray10", "gray90"),
                 hover_color=("gray85", "gray30"),
+                border_width=1, border_color=COLORS['border_color'],
                 command=lambda p=profile_name: self._select_profile(p)
             )
             btn.pack(fill="x", pady=2)
@@ -654,13 +656,60 @@ class MainWindow(ctk.CTk):
         self._load_profile_to_editor(profile_name)
         self._refresh_yaml_preview()
 
+    def _edit_profile_name(self):
+        """Открывает диалог для переименования профиля"""
+        if not self.current_profile_name:
+            messagebox.showwarning("Warning", "No profile selected")
+            return
+        
+        from tkinter import simpledialog
+        new_name = simpledialog.askstring("Rename Profile", "Enter new name:", 
+                                          initialvalue=self.current_profile_name)
+        if not new_name:
+            return
+        
+        new_name = new_name.strip().replace(' ', '_')
+        if not new_name or not all(c.isalnum() or c == '_' for c in new_name):
+            messagebox.showerror("Error", "Name must contain only letters, numbers and underscores")
+            return
+        
+        if new_name == self.current_profile_name:
+            return
+        
+        old_path = self.profiles_directory / f"{self.current_profile_name}.yaml"
+        if not old_path.exists():
+            old_path = self.project_root / "character-profile.yaml"
+        
+        new_path = self.profiles_directory / f"{new_name}.yaml"
+        if new_path.exists():
+            messagebox.showerror("Error", f"Profile '{new_name}' already exists!")
+            return
+        
+        try:
+            import shutil
+            if old_path.exists():
+                shutil.move(str(old_path), str(new_path))
+            
+            old_name = self.current_profile_name
+            self.current_profile_name = new_name
+            
+            if self.editor_title:
+                self.editor_title.configure(text=f"👤 Editing: {new_name}")
+            
+            self._refresh_profiles_list()
+            self._refresh_yaml_preview()
+            
+            self._log(f"✏️ Профиль переименован: {old_name} → {new_name}\n")
+            messagebox.showinfo("Success", f"Profile renamed to '{new_name}'!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to rename: {e}")
+
     def _create_new_profile(self):
         import yaml
         from tkinter import simpledialog
         name = simpledialog.askstring("New Profile", "Enter character name:")
         if not name:
             return
-        # 👇 ПОЛИРОВКА: сохраняем регистр, только заменяем пробелы на _
         name = name.strip().replace(' ', '_')
         if not name or not all(c.isalnum() or c == '_' for c in name):
             messagebox.showerror("Error", "Name must contain only letters, numbers and underscores")
@@ -672,7 +721,7 @@ class MainWindow(ctk.CTk):
         profile = self._get_default_profile_structure(name)
         with open(new_path, 'w', encoding='utf-8') as f:
             f.write(f"# Character Profile: {name}\n")
-            f.write("# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules\n\n")
+            f.write("# Фильтр поверх scene-rules\n\n")
             yaml.dump(profile, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
         self._log(f"➕ Создан новый профиль: {name}\n")
         self._refresh_profiles_list()
@@ -720,6 +769,7 @@ class MainWindow(ctk.CTk):
             profile_path.unlink()
             self._log(f"🗑️ Удалён профиль: {self.current_profile_name}\n")
             self.current_profile_name = None
+            self.profile_character_data = {}
             if self.editor_title:
                 self.editor_title.configure(text="👤 Editing: (no selection)")
             if self.other_traits_text:
@@ -791,8 +841,9 @@ class MainWindow(ctk.CTk):
             tag_key = f"dna::{cat_name}::{tag}"
             tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
             tag_row.pack(fill="x", pady=1)
-            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250)
-            tag_label.pack(side="left", padx=(5, 0))
+            # 👇 ПОЛИРОВКА: Убрали width=250, чтобы текст растягивался
+            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w")
+            tag_label.pack(side="left", padx=(5, 0), fill="x", expand=True)
             action_btn = ctk.CTkButton(tag_row, text="+", width=30, height=25,
                                         fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
                                         font=ctk.CTkFont(size=14, weight="bold"),
@@ -806,10 +857,9 @@ class MainWindow(ctk.CTk):
         section = self.wardrobe_sections_expanded[key]
         if section['expanded']:
             section['frame'].pack_forget()
-            section['expanded'] = False
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
-            section['expanded'] = True
+        section['expanded'] = not section['expanded']
     
     def _toggle_dna_tag(self, tag, category, tag_key):
         if tag_key not in self.dna_tag_ui_elements: return
@@ -824,6 +874,9 @@ class MainWindow(ctk.CTk):
             ui['label'].configure(text_color="green")
             ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
         self._refresh_selected_dna_tags_display()
+        # Обновляем превью и default style (для звёздочек ⭐)
+        self._refresh_yaml_preview()
+        self._refresh_hair_rules_display()
     
     def _refresh_selected_dna_tags_display(self):
         if self.selected_dna_tags_container is None: return
@@ -853,6 +906,8 @@ class MainWindow(ctk.CTk):
             ui['label'].configure(text_color=("gray10", "gray90"))
             ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
         self._refresh_selected_dna_tags_display()
+        self._refresh_yaml_preview()
+        self._refresh_hair_rules_display()
     
     def _sync_dna_tag_ui_states(self):
         if not self.dna_tag_ui_elements: return
@@ -866,7 +921,7 @@ class MainWindow(ctk.CTk):
                 ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
 
     # ════════════════════════════════════════════════════════════════════════════
-    # 4.2 Outfits (НОВЫЙ ПОРЯДОК КАТЕГОРИЙ)
+    # 4.2 Outfits
     # ════════════════════════════════════════════════════════════════════════════
     
     def _build_wardrobe_tree(self):
@@ -886,9 +941,7 @@ class MainWindow(ctk.CTk):
                     categories[main_cat] = {}
                 categories[main_cat][sub_cat] = txt_file
         
-        # 👇 ПОЛИРОВКА: Новый порядок категорий
         ORDER = ['full_body', 'topwear', 'bottomwear', 'legwear', 'footwear', 'underwear', 'accessories']
-        
         def sort_key(cat):
             try:
                 return ORDER.index(cat.lower())
@@ -928,8 +981,9 @@ class MainWindow(ctk.CTk):
             tag_key = f"{sub_cat}::{tag}"
             tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
             tag_row.pack(fill="x", pady=1)
-            tag_label = ctk.CTkLabel(tag_row, text=f"    • {tag.replace('_', ' ')}", anchor="w", width=250)
-            tag_label.pack(side="left", padx=(5, 0))
+            # 👇 ПОЛИРОВКА: Убрали width=250
+            tag_label = ctk.CTkLabel(tag_row, text=f"    • {tag.replace('_', ' ')}", anchor="w")
+            tag_label.pack(side="left", padx=(5, 0), fill="x", expand=True)
             action_btn = ctk.CTkButton(tag_row, text="+", width=30, height=25,
                                         fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
                                         font=ctk.CTkFont(size=14, weight="bold"),
@@ -1010,20 +1064,17 @@ class MainWindow(ctk.CTk):
                 ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
 
     # ════════════════════════════════════════════════════════════════════════════
-    # 4.3 Personality (НОВЫЙ ПОРЯДОК + КРУПНЕЕ ШРИФТЫ)
+    # 4.3 Personality
     # ════════════════════════════════════════════════════════════════════════════
     
     def _build_personality_tree(self):
         if self.personality_tree_frame is None: return
         for w in self.personality_tree_frame.winfo_children(): w.destroy()
         self.personality_tag_ui_elements = {}
-        
-        # 👇 ПОЛИРОВКА: Новый порядок подкатегорий
         categories = [
             ("Expressions", "05_expression", ["mood", "eyes_expr", "mouth"]),
             ("Poses", "03_pose", ["base", "head", "arms", "legs"]),
         ]
-        
         for cat_name, cat_dir, subcat_order in categories:
             self._create_personality_category(cat_name, cat_dir, subcat_order)
     
@@ -1079,8 +1130,7 @@ class MainWindow(ctk.CTk):
             tag_key = f"personality::{cat_name}::{sub_cat}::{tag}"
             tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
             tag_row.pack(fill="x", pady=1)
-            tag_label = ctk.CTkLabel(tag_row, text=f"    • {tag.replace('_', ' ')}", anchor="w", width=220)
-            tag_label.pack(side="left", padx=(5, 0))
+            ctk.CTkLabel(tag_row, text=f"    • {tag.replace('_', ' ')}", anchor="w", width=220).pack(side="left", padx=(5, 0))
             avoid_btn = ctk.CTkButton(tag_row, text="-", width=25, height=22,
                                        fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
                                        font=ctk.CTkFont(size=12, weight="bold"),
@@ -1094,7 +1144,8 @@ class MainWindow(ctk.CTk):
                                           self._toggle_personality_tag(t, cn, sc, tk, 'prefer'))
             prefer_btn.pack(side="right", padx=(0, 2))
             self.personality_tag_ui_elements[tag_key] = {
-                'label': tag_label, 'prefer_btn': prefer_btn, 'avoid_btn': avoid_btn,
+                'label': ctk.CTkLabel(tag_row, text=f"    • {tag.replace('_', ' ')}", anchor="w", width=220),
+                'prefer_btn': prefer_btn, 'avoid_btn': avoid_btn,
                 'tag': tag, 'category': cat_name, 'subcategory': sub_cat
             }
     
@@ -1164,7 +1215,6 @@ class MainWindow(ctk.CTk):
                 chip = ctk.CTkFrame(container, fg_color="gray30", corner_radius=15)
                 chip.grid(row=i//COLS, column=i%COLS, padx=3, pady=3, sticky="ew")
                 container.grid_columnconfigure(i%COLS, weight=1)
-                # 👇 ПОЛИРОВКА: Крупнее шрифт (size=13)
                 lbl = ctk.CTkLabel(chip, text=f" {entry['tag'].replace('_', ' ')} ",
                                     font=ctk.CTkFont(size=13), text_color=color)
                 lbl.pack(side="left", padx=(8, 5), pady=5)
@@ -1181,7 +1231,7 @@ class MainWindow(ctk.CTk):
         build_chips(self.prefer_container, self.preferred_personality_tags, "green")
         build_chips(self.avoid_container, self.avoided_personality_tags, COLORS['danger_red'])
 
-            # ════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     # 4.4 Signature
     # ════════════════════════════════════════════════════════════════════════════
     
@@ -1231,8 +1281,15 @@ class MainWindow(ctk.CTk):
             header = ctk.CTkFrame(prop_frame, fg_color="transparent")
             header.pack(fill="x", padx=10, pady=(5, 5))
             
-            name_entry = ctk.CTkEntry(header, width=200, placeholder_text="Item name")
-            name_entry.pack(side="left")
+            # 👇 ПОЛИРОВКА: Prop name над полем
+            name_wrapper = ctk.CTkFrame(header, fg_color="transparent")
+            name_wrapper.pack(side="left", fill="x", expand=True)
+            
+            ctk.CTkLabel(name_wrapper, text="Prop name", 
+                          font=ctk.CTkFont(size=11, slant="italic"), text_color="gray60").pack(anchor="w")
+            
+            name_entry = ctk.CTkEntry(name_wrapper, placeholder_text="Item name")
+            name_entry.pack(fill="x", expand=True)
             name_entry.insert(0, prop['name'])
             name_entry.bind('<KeyRelease>', lambda e, idx=i: self._update_prop_name(idx, name_entry.get()))
             
@@ -1244,26 +1301,25 @@ class MainWindow(ctk.CTk):
             tags_frame = ctk.CTkFrame(prop_frame, fg_color="transparent")
             tags_frame.pack(fill="x", padx=10, pady=(0, 10))
             
-            ctk.CTkLabel(tags_frame, text="Tags:", font=ctk.CTkFont(size=11)).pack(anchor="w", pady=(0, 2))
+            # 👇 ПОЛИРОВКА: Tags крупнее и выровнен
+            ctk.CTkLabel(tags_frame, text="Tags:", 
+                          font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(5, 2))
             
             for j, tag in enumerate(prop['tags']):
                 tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
                 tag_row.pack(fill="x", pady=1)
                 
-                # 👇 ПОЛИРОВКА: Выравнивание по левому краю с полем имени (такой же width=200)
                 tag_entry = ctk.CTkEntry(tag_row, width=200)
-                tag_entry.pack(side="left", padx=(0, 0))
+                tag_entry.pack(side="left")
                 tag_entry.insert(0, tag)
                 tag_entry.bind('<KeyRelease>', 
                               lambda e, pi=i, ti=j: self._update_prop_tag(pi, ti, tag_entry.get()))
                 
-                # 👇 ПОЛИРОВКА: Browse синего цвета, сразу после текстового поля
                 ctk.CTkButton(tag_row, text="Browse", width=70, height=25,
                                fg_color=COLORS['primary_blue'], hover_color=COLORS['primary_blue_hover'],
                                font=ctk.CTkFont(size=10),
                                command=lambda pi=i: self._open_tags_browser(pi)).pack(side="left", padx=(3, 0))
                 
-                # 👇 ПОЛИРОВКА: Кнопка удаления сдвинута правее
                 ctk.CTkButton(tag_row, text="×", width=30, height=25,
                                fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
                                command=lambda pi=i, ti=j: self._remove_tag_from_prop(pi, ti)).pack(side="right", padx=(5, 0))
@@ -1305,10 +1361,8 @@ class MainWindow(ctk.CTk):
     def _refresh_hair_rules_display(self):
         if self.hair_rules_container is None: return
         
-        # 👇 ПОЛИРОВКА: Обновляем кнопку Default Style с учётом звёздочек ⭐
         if hasattr(self, 'hair_default_btn') and self.hair_default_btn:
             current_default = self.hair_rules_data.get('default', 'hair down')
-            # Проверяем, есть ли этот стиль в DNA
             dna_styles = [t['tag'] for t in self.selected_dna_tags if t['category'] == 'Hair Style']
             star = " ⭐" if current_default in dna_styles else ""
             self.hair_default_btn.configure(text=f"▼ {current_default}{star}")
@@ -1350,7 +1404,6 @@ class MainWindow(ctk.CTk):
             style_frame.pack(fill="x", padx=10, pady=2)
             ctk.CTkLabel(style_frame, text="Style:", width=100, anchor="w").pack(side="left")
             
-            # 👇 ПОЛИРОВКА: Треугольник ▼ перед текстом
             style_text = rule['style'] or "Select..."
             dna_styles = [t['tag'] for t in self.selected_dna_tags if t['category'] == 'Hair Style']
             star = " ⭐" if rule['style'] in dna_styles else ""
@@ -1373,7 +1426,6 @@ class MainWindow(ctk.CTk):
                            lambda e, idx=i, slider=prob_slider: self._update_prob_from_entry(idx, prob_entry.get(), slider))
     
     def _open_tags_browser(self, prop_index):
-        """Многоразовый выбор тегов для prop"""
         popup = ctk.CTkToplevel(self)
         popup.title("Browse Tags (Props)")
         popup.geometry("500x600")
@@ -1393,7 +1445,6 @@ class MainWindow(ctk.CTk):
             ctk.CTkButton(popup, text="Close", fg_color="gray", command=popup.destroy).pack(pady=10)
             return
         
-        # Текущие выбранные теги
         current_tags = set(self.signature_props[prop_index]['tags'])
         self._popup_selected_tags = set(current_tags)
         
@@ -1443,7 +1494,6 @@ class MainWindow(ctk.CTk):
                                     ).pack(anchor="w", padx=10, pady=2)
         
         def apply():
-            # 👇 ПОЛИРОВКА: Добавляем новые теги в конец списка, оставляя существующие
             new_tags = sorted(list(self._popup_selected_tags))
             self.signature_props[prop_index]['tags'] = new_tags
             self._refresh_signature_props_display()
@@ -1452,7 +1502,6 @@ class MainWindow(ctk.CTk):
         
         btn_frame = ctk.CTkFrame(popup, fg_color="transparent")
         btn_frame.pack(pady=10)
-        # 👇 ПОЛИРОВКА: Зелёная Confirm и красная Cancel
         ctk.CTkButton(btn_frame, text="✅ Confirm", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
                        width=120, command=apply).pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="❌ Cancel", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
@@ -1497,7 +1546,6 @@ class MainWindow(ctk.CTk):
     
     def _select_style(self, style, rule_index, button_widget, popup):
         self._update_hair_rule_style(rule_index, style)
-        # 👇 ПОЛИРОВКА: Треугольник ▼ + звёздочка ⭐
         dna_styles = [t['tag'] for t in self.selected_dna_tags if t['category'] == 'Hair Style']
         star = " ⭐" if style in dna_styles else ""
         button_widget.configure(text=f"▼ {style}{star}")
@@ -1551,14 +1599,13 @@ class MainWindow(ctk.CTk):
         
         actions_dir = self.project_root / "prompt-library" / "04_action"
         if not actions_dir.exists():
-            actions_dir = self.project_root / "prompt-library" / "03_pose"  # fallback
+            actions_dir = self.project_root / "prompt-library" / "03_pose"
         
         current_actions = set(self.hair_rules_data['conditional'][rule_index]['if_action'])
         self._popup_selected_actions = set(current_actions)
         
         if actions_dir.exists():
             for txt_file in sorted(actions_dir.rglob("*.txt")):
-                var_map = {}
                 tag_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
                 tag_frame.pack(fill="x", pady=2)
                 ctk.CTkLabel(tag_frame, text=f"➤ {txt_file.stem.replace('_', ' ').title()}",
@@ -1613,7 +1660,7 @@ class MainWindow(ctk.CTk):
             pass
 
     # ════════════════════════════════════════════════════════════════════════════
-    # 4.5 Atmosphere (С ПОДКАТЕГОРИЯМИ)
+    # 4.5 Atmosphere
     # ════════════════════════════════════════════════════════════════════════════
     
     def _build_lighting_tree(self):
@@ -1624,7 +1671,6 @@ class MainWindow(ctk.CTk):
         lighting_dir = self.project_root / "prompt-library" / "07_lighting"
         if not lighting_dir.exists(): return
         
-        # Группируем по файлам (каждый файл = подкатегория)
         subcats = {}
         for txt_file in sorted(lighting_dir.rglob("*.txt")):
             parts = txt_file.relative_to(lighting_dir).parts
@@ -1656,14 +1702,13 @@ class MainWindow(ctk.CTk):
             tag_key = f"lighting::{tag}"
             tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
             tag_row.pack(fill="x", pady=1)
-            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250)
-            tag_label.pack(side="left", padx=(5, 0))
+            ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250).pack(side="left", padx=(5, 0))
             action_btn = ctk.CTkButton(tag_row, text="+", width=30, height=25,
                                         fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
                                         font=ctk.CTkFont(size=14, weight="bold"),
                                         command=lambda t=tag, tk=tag_key: self._toggle_lighting_tag(t, tk))
             action_btn.pack(side="right", padx=(0, 5))
-            self.lighting_tag_ui_elements[tag_key] = {'label': tag_label, 'button': action_btn, 'tag': tag}
+            self.lighting_tag_ui_elements[tag_key] = {'label': tag_row.winfo_children()[0], 'button': action_btn, 'tag': tag}
     
     def _toggle_lighting_subcategory(self, sub_cat):
         key = f"lighting.{sub_cat}"
@@ -1755,14 +1800,13 @@ class MainWindow(ctk.CTk):
             tag_key = f"weather::{tag}"
             tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
             tag_row.pack(fill="x", pady=1)
-            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250)
-            tag_label.pack(side="left", padx=(5, 0))
+            ctk.CTkLabel(tag_row, text=f"  • {tag.replace('_', ' ')}", anchor="w", width=250).pack(side="left", padx=(5, 0))
             action_btn = ctk.CTkButton(tag_row, text="+", width=30, height=25,
                                         fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
                                         font=ctk.CTkFont(size=14, weight="bold"),
                                         command=lambda t=tag, tk=tag_key: self._toggle_weather_tag(t, tk))
             action_btn.pack(side="right", padx=(0, 5))
-            self.weather_tag_ui_elements[tag_key] = {'label': tag_label, 'button': action_btn, 'tag': tag}
+            self.weather_tag_ui_elements[tag_key] = {'label': tag_row.winfo_children()[0], 'button': action_btn, 'tag': tag}
     
     def _toggle_weather_subcategory(self, sub_cat):
         key = f"weather.{sub_cat}"
@@ -1824,6 +1868,11 @@ class MainWindow(ctk.CTk):
         import yaml
         profile = self._get_default_profile_structure(self.current_profile_name)
         
+        # 👇 ПОЛИРОВКА: Сохраняем character данные
+        profile['character'] = self.profile_character_data.copy() if self.profile_character_data else {
+            'name': self.current_profile_name, 'age': 18, 'archetype': 'custom character'
+        }
+        
         selected_traits = [entry['tag'] for entry in self.selected_dna_tags]
         other_text = self.other_traits_text.get("1.0", "end").strip() if self.other_traits_text else ""
         if other_text:
@@ -1832,8 +1881,7 @@ class MainWindow(ctk.CTk):
         
         wardrobe_by_subcat = {}
         for entry in self.selected_wardrobe_tags:
-            subcat = entry['subcategory']
-            wardrobe_by_subcat.setdefault(subcat, []).append(entry['tag'])
+            wardrobe_by_subcat.setdefault(entry['subcategory'], []).append(entry['tag'])
         profile['outfit_whitelist'] = {'default': wardrobe_by_subcat}
         
         profile['expression_filter'] = {
@@ -1869,6 +1917,25 @@ class MainWindow(ctk.CTk):
             if not profile:
                 messagebox.showwarning("Warning", "YAML пустой")
                 return
+            
+            # 👇 ПОЛИРОВКА: Применяем character данные
+            character = profile.get('character', {})
+            if character:
+                self.profile_character_data = character.copy()
+                new_name = character.get('name', self.current_profile_name)
+                if new_name != self.current_profile_name:
+                    # Попытка переименовать файл
+                    old_path = self.profiles_directory / f"{self.current_profile_name}.yaml"
+                    if not old_path.exists():
+                        old_path = self.project_root / "character-profile.yaml"
+                    new_path = self.profiles_directory / f"{new_name}.yaml"
+                    if old_path.exists() and not new_path.exists():
+                        import shutil
+                        shutil.move(str(old_path), str(new_path))
+                        self.current_profile_name = new_name
+                        if self.editor_title:
+                            self.editor_title.configure(text=f"👤 Editing: {new_name}")
+                        self._refresh_profiles_list()
             
             self.selected_dna_tags = []
             fixed_traits = profile.get('fixed_traits', [])
@@ -1972,6 +2039,11 @@ class MainWindow(ctk.CTk):
         with open(profile_path, 'r', encoding='utf-8') as f:
             profile = yaml.safe_load(f)
         
+        # 👇 ПОЛИРОВКА: Загружаем character данные
+        self.profile_character_data = profile.get('character', {
+            'name': profile_name, 'age': 18, 'archetype': 'custom character'
+        })
+        
         self.selected_dna_tags = []
         fixed_traits = profile.get('fixed_traits', [])
         all_dna_tags = {ui['tag']: ui['category'] for ui in self.dna_tag_ui_elements.values()}
@@ -2058,6 +2130,11 @@ class MainWindow(ctk.CTk):
         else:
             profile = self._get_default_profile_structure(self.current_profile_name)
         
+        # 👇 ПОЛИРОВКА: Сохраняем character данные
+        if not self.profile_character_data:
+            self.profile_character_data = {'name': self.current_profile_name, 'age': 18, 'archetype': 'custom character'}
+        profile['character'] = self.profile_character_data.copy()
+        
         selected_traits = [entry['tag'] for entry in self.selected_dna_tags]
         other_text = self.other_traits_text.get("1.0", "end").strip()
         if other_text:
@@ -2091,7 +2168,7 @@ class MainWindow(ctk.CTk):
         
         with open(profile_path, 'w', encoding='utf-8') as f:
             f.write(f"# Character Profile: {self.current_profile_name}\n")
-            f.write("# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules\n\n")
+            f.write("# Фильтр поверх scene-rules\n\n")
             yaml.dump(profile, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
         
         self._log(f"💾 Профиль '{self.current_profile_name}' сохранён\n")
