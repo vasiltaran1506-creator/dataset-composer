@@ -73,6 +73,17 @@ class MainWindow(ctk.CTk):
         # Custom UI
         self.custom_scroll: ctk.CTkScrollableFrame | None = None
 
+        # Personality UI
+        self.personality_scroll: ctk.CTkScrollableFrame | None = None
+        self.personality_tree_frame: ctk.CTkFrame | None = None
+        self.prefer_container: ctk.CTkScrollableFrame | None = None
+        self.avoid_container: ctk.CTkScrollableFrame | None = None
+        
+        # Personality состояние
+        self.preferred_personality_tags: list[dict] = []
+        self.avoided_personality_tags: list[dict] = []
+        self.personality_tag_ui_elements: dict[str, dict] = {}
+
         # 4. Создание системы вкладок
         self.tabview = ctk.CTkTabview(self)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -182,8 +193,12 @@ class MainWindow(ctk.CTk):
         self.outfits_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("👗 Outfits"))
         self.outfits_scroll.pack(fill="both", expand=True, padx=5, pady=5)
         
+        # 👇 Personality вкладка (реальный редактор)
+        self.personality_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("🎭 Personality"))
+        self.personality_scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        
         # Заглушки для остальных вкладок
-        for tab_name in ["🎭 Personality", "✨ Signature", "🌍 Atmosphere", "📄 Preview"]:
+        for tab_name in ["✨ Signature", "🌍 Atmosphere", "📄 Preview"]:
             placeholder = ctk.CTkLabel(
                 self.editor_tabview.tab(tab_name),
                 text=f"{tab_name}\n\nДоступно в следующей итерации.",
@@ -295,6 +310,44 @@ class MainWindow(ctk.CTk):
         self.selected_tags_container.pack(fill="x", padx=10, pady=(0, 10))
         
         self._refresh_selected_tags_display()
+
+        # --- Personality секция ---
+        personality_frame = ctk.CTkFrame(self.personality_scroll)
+        personality_frame.pack(fill="x", pady=5, padx=5)
+        
+        ctk.CTkLabel(personality_frame, text="🎭 Personality Filters (Prefer / Avoid)",
+                      font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        
+        ctk.CTkLabel(personality_frame, 
+                      text="   Разверните категории. Используйте [+] для предпочтений, [-] для запретов.",
+                      text_color="gray").pack(anchor="w", padx=20, pady=(0, 5))
+        
+        self.personality_tree_frame = ctk.CTkFrame(personality_frame, fg_color="transparent")
+        self.personality_tree_frame.pack(fill="x", padx=20, pady=5)
+        
+        self._build_personality_tree()
+        
+        # Двухколоночный layout для Prefer / Avoid
+        summary_frame = ctk.CTkFrame(personality_frame, fg_color="transparent")
+        summary_frame.pack(fill="x", padx=10, pady=(10, 10))
+        summary_frame.grid_columnconfigure(0, weight=1)
+        summary_frame.grid_columnconfigure(1, weight=1)
+        
+        # Prefer колонка
+        prefer_frame = ctk.CTkFrame(summary_frame)
+        prefer_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        ctk.CTkLabel(prefer_frame, text="✅ Preferred:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=10, pady=(5, 5))
+        self.prefer_container = ctk.CTkScrollableFrame(prefer_frame, fg_color="transparent", height=120)
+        self.prefer_container.pack(fill="x", padx=10, pady=(0, 10))
+        
+        # Avoid колонка
+        avoid_frame = ctk.CTkFrame(summary_frame)
+        avoid_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        ctk.CTkLabel(avoid_frame, text="🚫 Avoided:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=10, pady=(5, 5))
+        self.avoid_container = ctk.CTkScrollableFrame(avoid_frame, fg_color="transparent", height=120)
+        self.avoid_container.pack(fill="x", padx=10, pady=(0, 10))
+        
+        self._refresh_personality_tags_display()
         
         # Заполняем список персонажей
         self._refresh_profiles_list()
@@ -767,11 +820,7 @@ class MainWindow(ctk.CTk):
         )
         header_btn.pack(fill="x")
         
-        tags_frame = ctk.CTkScrollableFrame(
-            cat_frame,
-            fg_color="transparent",
-            height=200
-        )
+        tags_frame = ctk.CTkFrame(cat_frame, fg_color="transparent")
         tags_frame.pack(fill="x", padx=(20, 0))
         tags_frame.pack_forget()
         
@@ -918,7 +967,253 @@ class MainWindow(ctk.CTk):
                 ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
 
     # ════════════════════════════════════════════════════════════════════════════
-    # 5. PROFILES: Редактор Outfits/Wardrobe (древовидная структура)
+    # 6. PROFILES: Редактор Outfits/Wardrobe (древовидная структура)
+    # ════════════════════════════════════════════════════════════════════════════
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # 4.5 PROFILES: Редактор Personality (трёхуровневая структура)
+    # ════════════════════════════════════════════════════════════════════════════
+    
+    def _build_personality_tree(self):
+        """Строит трёхуровневое дерево для Personality (Категория → Подкатегория → Теги)"""
+        if self.personality_tree_frame is None: return
+        for widget in self.personality_tree_frame.winfo_children():
+            widget.destroy()
+        self.personality_tag_ui_elements = {}
+        
+        categories = [
+            ("Expressions", "05_expression"),
+            ("Poses", "03_pose")
+        ]
+        
+        for cat_name, cat_dir in categories:
+            self._create_personality_category(cat_name, cat_dir)
+    
+    def _create_personality_category(self, cat_name: str, cat_dir: str):
+        """Уровень 1: Главная категория (разворачивается, показывает подкатегории)"""
+        if self.personality_tree_frame is None: return
+        
+        cat_frame = ctk.CTkFrame(self.personality_tree_frame, fg_color="transparent")
+        cat_frame.pack(fill="x", pady=2)
+        
+        # Заголовок категории
+        header_btn = ctk.CTkButton(
+            cat_frame, text=f"➤ {cat_name}", anchor="w",
+            fg_color="gray30", hover_color="gray40", height=30,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=lambda: self._toggle_personality_category(cat_name)
+        )
+        header_btn.pack(fill="x")
+        
+        # 👇 Контейнер для подкатегорий (изначально скрыт) — обычный Frame, не Scrollable!
+        subcats_frame = ctk.CTkFrame(cat_frame, fg_color="transparent")
+        subcats_frame.pack(fill="x", padx=(20, 0))
+        subcats_frame.pack_forget()
+        
+        key = f"personality.{cat_name}"
+        self.wardrobe_sections_expanded[key] = {
+            'frame': subcats_frame,
+            'expanded': False
+        }
+        
+        # Группируем файлы по подпапкам
+        dir_path = self.project_root / "prompt-library" / cat_dir
+        if not dir_path.exists():
+            self._log(f"⚠️ Папка не найдена: {dir_path}\n")
+            return
+        
+        subcats = {}
+        for txt_file in sorted(dir_path.rglob("*.txt")):
+            parts = txt_file.relative_to(dir_path).parts
+            if len(parts) == 1:
+                # Файл в корне категории: 05_expression/mood.txt → "mood"
+                sub_cat = parts[0].replace('.txt', '')
+            elif len(parts) >= 2:
+                # Файл в подпапке: 03_pose/arms/arms.txt → "arms"
+                sub_cat = parts[0]
+            else:
+                continue
+            subcats[sub_cat] = txt_file
+        
+        # Создаём подкатегории (Уровень 2)
+        for sub_cat, file_path in sorted(subcats.items()):
+            self._create_personality_subcategory(subcats_frame, cat_name, sub_cat, file_path)
+    
+    def _create_personality_subcategory(self, parent_frame, cat_name: str, sub_cat: str, file_path):
+        """Уровень 2: Подкатегория (разворачивается, показывает теги)"""
+        sub_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        sub_frame.pack(fill="x", pady=1)
+        
+        # Заголовок подкатегории
+        sub_header_btn = ctk.CTkButton(
+            sub_frame, text=f"  ➤ {sub_cat.replace('_', ' ').title()}", anchor="w",
+            fg_color="gray25", hover_color="gray35", height=26,
+            font=ctk.CTkFont(size=12),
+            command=lambda: self._toggle_personality_subcategory(cat_name, sub_cat)
+        )
+        sub_header_btn.pack(fill="x")
+        
+        # 👇 Контейнер для тегов — обычный Frame, НЕ Scrollable (избегаем ошибки menu window)
+        tags_frame = ctk.CTkFrame(sub_frame, fg_color="transparent")
+        tags_frame.pack(fill="x", padx=(20, 0))
+        tags_frame.pack_forget()
+        
+        key = f"personality.{cat_name}.{sub_cat}"
+        self.wardrobe_sections_expanded[key] = {
+            'frame': tags_frame,
+            'expanded': False
+        }
+        
+        # Загружаем теги
+        tags = self._load_tags_from_file(file_path)
+        
+        # Создаём строки тегов с кнопками [+] и [-]
+        for tag in tags:
+            tag_key = f"personality::{cat_name}::{sub_cat}::{tag}"
+            tag_row = ctk.CTkFrame(tags_frame, fg_color="transparent")
+            tag_row.pack(fill="x", pady=1)
+            
+            tag_label = ctk.CTkLabel(
+                tag_row,
+                text=f"    • {tag.replace('_', ' ')}",
+                anchor="w", width=220
+            )
+            tag_label.pack(side="left", padx=(5, 0))
+            
+            # Кнопка [-] Avoid (справа)
+            avoid_btn = ctk.CTkButton(
+                tag_row, text="-", width=25, height=22,
+                fg_color="#dc2626", hover_color="#991b1b",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                command=lambda t=tag, cn=cat_name, sc=sub_cat, tk=tag_key: 
+                    self._toggle_personality_tag(t, cn, sc, tk, 'avoid')
+            )
+            avoid_btn.pack(side="right", padx=(0, 2))
+            
+            # Кнопка [+] Prefer (слева от Avoid)
+            prefer_btn = ctk.CTkButton(
+                tag_row, text="+", width=25, height=22,
+                fg_color="green", hover_color="darkgreen",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                command=lambda t=tag, cn=cat_name, sc=sub_cat, tk=tag_key: 
+                    self._toggle_personality_tag(t, cn, sc, tk, 'prefer')
+            )
+            prefer_btn.pack(side="right", padx=(0, 2))
+            
+            self.personality_tag_ui_elements[tag_key] = {
+                'label': tag_label,
+                'prefer_btn': prefer_btn,
+                'avoid_btn': avoid_btn,
+                'tag': tag,
+                'category': cat_name,
+                'subcategory': sub_cat
+            }
+    
+    def _toggle_personality_category(self, cat_name: str):
+        """Разворачивает/сворачивает главную категорию Personality"""
+        key = f"personality.{cat_name}"
+        if key not in self.wardrobe_sections_expanded: return
+        section = self.wardrobe_sections_expanded[key]
+        if section['expanded']:
+            section['frame'].pack_forget()
+            section['expanded'] = False
+        else:
+            section['frame'].pack(fill="x", padx=(20, 0))
+            section['expanded'] = True
+    
+    def _toggle_personality_subcategory(self, cat_name: str, sub_cat: str):
+        """Разворачивает/сворачивает подкатегорию Personality"""
+        key = f"personality.{cat_name}.{sub_cat}"
+        if key not in self.wardrobe_sections_expanded: return
+        section = self.wardrobe_sections_expanded[key]
+        if section['expanded']:
+            section['frame'].pack_forget()
+            section['expanded'] = False
+        else:
+            section['frame'].pack(fill="x", padx=(20, 0))
+            section['expanded'] = True
+    
+    def _toggle_personality_tag(self, tag: str, category: str, subcategory: str, 
+                                 tag_key: str, action: str):
+        """Переключает состояние тега: prefer / avoid / none"""
+        tag_entry = {'tag': tag, 'category': category, 'subcategory': subcategory}
+        
+        # Проверяем, где тег сейчас
+        was_in_prefer = any(t['tag'] == tag for t in self.preferred_personality_tags)
+        was_in_avoid = any(t['tag'] == tag for t in self.avoided_personality_tags)
+        
+        # Очищаем предыдущее состояние (тег может быть только в одном списке)
+        self.preferred_personality_tags = [t for t in self.preferred_personality_tags if t['tag'] != tag]
+        self.avoided_personality_tags = [t for t in self.avoided_personality_tags if t['tag'] != tag]
+        
+        # Добавляем в новый список (если это не повторный клик для снятия)
+        if action == 'prefer' and not was_in_prefer:
+            self.preferred_personality_tags.append(tag_entry)
+        elif action == 'avoid' and not was_in_avoid:
+            self.avoided_personality_tags.append(tag_entry)
+        
+        self._sync_personality_ui_states()
+        self._refresh_personality_tags_display()
+    
+    def _sync_personality_ui_states(self):
+        """Синхронизирует цвета и кнопки тегов Personality"""
+        if not self.personality_tag_ui_elements: return
+        for tag_key, ui in self.personality_tag_ui_elements.items():
+            tag = ui['tag']
+            in_prefer = any(t['tag'] == tag for t in self.preferred_personality_tags)
+            in_avoid = any(t['tag'] == tag for t in self.avoided_personality_tags)
+            
+            if in_prefer:
+                ui['label'].configure(text_color="green")
+                ui['prefer_btn'].configure(text="✓", fg_color="darkgreen", hover_color="darkgreen")
+                ui['avoid_btn'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+            elif in_avoid:
+                ui['label'].configure(text_color="#dc2626")
+                ui['prefer_btn'].configure(text="+", fg_color="green", hover_color="darkgreen")
+                ui['avoid_btn'].configure(text="✓", fg_color="#991b1b", hover_color="#991b1b")
+            else:
+                ui['label'].configure(text_color=("gray10", "gray90"))
+                ui['prefer_btn'].configure(text="+", fg_color="green", hover_color="darkgreen")
+                ui['avoid_btn'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+    
+    def _refresh_personality_tags_display(self):
+        """Обновляет чипы в блоках Prefer и Avoid"""
+        if self.prefer_container is None or self.avoid_container is None: return
+        
+        for w in self.prefer_container.winfo_children(): w.destroy()
+        for w in self.avoid_container.winfo_children(): w.destroy()
+        
+        def build_chips(container, tags, color):
+            if not tags:
+                ctk.CTkLabel(container, text="(empty)", text_color="gray").pack(anchor="w", padx=10, pady=5)
+                return
+            COLS = 2
+            for i, entry in enumerate(tags):
+                chip = ctk.CTkFrame(container, fg_color="gray30", corner_radius=15)
+                chip.grid(row=i//COLS, column=i%COLS, padx=3, pady=3, sticky="ew")
+                container.grid_columnconfigure(i%COLS, weight=1)
+                
+                lbl = ctk.CTkLabel(chip, text=f" {entry['tag'].replace('_', ' ')} ",
+                                    font=ctk.CTkFont(size=11), text_color=color)
+                lbl.pack(side="left", padx=(8, 5), pady=4)
+                
+                def remove(t=entry['tag']):
+                    self.preferred_personality_tags = [x for x in self.preferred_personality_tags if x['tag'] != t]
+                    self.avoided_personality_tags = [x for x in self.avoided_personality_tags if x['tag'] != t]
+                    self._sync_personality_ui_states()
+                    self._refresh_personality_tags_display()
+                
+                btn = ctk.CTkButton(chip, text="×", width=20, height=20, fg_color="transparent",
+                                    hover_color="#dc2626", text_color="white",
+                                    font=ctk.CTkFont(size=12, weight="bold"),
+                                    command=remove)
+                btn.pack(side="right", padx=(0, 5), pady=2)
+        
+        build_chips(self.prefer_container, self.preferred_personality_tags, "green")
+        build_chips(self.avoid_container, self.avoided_personality_tags, "#dc2626")
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # 6. PROFILES: Редактор Outfits/Wardrobe (древовидная структура)
     # ════════════════════════════════════════════════════════════════════════════
     
     def _load_wardrobe_categories(self) -> list:
@@ -1011,11 +1306,7 @@ class MainWindow(ctk.CTk):
         )
         sub_header_btn.pack(fill="x")
         
-        tags_frame = ctk.CTkScrollableFrame(
-            sub_frame,
-            fg_color="transparent",
-            height=200
-        )
+        tags_frame = ctk.CTkFrame(sub_frame, fg_color="transparent")
         tags_frame.pack(fill="x", padx=(20, 0))
         tags_frame.pack_forget()
         
@@ -1233,6 +1524,21 @@ class MainWindow(ctk.CTk):
         self._sync_tag_ui_states()
         self._refresh_selected_tags_display()
         
+        # === PERSONALITY ===
+        self.preferred_personality_tags = []
+        self.avoided_personality_tags = []
+        
+        expr = profile.get('expression_filter', {})
+        for t in expr.get('prefer', []): self.preferred_personality_tags.append({'tag': t, 'category': 'Expressions'})
+        for t in expr.get('avoid', []): self.avoided_personality_tags.append({'tag': t, 'category': 'Expressions'})
+        
+        pose = profile.get('pose_filter', {})
+        for t in pose.get('prefer', []): self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
+        for t in pose.get('avoid', []): self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
+        
+        self._sync_personality_ui_states()
+        self._refresh_personality_tags_display()
+
         self.current_profile_name = profile_name
         self._log(f"📥 Загружен профиль: {profile_name} "
                   f"({len(self.selected_dna_tags)} DNA, {len(self.selected_wardrobe_tags)} wardrobe)\n")
@@ -1276,6 +1582,16 @@ class MainWindow(ctk.CTk):
             wardrobe_by_subcat[subcat].append(tag)
         
         profile['outfit_whitelist'] = {'default': wardrobe_by_subcat}
+
+        # === Собираем personality ===
+        profile['expression_filter'] = {
+            'prefer': [t['tag'] for t in self.preferred_personality_tags if t['category'] == 'Expressions'],
+            'avoid': [t['tag'] for t in self.avoided_personality_tags if t['category'] == 'Expressions']
+        }
+        profile['pose_filter'] = {
+            'prefer': [t['tag'] for t in self.preferred_personality_tags if t['category'] == 'Poses'],
+            'avoid': [t['tag'] for t in self.avoided_personality_tags if t['category'] == 'Poses']
+        }
         
         # === Сохраняем ===
         with open(profile_path, 'w', encoding='utf-8') as f:
