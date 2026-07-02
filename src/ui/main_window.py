@@ -107,6 +107,10 @@ class MainWindow(ctk.CTk):
         self.lighting_tag_ui_elements: dict[str, dict] = {}
         self.weather_tag_ui_elements: dict[str, dict] = {}
 
+        # Preview UI
+        self.preview_scroll: ctk.CTkScrollableFrame | None = None
+        self.yaml_textbox: ctk.CTkTextbox | None = None
+
         # 4. Создание системы вкладок
         self.tabview = ctk.CTkTabview(self)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -228,14 +232,9 @@ class MainWindow(ctk.CTk):
         self.atmosphere_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("🌍 Atmosphere"))
         self.atmosphere_scroll.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Заглушки для остальных вкладок
-        for tab_name in ["📄 Preview"]:
-            placeholder = ctk.CTkLabel(
-                self.editor_tabview.tab(tab_name),
-                text=f"{tab_name}\n\nДоступно в следующей итерации.",
-                font=ctk.CTkFont(size=14), justify="center"
-            )
-            placeholder.pack(expand=True)
+        # Preview вкладка — реальная (не заглушка!)
+        self.preview_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("📄 Preview"))
+        self.preview_scroll.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Custom вкладка
         self.custom_scroll = ctk.CTkScrollableFrame(self.editor_tabview.tab("✍️ Custom"))
@@ -500,6 +499,58 @@ class MainWindow(ctk.CTk):
         
         self._refresh_selected_lighting_display()
         self._refresh_selected_weather_display()
+
+        # --- Preview секция ---
+        preview_frame = ctk.CTkFrame(self.preview_scroll)
+        preview_frame.pack(fill="x", pady=5, padx=5)
+        
+        ctk.CTkLabel(preview_frame, text="📄 YAML Preview (Live)",
+                      font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        
+        ctk.CTkLabel(preview_frame, 
+                      text="   Живой предпросмотр итогового YAML-файла. Можно редактировать вручную и применять изменения.",
+                      text_color="gray").pack(anchor="w", padx=20, pady=(0, 5))
+        
+        # Кнопки управления
+        buttons_frame = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=10, pady=10)
+        
+        refresh_btn = ctk.CTkButton(buttons_frame, text="🔄 Refresh from Editor", width=180,
+                                     fg_color="gray40", hover_color="gray50",
+                                     command=self._refresh_yaml_preview)
+        refresh_btn.pack(side="left", padx=(0, 5))
+        
+        apply_btn = ctk.CTkButton(buttons_frame, text="✅ Apply Changes to Editor", width=200,
+                                   fg_color="green", hover_color="darkgreen",
+                                   command=self._apply_yaml_to_editor)
+        apply_btn.pack(side="left", padx=5)
+        
+        copy_btn = ctk.CTkButton(buttons_frame, text="📋 Copy YAML", width=120,
+                                  fg_color="gray40", hover_color="gray50",
+                                  command=self._copy_yaml_to_clipboard)
+        copy_btn.pack(side="left", padx=5)
+        
+        # Текстовое поле с YAML
+        self.yaml_textbox = ctk.CTkTextbox(
+            preview_frame,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            height=500
+        )
+        self.yaml_textbox.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        
+        # Подсказка
+        hint_frame = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        hint_frame.pack(fill="x", padx=10, pady=(0, 10))
+        
+        ctk.CTkLabel(hint_frame, 
+                      text="💡 Совет: Используйте 'Refresh from Editor' для обновления превью из текущего состояния редактора.\n"
+                           "Используйте 'Apply Changes to Editor' для применения ручных изменений из YAML обратно в редактор.",
+                      text_color="gray60", 
+                      font=ctk.CTkFont(size=11, slant="italic"),
+                      justify="left").pack(anchor="w")
+        
+        # Автоматически обновляем превью при первом открытии
+        self._refresh_yaml_preview()
 
         self._refresh_profiles_list()
 
@@ -769,10 +820,14 @@ class MainWindow(ctk.CTk):
             btn.pack(fill="x", pady=2)
 
     def _select_profile(self, profile_name):
+        """Вызывается при клике на персонажа в списке"""
         self.current_profile_name = profile_name
         if self.editor_title:
             self.editor_title.configure(text=f"👤 Editing: {profile_name}")
         self._load_profile_to_editor(profile_name)
+        
+        # Автоматически обновляем Preview при выборе профиля
+        self._refresh_yaml_preview()
 
     def _create_new_profile(self):
         import yaml
@@ -2172,6 +2227,210 @@ class MainWindow(ctk.CTk):
                 ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
             self._refresh_selected_weather_display()
             self._log(f"➖ Удалён weather: {tag}\n")
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # 4.6 PROFILES: Preview (живой YAML preview)
+    # ════════════════════════════════════════════════════════════════════════════
+
+    def _refresh_yaml_preview(self):
+        """Генерирует YAML из текущего состояния редактора и показывает в превью"""
+        if self.yaml_textbox is None or not self.current_profile_name:
+            return
+        
+        import yaml
+        
+        # Собираем данные из всех секций редактора
+        profile = self._get_default_profile_structure(self.current_profile_name)
+        
+        # DNA (selected_dna_tags + other_traits)
+        selected_traits = [entry['tag'] for entry in self.selected_dna_tags]
+        other_text = self.other_traits_text.get("1.0", "end").strip() if self.other_traits_text else ""
+        if other_text:
+            other_traits = [t.strip() for t in other_text.split(',') if t.strip()]
+            selected_traits.extend(other_traits)
+        profile['fixed_traits'] = selected_traits
+        
+        # Wardrobe
+        wardrobe_by_subcat = {}
+        for entry in self.selected_wardrobe_tags:
+            subcat = entry['subcategory']
+            tag = entry['tag']
+            if subcat not in wardrobe_by_subcat:
+                wardrobe_by_subcat[subcat] = []
+            wardrobe_by_subcat[subcat].append(tag)
+        profile['outfit_whitelist'] = {'default': wardrobe_by_subcat}
+        
+        # Personality
+        profile['expression_filter'] = {
+            'prefer': [t['tag'] for t in self.preferred_personality_tags if t['category'] == 'Expressions'],
+            'avoid': [t['tag'] for t in self.avoided_personality_tags if t['category'] == 'Expressions']
+        }
+        profile['pose_filter'] = {
+            'prefer': [t['tag'] for t in self.preferred_personality_tags if t['category'] == 'Poses'],
+            'avoid': [t['tag'] for t in self.avoided_personality_tags if t['category'] == 'Poses']
+        }
+        
+        # Signature
+        profile['signature_props'] = self.signature_props
+        profile['hair_rules'] = {
+            'default': self.hair_rules_data.get('default', 'hair down'),
+            'conditional': self.hair_rules_data.get('conditional', [])
+        }
+        
+        # Atmosphere
+        profile['atmosphere_preferences'] = {
+            'lighting': self.selected_lighting_tags,
+            'weather': self.selected_weather_tags
+        }
+        
+        # Генерируем YAML
+        yaml_str = yaml.dump(profile, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        
+        # Добавляем комментарии
+        header = f"# Character Profile: {self.current_profile_name}\n"
+        header += "# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules\n"
+        header += "# Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь\n\n"
+        
+        full_yaml = header + yaml_str
+        
+        # Показываем в textbox
+        self.yaml_textbox.delete("1.0", "end")
+        self.yaml_textbox.insert("1.0", full_yaml)
+        
+        self._log("🔄 YAML preview обновлён из редактора\n")
+    
+    def _apply_yaml_to_editor(self):
+        """Парсит YAML из превью и применяет изменения обратно в редактор"""
+        if self.yaml_textbox is None:
+            return
+        
+        import yaml
+        
+        yaml_text = self.yaml_textbox.get("1.0", "end").strip()
+        
+        try:
+            # Парсим YAML
+            profile = yaml.safe_load(yaml_text)
+            
+            if not profile:
+                messagebox.showwarning("Warning", "YAML пустой или невалидный")
+                return
+            
+            # Применяем DNA
+            self.selected_dna_tags = []
+            fixed_traits = profile.get('fixed_traits', [])
+            all_dna_tags = {ui['tag']: ui['category'] for ui in self.dna_tag_ui_elements.values()}
+            other_traits = []
+            
+            for trait in fixed_traits:
+                if trait in all_dna_tags:
+                    self.selected_dna_tags.append({'tag': trait, 'category': all_dna_tags[trait]})
+                else:
+                    other_traits.append(trait)
+            
+            self._sync_dna_tag_ui_states()
+            self._refresh_selected_dna_tags_display()
+            
+            if self.other_traits_text:
+                self.other_traits_text.delete("1.0", "end")
+                if other_traits:
+                    self.other_traits_text.insert("1.0", ", ".join(other_traits))
+            
+            # Применяем Wardrobe
+            self.selected_wardrobe_tags = []
+            outfit_whitelist = profile.get('outfit_whitelist', {})
+            for outfit_name, subcats in outfit_whitelist.items():
+                if isinstance(subcats, dict):
+                    for subcategory, tags in subcats.items():
+                        if isinstance(tags, list):
+                            for tag in tags:
+                                self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': subcategory})
+            
+            self._sync_tag_ui_states()
+            self._refresh_selected_tags_display()
+            
+            # Применяем Personality
+            self.preferred_personality_tags = []
+            self.avoided_personality_tags = []
+            
+            expr = profile.get('expression_filter', {})
+            for t in expr.get('prefer', []):
+                self.preferred_personality_tags.append({'tag': t, 'category': 'Expressions'})
+            for t in expr.get('avoid', []):
+                self.avoided_personality_tags.append({'tag': t, 'category': 'Expressions'})
+            
+            pose = profile.get('pose_filter', {})
+            for t in pose.get('prefer', []):
+                self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
+            for t in pose.get('avoid', []):
+                self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
+            
+            self._sync_personality_ui_states()
+            self._refresh_personality_tags_display()
+            
+            # Применяем Signature
+            self.signature_props = profile.get('signature_props', [])
+            hair_rules = profile.get('hair_rules', {})
+            self.hair_rules_data = {
+                'default': hair_rules.get('default', 'hair down'),
+                'conditional': hair_rules.get('conditional', [])
+            }
+            self._refresh_signature_props_display()
+            self._refresh_hair_rules_display()
+            
+            # Применяем Atmosphere
+            atmosphere = profile.get('atmosphere_preferences', {})
+            self.selected_lighting_tags = atmosphere.get('lighting', [])
+            self.selected_weather_tags = atmosphere.get('weather', [])
+            
+            # Синхронизируем UI для Atmosphere
+            if self.lighting_tag_ui_elements:
+                for tag_key, ui in self.lighting_tag_ui_elements.items():
+                    tag = ui['tag']
+                    if tag in self.selected_lighting_tags:
+                        ui['label'].configure(text_color="green")
+                        ui['button'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+                    else:
+                        ui['label'].configure(text_color=("gray10", "gray90"))
+                        ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+            
+            if self.weather_tag_ui_elements:
+                for tag_key, ui in self.weather_tag_ui_elements.items():
+                    tag = ui['tag']
+                    if tag in self.selected_weather_tags:
+                        ui['label'].configure(text_color="green")
+                        ui['button'].configure(text="-", fg_color="#dc2626", hover_color="#991b1b")
+                    else:
+                        ui['label'].configure(text_color=("gray10", "gray90"))
+                        ui['button'].configure(text="+", fg_color="green", hover_color="darkgreen")
+            
+            self._refresh_selected_lighting_display()
+            self._refresh_selected_weather_display()
+            
+            self._log("✅ Изменения из YAML применены к редактору\n")
+            messagebox.showinfo("Success", "YAML успешно применён к редактору!")
+            
+        except yaml.YAMLError as e:
+            messagebox.showerror("YAML Error", f"Ошибка парсинга YAML:\n{e}")
+            self._log(f"❌ Ошибка парсинга YAML: {e}\n")
+        except Exception as e:
+            messagebox.showerror("Error", f"Ошибка применения YAML:\n{e}")
+            self._log(f"❌ Ошибка применения YAML: {e}\n")
+    
+    def _copy_yaml_to_clipboard(self):
+        """Копирует YAML из превью в буфер обмена"""
+        if self.yaml_textbox is None:
+            return
+        
+        content = self.yaml_textbox.get("1.0", "end-1c")
+        if not content.strip():
+            messagebox.showinfo("Info", "YAML пуст — нечего копировать")
+            return
+        
+        self.clipboard_clear()
+        self.clipboard_append(content)
+        messagebox.showinfo("Copied", "✅ YAML скопирован в буфер обмена!")
+        self._log("📋 YAML скопирован в буфер обмена\n")
 
     # ════════════════════════════════════════════════════════════════════════════
     # 5. PROFILES: Загрузка и сохранение профиля

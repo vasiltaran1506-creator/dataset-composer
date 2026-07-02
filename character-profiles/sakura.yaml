@@ -1,0 +1,24 @@
+# Character Profile: sakura
+# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules
+# Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь
+
+character:
+  name: sakura
+  age: 18
+  archetype: custom character
+fixed_traits: []
+outfit_whitelist: {}
+underwear_whitelist: {}
+signature_props: []
+hair_rules:
+  default: hair down
+  conditional: []
+expression_filter:
+  prefer: []
+  avoid: []
+pose_filter:
+  prefer: []
+  avoid: []
+atmosphere_preferences:
+  lighting: []
+  weather: []
