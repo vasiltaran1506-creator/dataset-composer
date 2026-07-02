@@ -1,18 +1,29 @@
 # Character Profile: sakura
 # Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules
-# Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь
 
 character:
   name: sakura
   age: 18
   archetype: custom character
-fixed_traits: []
-outfit_whitelist: {}
+fixed_traits:
+- twintails
+outfit_whitelist:
+  default: {}
 underwear_whitelist: {}
-signature_props: []
+signature_props:
+- name: new_item
+  tags:
+  - book
+  - coffee cup
+  - magazine
+  - mug
+  - novel
 hair_rules:
-  default: hair down
-  conditional: []
+  default: twin braids
+  conditional:
+  - if_action: []
+    style: ponytail
+    probability: 0.5
 expression_filter:
   prefer: []
   avoid: []
