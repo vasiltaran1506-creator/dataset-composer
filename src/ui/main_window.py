@@ -36,6 +36,18 @@ class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        # 👇 ФИКС "ЖЕЛЕ": Включаем двойную буферизацию для всего окна (Windows)
+        if os.name == 'nt':
+            try:
+                import ctypes
+                hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+                GWL_EXSTYLE = -20
+                WS_EX_COMPOSITED = 0x02000000
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_COMPOSITED)
+            except Exception:
+                pass  # Тихо пропускаем, если не сработало
+
         self.title("Dataset Composer v1.1 - Character LoRA Pipeline")
         self.geometry("1200x800")
         self.minsize(1000, 600)
@@ -131,6 +143,9 @@ class MainWindow(ctk.CTk):
 
         # Debouncing для update_idletasks (борьба с "плаванием" окна)
         self._update_timer = None
+        
+        # Debouncing для поиска в Scene Rules
+        self._search_timer = None
 
         # Debouncing для UI обновлений
         self._ui_update_timer = None
@@ -604,9 +619,15 @@ class MainWindow(ctk.CTk):
         content_frame.grid_columnconfigure(1, weight=2)
         content_frame.grid_rowconfigure(0, weight=1)
         
-        # Левая панель: список правил
-        self.scene_rules_list_frame = ctk.CTkScrollableFrame(content_frame)
-        self.scene_rules_list_frame.grid(row=0, column=0, padx=(5, 2), pady=5, sticky="nsew")
+        # Левая панель: список правил (обёртка с фиксированной шириной)
+        left_wrapper = ctk.CTkFrame(content_frame, width=280)
+        left_wrapper.grid(row=0, column=0, padx=(5, 2), pady=5, sticky="nsew")
+        left_wrapper.grid_propagate(False)
+        left_wrapper.grid_rowconfigure(0, weight=1)
+        left_wrapper.grid_columnconfigure(0, weight=1)
+        
+        self.scene_rules_list_frame = ctk.CTkScrollableFrame(left_wrapper)
+        self.scene_rules_list_frame.grid(row=0, column=0, sticky="nsew")
         
         # Правая панель: редактор
         self.scene_rules_editor_frame = ctk.CTkFrame(content_frame)
@@ -831,12 +852,12 @@ class MainWindow(ctk.CTk):
     def _toggle_scene_rules_section(self, container):
         """Разворачивает/сворачивает категорию в списке"""
         if container.winfo_ismapped():
-            container.pack_forget()
+            self._hide_container(container)
         else:
             container.pack(fill="x", padx=(20, 0))
     
     def _select_scene_rule(self, category: str, rule_name: str):
-        """Обработчик выбора правила из списка — отображает редактор справа"""
+        """Обработчик выбора правила из списка — отображает редактор справа с индикатором загрузки"""
         if self.scene_rules_editor_frame is None:
             return
         
@@ -852,7 +873,7 @@ class MainWindow(ctk.CTk):
         
         self._log(f"📄 Редактирование: {category}/{rule_name}\n")
         
-        # === Заголовок ===
+        # === Заголовок (отображаем сразу — это быстро) ===
         header_frame = ctk.CTkFrame(self.scene_rules_editor_frame, fg_color="transparent")
         header_frame.pack(fill="x", padx=15, pady=(10, 5))
         
@@ -863,6 +884,27 @@ class MainWindow(ctk.CTk):
         ctk.CTkLabel(header_frame,
                       text=f"({category}/{rule_name}.toml)",
                       text_color="gray60").pack(side="left", padx=(10, 0))
+        
+        # 👇 ИНДИКАТОР ЗАГРУЗКИ (показываем сразу)
+        loading_frame = ctk.CTkFrame(self.scene_rules_editor_frame, fg_color="transparent")
+        loading_frame.pack(fill="both", expand=True, padx=10, pady=50)
+        
+        ctk.CTkLabel(loading_frame, 
+                      text="⏳ Загрузка...",
+                      font=ctk.CTkFont(size=16),
+                      text_color="gray60").pack(expand=True)
+        
+        # Принудительная перерисовка, чтобы индикатор отобразился ДО рендеринга
+        self.scene_rules_editor_frame.update_idletasks()
+        
+        # 👇 ОТЛОЖЕННЫЙ РЕНДЕРИНГ: даём UI шанс отрисовать индикатор
+        self.after(10, lambda: self._render_scene_rule_content(category, rule_name, rule_data, data, meta, loading_frame))
+    
+    def _render_scene_rule_content(self, category, rule_name, rule_data, data, meta, loading_frame):
+        """Отложенный рендеринг содержимого Scene Rule"""
+        # Убираем индикатор загрузки
+        if loading_frame and loading_frame.winfo_exists():
+            loading_frame.destroy()
         
         # === Скроллируемая область для секций ===
         scroll_frame = ctk.CTkScrollableFrame(self.scene_rules_editor_frame)
@@ -879,9 +921,13 @@ class MainWindow(ctk.CTk):
         elif category == 'location_types':
             self._render_location_type_editor(scroll_frame, data)
         elif category == 'weather':
-            self._render_weather_editor(scroll_frame, data)  # 👈 Новый метод
+            self._render_weather_editor(scroll_frame, data)
         elif category == 'camera':
-            self._render_camera_editor(scroll_frame, data)  # 👈 Новый метод
+            self._render_camera_editor(scroll_frame, data)
+        
+        # Финальная перерисовка
+        if self.scene_rules_editor_frame is not None:
+            self.scene_rules_editor_frame.update_idletasks()
 
     def _render_meta_section(self, parent, meta: dict, category: str):
         """Рендерит секцию meta-информации (редактируемую)"""
@@ -1205,21 +1251,18 @@ class MainWindow(ctk.CTk):
     def _render_checklist_section(self, parent, title: str, all_items,
                                    selected_items: list, constraint_key: str,
                                    bg_color="gray20"):
-        """Рендерит сворачиваемую секцию с разворачивающимися подкатегориями и правильным поиском"""
+        """Рендерит сворачиваемую секцию с ленивой загрузкой и правильным поиском"""
         section = ctk.CTkFrame(parent, fg_color=bg_color)
         section.pack(fill="x", padx=5, pady=8)
         
-        # Заголовок с кнопкой сворачивания
         header = ctk.CTkFrame(section, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 5))
         
         toggle_btn = ctk.CTkButton(header, text=f"▶ {title}", width=400, height=28,
                                     fg_color="gray30", hover_color="gray40",
-                                    font=ctk.CTkFont(size=13, weight="bold"),
-                                    anchor="w")
+                                    font=ctk.CTkFont(size=13, weight="bold"), anchor="w")
         toggle_btn.pack(side="left")
         
-        # Подсчёт
         if isinstance(all_items, dict):
             total_count = sum(len(tags) for tags in all_items.values())
             selected_count = len([s for s in selected_items if any(s in tags for tags in all_items.values())])
@@ -1227,220 +1270,176 @@ class MainWindow(ctk.CTk):
             total_count = len(all_items) if all_items else 0
             selected_count = len([s for s in selected_items if s in (all_items or [])])
         
-        count_label = ctk.CTkLabel(header,
-                                    text=f"({selected_count}/{total_count})",
-                                    text_color="gray60")
+        count_label = ctk.CTkLabel(header, text=f"({selected_count}/{total_count})", text_color="gray60")
         count_label.pack(side="left", padx=(10, 0))
         
-        # Контейнер (изначально скрыт)
         content_frame = ctk.CTkFrame(section, fg_color="transparent")
         content_frame.pack(fill="x", padx=10, pady=(0, 10))
         content_frame.pack_forget()
         
-        # Поиск
         search_entry = ctk.CTkEntry(content_frame, placeholder_text="🔍 Filter tags...", height=30)
         search_entry.pack(fill="x", pady=(5, 10))
         
-        # Скроллируемая область
         checkbox_scroll = ctk.CTkScrollableFrame(content_frame, height=300)
         checkbox_scroll.pack(fill="both", expand=True)
         
-        checkboxes = {}
+        # Явная типизация для Pylance
+        checkboxes: dict[str, ctk.BooleanVar] = {}
         has_subcategories = isinstance(all_items, dict)
         
-        # 👇 Хранилище всех виджетов для перестройки при поиске
-        # Обе переменные инициализируются как пустые словари (Pylance-friendly)
-        subcat_widgets: dict = {}
-        simple_widgets: dict = {}
+        # Словарь для хранения состояний подкатегорий (ленивая загрузка)
+        subcat_data: dict[str, dict] = {}
         
+        def render_subcat_tags(subcat_name: str, tags: list, container: ctk.CTkFrame):
+            """Рендерит теги внутри подкатегории (вызывается при первом разворачивании)"""
+            for tag in sorted(tags):
+                var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
+                cb = ctk.CTkCheckBox(container, text=tag.replace('_', ' '), 
+                                      variable=var,
+                                      command=lambda i=tag, v=var, cl=count_label: 
+                                        self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                cb.pack(anchor="w", padx=5, pady=1)
+                checkboxes[tag] = var
+                subcat_data[subcat_name]['widgets'][tag] = cb
+
         if has_subcategories:
             for subcat_name, tags in sorted(all_items.items()):
                 subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
                 subcat_frame.pack(fill="x", pady=2)
                 
-                # Заголовок подкатегории
                 subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
                 subcat_header.pack(fill="x")
                 
                 subcat_toggle_btn = ctk.CTkButton(
-                    subcat_header,
+                    subcat_header, 
                     text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(tags)})",
-                    anchor="w", fg_color="gray35", hover_color="gray45",
+                    anchor="w", fg_color="gray35", hover_color="gray45", 
                     height=26, font=ctk.CTkFont(size=12, weight="bold")
                 )
                 subcat_toggle_btn.pack(side="left", fill="x", expand=True)
                 
-                # Кнопка Select All / Clear
+                # Кнопка Select All / Clear (с правильной передачей button)
                 select_all_btn = ctk.CTkButton(
-                    subcat_header,
-                    text="Select All",
-                    width=80, height=24,
-                    fg_color="gray40", hover_color="gray50",
-                    font=ctk.CTkFont(size=10)
+                    subcat_header, text="Select All", width=80, height=24,
+                    fg_color="gray40", hover_color="gray50", font=ctk.CTkFont(size=10)
                 )
                 select_all_btn.pack(side="right", padx=(5, 0))
                 
-                # Контейнер для тегов (изначально свёрнут)
                 tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
                 tags_container.pack(fill="x", padx=(30, 0))
                 tags_container.pack_forget()
                 
-                subcat_checkboxes = {}
-                
-                # Рендерим теги
-                for tag in sorted(tags):
-                    var = ctk.BooleanVar(value=(tag in selected_items))
-                    cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '),
-                                          variable=var,
-                                          command=lambda i=tag, v=var, cl=count_label:
-                                            self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
-                    cb.pack(anchor="w", padx=5, pady=1)
-                    checkboxes[tag] = var
-                    subcat_checkboxes[tag] = {'cb': cb, 'var': var}
-                
-                # Сохраняем все виджеты подкатегории
-                subcat_widgets[subcat_name] = {
-                    'frame': subcat_frame,
-                    'header': subcat_header,
+                subcat_data[subcat_name] = {
                     'toggle_btn': subcat_toggle_btn,
                     'select_all_btn': select_all_btn,
-                    'tags_container': tags_container,
-                    'tags': subcat_checkboxes,
-                    'tag_count': len(tags)
+                    'container': tags_container,
+                    'tags': tags,
+                    'widgets': {},
+                    'loaded': False
                 }
                 
-                # Обработчик сворачивания подкатегории
                 def toggle_subcat(btn=subcat_toggle_btn, cont=tags_container, name=subcat_name, tag_count=len(tags)):
                     if cont.winfo_ismapped():
-                        cont.pack_forget()
+                        self._hide_container(cont)
                         btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({tag_count})")
                     else:
-                        cont.pack(fill="x", padx=(30, 0))
+                        self._show_container(cont, padx=(30, 0))
                         btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({tag_count})")
                 
                 subcat_toggle_btn.configure(command=toggle_subcat)
                 
-                # Обработчик Select All / Clear
-                def select_all_handler(btn=select_all_btn, sc_name=subcat_name, ts=tags, cl=count_label):
-                    self._toggle_select_all_subcategory(sc_name, ts, cl, constraint_key, all_items, btn)
+                def select_all_handler(sn=subcat_name):
+                    data = subcat_data[sn]
+                    # Передаем кнопку, чтобы текст менялся на Clear All
+                    self._toggle_select_all_subcategory(sn, data['tags'], count_label, constraint_key, all_items, data['select_all_btn'])
                 
                 select_all_btn.configure(command=select_all_handler)
         else:
-            # Простой список без подкатегорий
             if all_items:
                 for item in sorted(all_items):
                     var = ctk.BooleanVar(value=(item in selected_items))
-                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '),
+                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '), 
                                           variable=var,
-                                          command=lambda i=item, v=var, cl=count_label:
+                                          command=lambda i=item, v=var, cl=count_label: 
                                             self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
                     cb.pack(anchor="w", padx=10, pady=1)
                     checkboxes[item] = var
-                    simple_widgets[item] = cb
         
-        # 👇 ОБНОВЛЁННАЯ ЛОГИКА ПОИСКА: перестраиваем UI полностью
-        def on_search(event):
+        # Логика поиска с debouncing (задержка 250мс для устранения тормозов)
+        # Логика поиска с debouncing (задержка 250мс для устранения тормозов)
+        def _do_search():
+            """Выполняет поиск после задержки"""
             filter_text = search_entry.get().strip().lower()
-            
-            # Очищаем скролл-область
+            # 👇 Сюда вставить ВЕСЬ код поиска, который был внутри _do_search
             for w in checkbox_scroll.winfo_children():
                 w.destroy()
             
             if has_subcategories:
-                # Для каждой подкатегории
-                for subcat_name, widgets in subcat_widgets.items():
-                    # Находим теги, соответствующие фильтру
-                    matching_tags = [tag for tag in widgets['tags'].keys()
-                                    if filter_text in tag.lower()]
-                    
-                    # Если фильтр пустой или есть совпадения — показываем подкатегорию
+                for subcat_name, data in subcat_data.items():
+                    matching_tags = [t for t in data['tags'] if filter_text in t.lower()]
                     if not filter_text or matching_tags:
-                        # Пересоздаём подкатегорию
                         subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
                         subcat_frame.pack(fill="x", pady=2)
                         
                         subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
                         subcat_header.pack(fill="x")
                         
-                        # Определяем, показывать ли все теги или только совпавшие
-                        if filter_text:
-                            display_count = len(matching_tags)
-                            btn_text = f"▼ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})"
-                        else:
-                            display_count = widgets['tag_count']
-                            btn_text = f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})"
+                        display_count = len(matching_tags) if filter_text else len(data['tags'])
+                        btn_text = f"▼ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})" if filter_text else f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})"
                         
-                        subcat_toggle_btn = ctk.CTkButton(
-                            subcat_header, text=btn_text,
-                            anchor="w", fg_color="gray35", hover_color="gray45",
-                            height=26, font=ctk.CTkFont(size=12, weight="bold")
-                        )
+                        subcat_toggle_btn = ctk.CTkButton(subcat_header, text=btn_text, anchor="w", fg_color="gray35", hover_color="gray45", height=26, font=ctk.CTkFont(size=12, weight="bold"))
                         subcat_toggle_btn.pack(side="left", fill="x", expand=True)
                         
-                        select_all_btn = ctk.CTkButton(
-                            subcat_header, text="Select All",
-                            width=80, height=24,
-                            fg_color="gray40", hover_color="gray50",
-                            font=ctk.CTkFont(size=10)
-                        )
+                        select_all_btn = ctk.CTkButton(subcat_header, text="Select All", width=80, height=24, fg_color="gray40", hover_color="gray50", font=ctk.CTkFont(size=10))
                         select_all_btn.pack(side="right", padx=(5, 0))
                         
                         tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                        
-                        # При поиске — сразу развёрнута
                         if filter_text:
                             tags_container.pack(fill="x", padx=(30, 0))
                         else:
                             tags_container.pack(fill="x", padx=(30, 0))
                             tags_container.pack_forget()
                         
-                        # Какие теги показываем
-                        tags_to_show = matching_tags if filter_text else widgets['tags'].keys()
-                        
+                        tags_to_show = matching_tags if filter_text else data['tags']
                         for tag in sorted(tags_to_show):
-                            var = widgets['tags'][tag]['var']
-                            cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '),
-                                                  variable=var,
-                                                  command=lambda i=tag, v=var, cl=count_label:
-                                                    self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                            var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
+                            cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '), variable=var,
+                                                  command=lambda i=tag, v=var, cl=count_label: self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
                             cb.pack(anchor="w", padx=5, pady=1)
+                            checkboxes[tag] = var
                         
-                        # Обновляем кнопки сворачивания/разворачивания
-                        tag_count_for_btn = len(tags_to_show)
-                        def toggle_subcat(btn=subcat_toggle_btn, cont=tags_container, name=subcat_name, cnt=tag_count_for_btn, is_filtered=bool(filter_text)):
+                        def toggle_search_subcat(cont=tags_container, btn=subcat_toggle_btn, name=subcat_name, cnt=display_count):
                             if cont.winfo_ismapped():
                                 cont.pack_forget()
                                 btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({cnt})")
                             else:
                                 cont.pack(fill="x", padx=(30, 0))
                                 btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({cnt})")
+                        subcat_toggle_btn.configure(command=toggle_search_subcat)
                         
-                        subcat_toggle_btn.configure(command=toggle_subcat)
-                        
-                        # Select All
-                        all_tags_in_subcat = list(widgets['tags'].keys())
-                        def select_all_handler(btn=select_all_btn, sc_name=subcat_name, ts=all_tags_in_subcat, cl=count_label):
-                            self._toggle_select_all_subcategory(sc_name, ts, cl, constraint_key, all_items, btn)
-                        
-                        select_all_btn.configure(command=select_all_handler)
+                        def search_select_all(sn=subcat_name):
+                            self._toggle_select_all_subcategory(sn, data['tags'], count_label, constraint_key, all_items, select_all_btn)
+                        select_all_btn.configure(command=search_select_all)
             else:
-                # Простой список
-                for item, cb in simple_widgets.items():
+                for item in sorted(all_items):
                     if not filter_text or filter_text in item.lower():
-                        var = checkboxes[item]
-                        new_cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '),
-                                                  variable=var,
-                                                  command=lambda i=item, v=var, cl=count_label:
-                                                    self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
-                        new_cb.pack(anchor="w", padx=10, pady=1)
-                        simple_widgets[item] = new_cb
+                        var = checkboxes.get(item, ctk.BooleanVar(value=(item in selected_items)))
+                        cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '), variable=var,
+                                              command=lambda i=item, v=var, cl=count_label: self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                        cb.pack(anchor="w", padx=10, pady=1)
+                        checkboxes[item] = var
+        
+        def on_search(event):
+            """Обработчик ввода в поле поиска с debouncing"""
+            if self._search_timer is not None:
+                self.after_cancel(self._search_timer)
+            self._search_timer = self.after(250, _do_search)
         
         search_entry.bind('<KeyRelease>', on_search)
         
-        # Обработчик сворачивания секции
         def toggle_visibility():
             if content_frame.winfo_ismapped():
-                content_frame.pack_forget()
+                self._hide_container(content_frame)
                 toggle_btn.configure(text=f"▶ {title}")
             else:
                 content_frame.pack(fill="x", padx=10, pady=(0, 10))
@@ -1448,7 +1447,6 @@ class MainWindow(ctk.CTk):
         
         toggle_btn.configure(command=toggle_visibility)
         
-        # Сохраняем ссылки
         if not hasattr(self, '_current_checkboxes'):
             self._current_checkboxes = {}
         self._current_checkboxes[constraint_key] = checkboxes
@@ -2031,7 +2029,7 @@ class MainWindow(ctk.CTk):
     def _toggle_library_section(self, container):
         """Разворачивает/сворачивает секцию в дереве Library"""
         if container.winfo_ismapped():
-            container.pack_forget()
+            self._hide_container(container)
         else:
             container.pack(fill="x", padx=(20, 0))
     
@@ -2432,7 +2430,7 @@ class MainWindow(ctk.CTk):
         if key not in self.wardrobe_sections_expanded: return
         section = self.wardrobe_sections_expanded[key]
         if section['expanded']:
-            section['frame'].pack_forget()
+            self._hide_container(section['frame'])
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
         section['expanded'] = not section['expanded']
@@ -2489,6 +2487,30 @@ class MainWindow(ctk.CTk):
         for tag_key, ui in self.dna_tag_ui_elements.items():
             tag_entry = {'tag': ui['tag'], 'category': ui['category']}
             if tag_entry in self.selected_dna_tags:
+                ui['label'].configure(text_color="green")
+                ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
+            else:
+                ui['label'].configure(text_color=("gray10", "gray90"))
+                ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
+
+    def _sync_lighting_ui_states(self):
+        """Синхронизирует UI элементы Lighting с выбранными тегами"""
+        if not self.lighting_tag_ui_elements: return
+        for tag_key, ui in self.lighting_tag_ui_elements.items():
+            tag = ui['tag']
+            if tag in self.selected_lighting_tags:
+                ui['label'].configure(text_color="green")
+                ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
+            else:
+                ui['label'].configure(text_color=("gray10", "gray90"))
+                ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
+    
+    def _sync_weather_ui_states(self):
+        """Синхронизирует UI элементы Weather с выбранными тегами"""
+        if not self.weather_tag_ui_elements: return
+        for tag_key, ui in self.weather_tag_ui_elements.items():
+            tag = ui['tag']
+            if tag in self.selected_weather_tags:
                 ui['label'].configure(text_color="green")
                 ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
             else:
@@ -2580,7 +2602,7 @@ class MainWindow(ctk.CTk):
         if key not in self.wardrobe_sections_expanded: return
         section = self.wardrobe_sections_expanded[key]
         if section['expanded']:
-            section['frame'].pack_forget()
+            self._hide_container(section['frame'])
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
         section['expanded'] = not section['expanded']
@@ -2729,7 +2751,7 @@ class MainWindow(ctk.CTk):
         if key not in self.personality_sections_expanded: return
         section = self.personality_sections_expanded[key]
         if section['expanded']:
-            section['frame'].pack_forget()
+            self._hide_container(section['frame'])
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
         section['expanded'] = not section['expanded']
@@ -2739,7 +2761,7 @@ class MainWindow(ctk.CTk):
         if key not in self.personality_sections_expanded: return
         section = self.personality_sections_expanded[key]
         if section['expanded']:
-            section['frame'].pack_forget()
+            self._hide_container(section['frame'])
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
         section['expanded'] = not section['expanded']
@@ -3084,7 +3106,7 @@ class MainWindow(ctk.CTk):
     
     def _toggle_popup_section(self, container):
         if container.winfo_ismapped():
-            container.pack_forget()
+            self._hide_container(container)
         else:
             container.pack(fill="x", padx=(20, 0))
     
@@ -3290,7 +3312,7 @@ class MainWindow(ctk.CTk):
         if key not in self.atmosphere_sections_expanded: return
         section = self.atmosphere_sections_expanded[key]
         if section['expanded']:
-            section['frame'].pack_forget()
+            self._hide_container(section['frame'])
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
         section['expanded'] = not section['expanded']
@@ -3388,7 +3410,7 @@ class MainWindow(ctk.CTk):
         if key not in self.atmosphere_sections_expanded: return
         section = self.atmosphere_sections_expanded[key]
         if section['expanded']:
-            section['frame'].pack_forget()
+            self._hide_container(section['frame'])
         else:
             section['frame'].pack(fill="x", padx=(20, 0))
         section['expanded'] = not section['expanded']
@@ -3602,23 +3624,26 @@ class MainWindow(ctk.CTk):
     # 5. Load/Save профиля
     # ════════════════════════════════════════════════════════════════════════════
     
-    def _load_profile_to_editor(self, profile_name):
-        if self.other_traits_text is None: return
+    def _load_profile_to_editor(self, profile_name: str):
+        """Загружает профиль в редактор с отложенной загрузкой для плавности UI"""
+        if self.other_traits_text is None: 
+            return
+        
         import yaml
+        
         profile_path = self.profiles_directory / f"{profile_name}.yaml"
         if not profile_path.exists():
             profile_path = self.project_root / "character-profile.yaml"
+        
         if not profile_path.exists():
             messagebox.showerror("Error", f"Profile not found: {profile_name}")
             return
+        
+        # Загружаем YAML синхронно (это быстро)
         with open(profile_path, 'r', encoding='utf-8') as f:
             profile = yaml.safe_load(f)
         
-        # 👇 ПОЛИРОВКА: Загружаем character данные
-        self.profile_character_data = profile.get('character', {
-            'name': profile_name, 'age': 18, 'archetype': 'custom character'
-        })
-        
+        # === БЫСТРАЯ ЗАГРУЗКА: DNA ===
         self.selected_dna_tags = []
         fixed_traits = profile.get('fixed_traits', [])
         all_dna_tags = {ui['tag']: ui['category'] for ui in self.dna_tag_ui_elements.values()}
@@ -3628,67 +3653,71 @@ class MainWindow(ctk.CTk):
                 self.selected_dna_tags.append({'tag': trait, 'category': all_dna_tags[trait]})
             else:
                 other_traits.append(trait)
-        self._sync_dna_tag_ui_states()
-        self._refresh_selected_dna_tags_display()
+        
         self.other_traits_text.delete("1.0", "end")
         if other_traits:
             self.other_traits_text.insert("1.0", ", ".join(other_traits))
         
+        # === БЫСТРАЯ ЗАГРУЗКА: Wardrobe ===
         self.selected_wardrobe_tags = []
-        for outfit_name, subcats in profile.get('outfit_whitelist', {}).items():
+        outfit_whitelist = profile.get('outfit_whitelist', {})
+        for outfit_name, subcats in outfit_whitelist.items():
             if isinstance(subcats, dict):
                 for subcategory, tags in subcats.items():
                     if isinstance(tags, list):
                         for tag in tags:
                             self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': subcategory})
-        self._sync_tag_ui_states()
-        self._refresh_selected_tags_display()
         
+        # === БЫСТРАЯ ЗАГРУЗКА: Personality ===
         self.preferred_personality_tags = []
         self.avoided_personality_tags = []
-        for t in profile.get('expression_filter', {}).get('prefer', []):
+        expr = profile.get('expression_filter', {})
+        for t in expr.get('prefer', []): 
             self.preferred_personality_tags.append({'tag': t, 'category': 'Expressions'})
-        for t in profile.get('expression_filter', {}).get('avoid', []):
+        for t in expr.get('avoid', []): 
             self.avoided_personality_tags.append({'tag': t, 'category': 'Expressions'})
-        for t in profile.get('pose_filter', {}).get('prefer', []):
+        pose = profile.get('pose_filter', {})
+        for t in pose.get('prefer', []): 
             self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
-        for t in profile.get('pose_filter', {}).get('avoid', []):
+        for t in pose.get('avoid', []): 
             self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
-        self._sync_personality_ui_states()
-        self._refresh_personality_tags_display()
         
+        # === БЫСТРАЯ ЗАГРУЗКА: Signature ===
         self.signature_props = profile.get('signature_props', [])
         hair_rules = profile.get('hair_rules', {})
         self.hair_rules_data = {
             'default': hair_rules.get('default', 'hair down'),
             'conditional': hair_rules.get('conditional', [])
         }
-        self._refresh_signature_props_display()
-        self._refresh_hair_rules_display()
         
+        # === БЫСТРАЯ ЗАГРУЗКА: Atmosphere ===
         atmosphere = profile.get('atmosphere_preferences', {})
         self.selected_lighting_tags = atmosphere.get('lighting', [])
         self.selected_weather_tags = atmosphere.get('weather', [])
-        for tag_key, ui in self.lighting_tag_ui_elements.items():
-            tag = ui['tag']
-            if tag in self.selected_lighting_tags:
-                ui['label'].configure(text_color="green")
-                ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
-            else:
-                ui['label'].configure(text_color=("gray10", "gray90"))
-                ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
-        for tag_key, ui in self.weather_tag_ui_elements.items():
-            tag = ui['tag']
-            if tag in self.selected_weather_tags:
-                ui['label'].configure(text_color="green")
-                ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
-            else:
-                ui['label'].configure(text_color=("gray10", "gray90"))
-                ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
-        self._refresh_selected_lighting_display()
-        self._refresh_selected_weather_display()
         
         self.current_profile_name = profile_name
+        
+        # 👇 ОТЛОЖЕННАЯ ЗАГРУЗКА: Обновляем UI по частям
+        ui_update_tasks = [
+            lambda: self._sync_dna_tag_ui_states(),
+            lambda: self._refresh_selected_dna_tags_display(),
+            lambda: self._sync_tag_ui_states(),
+            lambda: self._refresh_selected_tags_display(),
+            lambda: self._sync_personality_ui_states(),
+            lambda: self._refresh_personality_tags_display(),
+            lambda: self._refresh_signature_props_display(),
+            lambda: self._refresh_hair_rules_display(),
+            lambda: self._sync_lighting_ui_states(),
+            lambda: self._refresh_selected_lighting_display(),
+            lambda: self._sync_weather_ui_states(),
+            lambda: self._refresh_selected_weather_display(),
+            lambda: self._refresh_yaml_preview()
+        ]
+        
+        # Выполняем задачи с задержкой 1мс между ними
+        self._batch_load_ui(ui_update_tasks, delay_ms=1)
+        
+        self._log(f"📥 Загружен профиль: {profile_name}\n")
     
     def _save_profile(self):
         if not self.current_profile_name:
@@ -4099,6 +4128,44 @@ class MainWindow(ctk.CTk):
             self.after_cancel(self._update_timer)
         # Создаём новый таймер
         self._update_timer = self.after(delay_ms, self._do_update)
+
+    def _hide_container(self, container):
+        """Скрывает контейнер и немедленно обновляет экран (устраняет фантомы)"""
+        if container is not None and container.winfo_ismapped():
+            self._hide_container(container)
+            # Принудительная перерисовка родителя, чтобы избавиться от "призраков"
+            try:
+                parent = container.master
+                if parent:
+                    parent.update_idletasks()
+            except Exception:
+                pass
+    
+    def _show_container(self, container, padx=(30, 0)):
+        """Показывает контейнер"""
+        if container is not None and not container.winfo_ismapped():
+            container.pack(fill="x", padx=padx)
+
+    def _batch_load_ui(self, tasks: list, delay_ms: int = 1):
+        """Выполняет список задач с задержкой между ними для плавной загрузки UI
+        
+        Args:
+            tasks: список функций без аргументов
+            delay_ms: задержка между задачами в миллисекундах
+        """
+        if not tasks:
+            return
+        
+        # Выполняем первую задачу
+        task = tasks[0]
+        try:
+            task()
+        except Exception as e:
+            self._log(f"❌ Ошибка при загрузке UI: {e}\n")
+        
+        # Остальные задачи выполняем с задержкой
+        if len(tasks) > 1:
+            self.after(delay_ms, lambda: self._batch_load_ui(tasks[1:], delay_ms))
     
     def _do_update(self):
         """Выполняет отложенный update_idletasks"""
