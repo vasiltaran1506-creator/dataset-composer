@@ -1,7 +1,12 @@
 [meta]
 id = "1111test"
-display_name = "123123test"
+display_name = "123123123123123123"
 
 [soft_constraints]
+prefers_locations = []
+prefers_poses = []
+prefers_expressions = []
 
 [hard_constraints]
+excludes_actions = []
+requires_props = []

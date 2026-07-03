@@ -140,7 +140,10 @@ class MainWindow(ctk.CTk):
         self.tabview.add("Settings")       
 
         self._tags_cache = {}
-
+        
+        # Защита от повторного создания вкладок
+        self.tabs_created: dict[str, bool] = {}
+        
         # Debouncing для update_idletasks (борьба с "плаванием" окна)
         self._update_timer = None
         
@@ -151,12 +154,24 @@ class MainWindow(ctk.CTk):
         self._ui_update_timer = None
         self._pending_ui_updates = set()
 
-        # Создаём только Profiles и Generate сразу (они нужны чаще всего)
+        # Флаги инициализации вкладок (защита от повторного создания)
+        self._tabs_created = {
+        'Profiles': False,
+        'Library': False,
+        'Generate': False,
+        'Analyzer': False,
+        'Settings': False
+}
+
+        # Создаём все вкладки
         self._create_profiles_tab()
         self._create_generate_tab()
         self._create_library_tab()
         self._create_analyzer_tab()
         self._create_settings_tab()
+
+        # Обработчик переключения вкладок (для борьбы с фантомами при смене)
+        self.tabview.configure(command=self._on_main_tab_changed)
         
         # Обработчик закрытия окна
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -165,11 +180,26 @@ class MainWindow(ctk.CTk):
         label = ctk.CTkLabel(tab, text=text, font=ctk.CTkFont(size=24, weight="bold"))
         label.pack(expand=True)
 
+    def _on_main_tab_changed(self):
+        """Обработчик переключения главных вкладок — принудительная перерисовка"""
+        # Принудительная перерисовка для устранения фантомов при смене вкладок
+        try:
+            self.update_idletasks()
+            # Даём UI время перерисоваться
+            self.after(10, lambda: self.update_idletasks())
+        except Exception:
+            pass
+
     # ════════════════════════════════════════════════════════════════════════════
     # 2. СОЗДАНИЕ ВКЛАДОК (UI)
     # ════════════════════════════════════════════════════════════════════════════
     
     def _create_profiles_tab(self):
+        # Защита от повторного создания
+        if self._tabs_created.get('Profiles', False):
+            return
+        self._tabs_created['Profiles'] = True
+    
         tab = self.tabview.tab("Profiles")
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_columnconfigure(1, weight=3)
@@ -496,7 +526,12 @@ class MainWindow(ctk.CTk):
 
     def _create_library_tab(self):
         """Создает вкладку редактирования библиотеки тегов и scene-rules"""
+        if self._tabs_created.get('Library', False):
+            return
+        self._tabs_created['Library'] = True
+
         tab = self.tabview.tab("Library")
+
         
         # Создаём субвкладки
         library_tabview = ctk.CTkTabview(tab)
@@ -615,8 +650,9 @@ class MainWindow(ctk.CTk):
         # === ОСНОВНОЙ КОНТЕНТ: Двухколоночный layout ===
         content_frame = ctk.CTkFrame(tab)
         content_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        content_frame.grid_columnconfigure(0, weight=1)
-        content_frame.grid_columnconfigure(1, weight=2)
+        # 👇 ФИКС: Левая колонка НЕ растягивается (weight=0), правая растягивается (weight=1)
+        content_frame.grid_columnconfigure(0, weight=0)  # Фиксированная ширина
+        content_frame.grid_columnconfigure(1, weight=1)  # Только правая растягивается
         content_frame.grid_rowconfigure(0, weight=1)
         
         # Левая панель: список правил (обёртка с фиксированной шириной)
@@ -781,24 +817,22 @@ class MainWindow(ctk.CTk):
                 rule_btn.pack(fill="x", padx=(20, 0), pady=1)
     
     def _create_new_rule(self, category: str):
-        """Создает новое правило в указанной категории"""
-        # Генерируем имя для нового правила
+        """Создает новое правило БЕЗ полной перезагрузки списка"""
         new_name = f"new_{category.lower().replace(' ', '_')}_rule"
-        
-        # Проверяем, что такого правила ещё нет
+
+        # Проверяем уникальность имени
         if new_name in self.scene_rules_data.get(category, {}):
-            # Если есть, добавляем номер
             counter = 1
             while f"{new_name}_{counter}" in self.scene_rules_data.get(category, {}):
                 counter += 1
             new_name = f"{new_name}_{counter}"
-        
-        # Создаём путь к новому файлу
+
+        # Создаём файл
         rules_dir = self.project_root / "scene-rules" / category
         rules_dir.mkdir(parents=True, exist_ok=True)
         new_file_path = rules_dir / f"{new_name}.toml"
-        
-        # Создаём базовую структуру TOML
+
+        # Базовая структура TOML
         new_data = {
             'meta': {
                 'id': new_name,
@@ -807,47 +841,104 @@ class MainWindow(ctk.CTk):
             'soft_constraints': {},
             'hard_constraints': {}
         }
-        
-        # Для locations добавляем type
         if category == 'locations':
             new_data['meta']['type'] = 'indoor_private'
-        
-        # Записываем в файл
+
         try:
             import tomli_w
             with open(new_file_path, 'wb') as f:
                 tomli_w.dump(new_data, f)
-            
-            # Перезагружаем данные
-            self._load_scene_rules()
-            self._build_scene_rules_list()
-            
-            # Автоматически открываем новое правило
-            self._select_scene_rule(category, new_name)
-            
-            self._log(f"➕ Создано новое правило: {category}/{new_name}\n")
-            messagebox.showinfo("Success", f"New rule '{new_name}' created!")
-            
         except ImportError:
-            # Если tomli_w не установлен, пишем вручную
+            # Fallback: ручная запись
             with open(new_file_path, 'w', encoding='utf-8') as f:
-                f.write("[meta]\n")
-                f.write(f'id = "{new_name}"\n')
-                f.write(f'display_name = "{new_name.replace("_", " ").title()}"\n')
+                f.write(f'[meta]\nid = "{new_name}"\n')
+                f.write(f'display_name = "{new_data["meta"]["display_name"]}"\n')
                 if category == 'locations':
                     f.write('type = "indoor_private"\n')
                 f.write("\n[soft_constraints]\n\n[hard_constraints]\n")
-            
-            self._load_scene_rules()
-            self._build_scene_rules_list()
-            self._select_scene_rule(category, new_name)
-            
-            self._log(f"➕ Создано новое правило: {category}/{new_name}\n")
-            messagebox.showinfo("Success", f"New rule '{new_name}' created!")
-            
         except Exception as e:
-            self._log(f"❌ Ошибка создания правила: {e}\n")
-            messagebox.showerror("Error", f"Failed to create rule: {e}")
+            self._log(f"❌ Ошибка создания: {e}\n")
+            messagebox.showerror("Error", f"Failed: {e}")
+            return
+
+        # 👇 ОПТИМИЗАЦИЯ: добавляем только в память, НЕ перезагружаем всё
+        if category not in self.scene_rules_data:
+            self.scene_rules_data[category] = {}
+        self.scene_rules_data[category][new_name] = {
+            'path': new_file_path,
+            'data': new_data
+        }
+
+        # 👇 ОПТИМИЗАЦИЯ: добавляем только ОДНУ кнопку в существующий список
+        if self.scene_rules_list_frame is not None:
+            self._add_rule_button_to_list(category, new_name)
+
+        # Открываем новое правило
+        self._select_scene_rule(category, new_name)
+
+        self._log(f"➕ Создано новое правило: {category}/{new_name}\n")
+        messagebox.showinfo("Success", f"New rule '{new_name}' created!")
+
+    def _add_rule_button_to_list(self, category: str, rule_name: str):
+        """Добавляет ОДНУ кнопку правила в существующий список (без перестройки)"""
+        if self.scene_rules_list_frame is None:
+            return
+
+        # Ищем контейнер нужной категории
+        target_container = None
+        for cat_frame in self.scene_rules_list_frame.winfo_children():
+            if not isinstance(cat_frame, ctk.CTkFrame):
+                continue
+                # Проверяем все child-элементы
+            for child in cat_frame.winfo_children():
+                if isinstance(child, ctk.CTkButton):
+                    text = child.cget("text")
+                    if category.replace('_', ' ').title() in text:
+                        # Нашли категорию! Второй child — это контейнер с правилами
+                        children = cat_frame.winfo_children()
+                        if len(children) >= 2:
+                            target_container = children[-1]  # Последний — контейнер правил                            break
+                elif isinstance(child, ctk.CTkFrame):
+                    # Это может быть сам контейнер, если мы внутри header_frame
+                    pass                        
+        # Если не нашли через сложный путь — ищем проще
+
+        if target_container is None:
+            for cat_frame in self.scene_rules_list_frame.winfo_children():
+                for child in cat_frame.winfo_children():
+                    if isinstance(child, ctk.CTkFrame):
+                        # Это контейнер с кнопками правил
+                        # Проверяем, содержит ли он кнопки из нужной категории
+                        for grandchild in child.winfo_children():
+                            if isinstance(grandchild, ctk.CTkButton):
+                                # Нашли любой контейнер — проверим заголовок категории рядом
+                                target_container = child
+                                break
+                    if target_container:
+                        break
+                if target_container:
+                    break                        
+        # Если всё ещё не нашли — используем fallback (полная перестройка только этой категории)
+
+        if target_container is None:
+            # Fallback: просто добавим в конец
+            target_container = ctk.CTkFrame(self.scene_rules_list_frame, fg_color="transparent")
+            target_container.pack(fill="x", padx=(20, 0))
+        # Разворачиваем контейнер, если он свёрнут
+
+        if not target_container.winfo_ismapped():
+            target_container.pack(fill="x", padx=(20, 0))
+
+        # Добавляем кнопку нового правила
+        rule_btn = ctk.CTkButton(
+            target_container,
+            text=f"📄 {rule_name}",
+            anchor="w", fg_color="transparent",
+            text_color=("gray10", "gray90"),
+            hover_color=("gray85", "gray30"),
+            command=lambda c=category, r=rule_name: self._select_scene_rule(c, r)
+                                    )
+        rule_btn.pack(fill="x", padx=(20, 0), pady=1)
     
     def _toggle_scene_rules_section(self, container):
         """Разворачивает/сворачивает категорию в списке"""
@@ -855,7 +946,7 @@ class MainWindow(ctk.CTk):
             self._hide_container(container)
         else:
             container.pack(fill="x", padx=(20, 0))
-    
+        
     def _select_scene_rule(self, category: str, rule_name: str):
         """Обработчик выбора правила из списка — отображает редактор справа с индикатором загрузки"""
         if self.scene_rules_editor_frame is None:
@@ -1517,36 +1608,6 @@ class MainWindow(ctk.CTk):
         count_label.configure(text=f"({selected_count}/{total_count})")
         
         # 👇 AUTO-SYNC: синхронизация связей при включенном переключателе
-        if self.auto_sync_var is not None and self.auto_sync_var.get() and self.current_rule_file:
-            current_category = None
-            current_rule_name = None
-            try:
-                rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
-                parts = rel_path.parts
-                if len(parts) >= 2:
-                    current_category = parts[0]
-                    current_rule_name = parts[1].replace('.toml', '')
-            except Exception:
-                pass
-            
-            if current_category and current_rule_name:
-                sync_rules = {
-                    ('locations', 'prefers_actions'): ('actions', 'prefers_locations'),
-                    ('actions', 'prefers_locations'): ('locations', 'prefers_actions'),
-                    ('actions', 'excludes_actions'): ('actions', 'excludes_actions'),
-                }
-                
-                if (current_category, constraint_key) in sync_rules:
-                    target_cat, target_field = sync_rules[(current_category, constraint_key)]
-                    
-                    if var.get():
-                        self._add_bidirectional_link(target_cat, item, target_field, current_rule_name)
-                    else:
-                        self._remove_bidirectional_link(target_cat, item, target_field, current_rule_name)
-        
-        self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
-        
-        # 👇 AUTO-SYNC: синхронизация связей при включенном переключателе
         if self.auto_sync_var and self.auto_sync_var.get() and self.current_rule_file:
             current_category = None
             current_rule_name = None
@@ -1702,56 +1763,57 @@ class MainWindow(ctk.CTk):
         if not hasattr(self, '_current_checkboxes') or not self._current_checkboxes:
             messagebox.showinfo("Info", "Нет изменений для сохранения")
             return
-        
+
         try:
             import tomli
             import tomli_w
         except ImportError:
             messagebox.showerror("Error", "Установите tomli и tomli-w:\npip install tomli tomli-w")
             return
-        
-        # Собираем все изменения
+
+        if not self.current_rule_file:
+            messagebox.showwarning("Warning", "Сначала выберите правило для редактирования")
+            return
+
+        # Собираем изменения
         changes = self._collect_checkbox_changes()
-        
         if not changes:
             messagebox.showinfo("Info", "Нет изменений для сохранения")
             return
-        
-        # Применяем изменения к файлам
+
         saved_count = 0
         errors = []
-        
+
         for category, rule_name, field, new_values in changes:
             file_path = self.project_root / "scene-rules" / category / f"{rule_name}.toml"
             if not file_path.exists():
                 errors.append(f"Файл не найден: {file_path.name}")
                 continue
-            
+                
             try:
                 with open(file_path, 'rb') as f:
                     data = tomli.load(f)
-                
+
                 # Определяем, в какую секцию сохранять
-                if 'soft_constraints' not in data:
-                    data['soft_constraints'] = {}
-                
-                data['soft_constraints'][field] = new_values
-                
+                target_section = 'hard_constraints' if 'excludes' in field or 'requires' in field else 'soft_constraints'
+
+                if target_section not in data:
+                    data[target_section] = {}
+                data[target_section][field] = new_values
+
                 with open(file_path, 'wb') as f:
                     tomli_w.dump(data, f)
-                
+
                 # Обновляем внутренние данные
                 if category in self.scene_rules_data and rule_name in self.scene_rules_data[category]:
                     self.scene_rules_data[category][rule_name]['data'] = data
-                
+
                 saved_count += 1
-                
             except Exception as e:
                 errors.append(f"{file_path.name}: {str(e)}")
-        
-        # Показываем результат
+
         if errors:
-            error_msg = "\n".join(errors[:5])  # Показываем только первые 5 ошибок
+            error_msg = "\n".join(errors[:5])
             if len(errors) > 5:
                 error_msg += f"\n... и ещё {len(errors) - 5} ошибок"
             messagebox.showerror("Ошибки сохранения", error_msg)
@@ -1759,18 +1821,14 @@ class MainWindow(ctk.CTk):
         else:
             messagebox.showinfo("Success", f"✅ Сохранено {saved_count} файлов!")
             self._log(f"💾 Успешно сохранено {saved_count} TOML-файлов\n")
-    
+
     def _collect_checkbox_changes(self) -> list:
-        """Собирает все изменения из чекбоксов
-        
-        Returns:
-            list: [(category, rule_name, field, [selected_values])]
-        """
+        """Собирает все изменения из чекбоксов"""
         changes = []
-        
+
         if not self.current_rule_file:
             return changes
-        
+
         try:
             rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
             parts = rel_path.parts
@@ -1780,18 +1838,20 @@ class MainWindow(ctk.CTk):
             current_rule_name = parts[1].replace('.toml', '')
         except Exception:
             return changes
-        
-        # Собираем значения из каждого constraint_key
+
         for constraint_key, checkboxes in self._current_checkboxes.items():
             selected_values = [tag for tag, var in checkboxes.items() if var.get()]
-            
-            if selected_values:  # Сохраняем только если есть выбранные значения
-                changes.append((current_category, current_rule_name, constraint_key, sorted(selected_values)))
-        
-        return changes
+            changes.append((current_category, current_rule_name, constraint_key, sorted(selected_values)))
 
+        return changes
+        
     def _create_generate_tab(self):
+        if self.tabs_created.get("Generate", False):
+            return  
+        self.tabs_created["Generate"] = True
+
         tab = self.tabview.tab("Generate")
+
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_columnconfigure(1, weight=2)
         # 👇 ПОЛИРОВКА: row 2 растягивается (где лог и кнопки)
@@ -1895,7 +1955,12 @@ class MainWindow(ctk.CTk):
         self._log(f"📂 Output directory: {self.output_directory}\n")
 
     def _create_analyzer_tab(self):
+        if self._tabs_created.get("Analyzer", False):
+            return
+        self._tabs_created["Analyzer"] = True
+
         tab = self.tabview.tab("Analyzer")
+        
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_columnconfigure(1, weight=2)
         tab.grid_rowconfigure(0, weight=1)
@@ -1952,7 +2017,11 @@ class MainWindow(ctk.CTk):
         self._analyzer_log("2. Нажмите '🔍 Analyze Dataset'\n\n")
 
     def _create_settings_tab(self):
+        if self._tabs_created.get("Settings", False):
+            return
+        self._tabs_created["Settings"] = True
         tab = self.tabview.tab("Settings")
+
         self._create_placeholder(tab, "⚙️ Settings\n\nПути и интеграции.")
 
     # ════════════════════════════════════════════════════════════════════════════
