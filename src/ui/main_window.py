@@ -101,19 +101,40 @@ class MainWindow(ctk.CTk):
         self.preview_scroll: ctk.CTkScrollableFrame | None = None
         self.yaml_textbox: ctk.CTkTextbox | None = None
 
+        # Library UI
+        self.library_tree: ctk.CTkScrollableFrame | None = None
+        self.library_editor_frame: ctk.CTkFrame | None = None
+        self.library_tags_container: ctk.CTkScrollableFrame | None = None
+        self.library_search_entry: ctk.CTkEntry | None = None
+        self.library_current_file: Path | None = None
+        self.library_tags: list[str] = []
+
         self.tabview = ctk.CTkTabview(self)
         self.tabview.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         self.tabview.add("Profiles")
         self.tabview.add("Library")
         self.tabview.add("Generate")
         self.tabview.add("Analyzer")
-        self.tabview.add("Settings")
+        self.tabview.add("Settings")       
 
+        self._tags_cache = {}
+
+        # Debouncing для update_idletasks (борьба с "плаванием" окна)
+        self._update_timer = None
+
+        # Debouncing для UI обновлений
+        self._ui_update_timer = None
+        self._pending_ui_updates = set()
+
+        # Создаём только Profiles и Generate сразу (они нужны чаще всего)
         self._create_profiles_tab()
-        self._create_library_tab()
         self._create_generate_tab()
+        self._create_library_tab()
         self._create_analyzer_tab()
         self._create_settings_tab()
+        
+        # Обработчик закрытия окна
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
     def _create_placeholder(self, tab, text):
         label = ctk.CTkLabel(tab, text=text, font=ctk.CTkFont(size=24, weight="bold"))
@@ -449,8 +470,72 @@ class MainWindow(ctk.CTk):
         self._refresh_profiles_list()
 
     def _create_library_tab(self):
+        """Создает вкладку редактирования библиотеки тегов"""
         tab = self.tabview.tab("Library")
-        self._create_placeholder(tab, "📚 Library\n\nЗдесь будет редактор тегов и TOML-правил.")
+        
+        # Двухколоночный layout
+        tab.grid_columnconfigure(0, weight=1)  # Дерево файлов
+        tab.grid_columnconfigure(1, weight=2)  # Редактор тегов
+        tab.grid_rowconfigure(0, weight=1)
+        
+        # === ЛЕВАЯ ПАНЕЛЬ: Дерево файлов ===
+        left_frame = ctk.CTkFrame(tab)
+        left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        left_frame.grid_rowconfigure(1, weight=1)
+        left_frame.grid_columnconfigure(0, weight=1)
+        
+        ctk.CTkLabel(left_frame, text="📚 Prompt Library",
+                      font=ctk.CTkFont(size=16, weight="bold")).grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
+        
+        self.library_tree = ctk.CTkScrollableFrame(left_frame)
+        self.library_tree.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
+        
+        # Строим дерево файлов
+        self._build_library_tree()
+        
+        # === ПРАВАЯ ПАНЕЛЬ: Редактор тегов ===
+        right_frame = ctk.CTkFrame(tab)
+        right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        right_frame.grid_rowconfigure(2, weight=1)
+        right_frame.grid_columnconfigure(0, weight=1)
+        
+        # Заголовок редактора
+        self.library_editor_title = ctk.CTkLabel(right_frame, text="📝 Tag Editor (select a file)",
+                                                   font=ctk.CTkFont(size=18, weight="bold"))
+        self.library_editor_title.grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
+        
+        # Поиск
+        search_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
+        search_frame.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="ew")
+        search_frame.grid_columnconfigure(0, weight=1)
+        
+        self.library_search_entry = ctk.CTkEntry(search_frame, placeholder_text="🔍 Search tags...")
+        self.library_search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        self.library_search_entry.bind('<KeyRelease>', lambda e: self._filter_library_tags())
+        
+        clear_search_btn = ctk.CTkButton(search_frame, text="Clear", width=60,
+                                          command=self._clear_library_search)
+        clear_search_btn.grid(row=0, column=1)
+        
+        # Контейнер для тегов
+        self.library_tags_container = ctk.CTkScrollableFrame(right_frame)
+        self.library_tags_container.grid(row=2, column=0, padx=15, pady=(0, 10), sticky="nsew")
+        
+        # Панель добавления тега
+        add_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
+        add_frame.grid(row=3, column=0, padx=15, pady=(0, 15), sticky="ew")
+        add_frame.grid_columnconfigure(0, weight=1)
+        
+        self.new_tag_entry = ctk.CTkEntry(add_frame, placeholder_text="Enter new tag...")
+        self.new_tag_entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        self.new_tag_entry.bind('<Return>', lambda e: self._add_library_tag())
+        
+        add_tag_btn = ctk.CTkButton(add_frame, text="➕ Add Tag", width=100,
+                                     fg_color="green", hover_color="darkgreen",
+                                     command=self._add_library_tag)
+        add_tag_btn.grid(row=0, column=1)
+        
+        self.library_editor_frame = right_frame
 
     def _create_generate_tab(self):
         tab = self.tabview.tab("Generate")
@@ -616,6 +701,242 @@ class MainWindow(ctk.CTk):
     def _create_settings_tab(self):
         tab = self.tabview.tab("Settings")
         self._create_placeholder(tab, "⚙️ Settings\n\nПути и интеграции.")
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # LIBRARY: Редактор библиотеки тегов
+    # ════════════════════════════════════════════════════════════════════════════
+    
+    def _build_library_tree(self):
+        """Строит дерево файлов из prompt-library"""
+        if self.library_tree is None: return
+        
+        for w in self.library_tree.winfo_children():
+            w.destroy()
+        
+        library_dir = self.project_root / "prompt-library"
+        if not library_dir.exists():
+            ctk.CTkLabel(self.library_tree, text=f"⚠️ Папка не найдена: {library_dir}",
+                         text_color="red").pack(pady=20)
+            return
+        
+        # Группируем файлы по категориям
+        categories = {}
+        for txt_file in sorted(library_dir.rglob("*.txt")):
+            parts = txt_file.relative_to(library_dir).parts
+            if len(parts) >= 2:
+                main_cat = parts[0]
+                sub_cat = parts[1].replace('.txt', '')
+            elif len(parts) == 1:
+                main_cat = "general"
+                sub_cat = parts[0].replace('.txt', '')
+            else:
+                continue
+            
+            if main_cat not in categories:
+                categories[main_cat] = {}
+            if sub_cat not in categories[main_cat]:
+                categories[main_cat][sub_cat] = []
+            categories[main_cat][sub_cat].append(txt_file)
+        
+        # Создаём дерево
+        for main_cat, subcats in sorted(categories.items()):
+            cat_frame = ctk.CTkFrame(self.library_tree, fg_color="transparent")
+            cat_frame.pack(fill="x", pady=2)
+            
+            cat_container = ctk.CTkFrame(cat_frame, fg_color="transparent")
+            cat_container.pack(fill="x")
+            cat_container.pack_forget()
+            
+            ctk.CTkButton(cat_frame, text=f"➤ {main_cat.replace('_', ' ').title()}",
+                           anchor="w", fg_color="gray30", hover_color="gray40", height=30,
+                           font=ctk.CTkFont(size=13, weight="bold"),
+                           command=lambda cc=cat_container: self._toggle_library_section(cc)).pack(fill="x")
+            
+            for sub_cat, files in sorted(subcats.items()):
+                sub_frame = ctk.CTkFrame(cat_container, fg_color="transparent")
+                sub_frame.pack(fill="x", padx=(20, 0), pady=1)
+                
+                sub_container = ctk.CTkFrame(sub_frame, fg_color="transparent")
+                sub_container.pack(fill="x", padx=(20, 0))
+                sub_container.pack_forget()
+                
+                ctk.CTkButton(sub_frame, text=f"➤ {sub_cat.replace('_', ' ').title()}",
+                               anchor="w", fg_color="gray25", hover_color="gray35", height=26,
+                               font=ctk.CTkFont(size=12),
+                               command=lambda sc=sub_container: self._toggle_library_section(sc)).pack(fill="x")
+                
+                for txt_file in files:
+                    file_btn = ctk.CTkButton(sub_container, text=f"📄 {txt_file.name}",
+                                              anchor="w", fg_color="transparent",
+                                              text_color=("gray10", "gray90"),
+                                              hover_color=("gray85", "gray30"),
+                                              command=lambda f=txt_file: self._load_library_file(f))
+                    file_btn.pack(fill="x", padx=(20, 0), pady=1)
+    
+    def _toggle_library_section(self, container):
+        """Разворачивает/сворачивает секцию в дереве Library"""
+        if container.winfo_ismapped():
+            container.pack_forget()
+        else:
+            container.pack(fill="x", padx=(20, 0))
+    
+    def _load_library_file(self, file_path: Path):
+        """Загружает теги из выбранного файла"""
+        self.library_current_file = file_path
+        self.library_tags = []
+        
+        # Читаем теги
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        self.library_tags.append(line)
+        except Exception as e:
+            self._log(f"❌ Ошибка чтения {file_path}: {e}\n")
+            return
+        
+        # Обновляем заголовок
+        if self.library_editor_title:
+            rel_path = file_path.relative_to(self.project_root / "prompt-library")
+            self.library_editor_title.configure(text=f"📝 {rel_path} ({len(self.library_tags)} tags)")
+        
+        # Показываем теги
+        self._display_library_tags()
+        
+        # Очищаем поиск
+        if self.library_search_entry:
+            self.library_search_entry.delete(0, "end")
+    
+    def _display_library_tags(self, filter_text: str = ""):
+        """Отображает теги в редакторе"""
+        if self.library_tags_container is None: return
+        
+        for w in self.library_tags_container.winfo_children():
+            w.destroy()
+        
+        if not self.library_tags:
+            ctk.CTkLabel(self.library_tags_container, text="(No tags in this file)",
+                         text_color="gray").pack(anchor="w", padx=10, pady=10)
+            return
+        
+        # Фильтруем теги
+        filtered_tags = self.library_tags
+        if filter_text:
+            filter_lower = filter_text.lower()
+            filtered_tags = [t for t in self.library_tags if filter_lower in t.lower()]
+        
+        if not filtered_tags:
+            ctk.CTkLabel(self.library_tags_container, text=f"(No tags match '{filter_text}')",
+                         text_color="gray").pack(anchor="w", padx=10, pady=10)
+            return
+        
+        # Показываем теги
+        for i, tag in enumerate(filtered_tags):
+            tag_row = ctk.CTkFrame(self.library_tags_container, fg_color="transparent")
+            tag_row.pack(fill="x", pady=1)
+            
+            tag_label = ctk.CTkLabel(tag_row, text=f"  • {tag}", anchor="w")
+            tag_label.pack(side="left", padx=(5, 0), fill="x", expand=True)
+            
+            delete_btn = ctk.CTkButton(tag_row, text="×", width=30, height=25,
+                                        fg_color="#dc2626", hover_color="#991b1b",
+                                        command=lambda t=tag: self._delete_library_tag(t))
+            delete_btn.pack(side="right", padx=(5, 0))
+    
+    def _filter_library_tags(self):
+        """Фильтрует теги по тексту поиска"""
+        if self.library_search_entry is None: return
+        filter_text = self.library_search_entry.get().strip()
+        self._display_library_tags(filter_text)
+    
+    def _clear_library_search(self):
+        """Очищает поле поиска"""
+        if self.library_search_entry:
+            self.library_search_entry.delete(0, "end")
+            self._display_library_tags()
+    
+    def _add_library_tag(self):
+        """Добавляет новый тег в файл"""
+        if self.library_current_file is None:
+            messagebox.showwarning("Warning", "Сначала выберите файл")
+            return
+        
+        if not hasattr(self, 'new_tag_entry') or self.new_tag_entry is None:
+            return
+        
+        new_tag = self.new_tag_entry.get().strip()
+        if not new_tag:
+            return
+        
+        # Проверяем, что тег ещё не существует
+        if new_tag in self.library_tags:
+            messagebox.showwarning("Warning", f"Тег '{new_tag}' уже существует")
+            return
+        
+        # Добавляем тег
+        self.library_tags.append(new_tag)
+        self.new_tag_entry.delete(0, "end")
+        
+        # Сохраняем в файл
+        self._save_library_file()
+        
+        # Обновляем отображение
+        self._display_library_tags()
+        
+        # Обновляем заголовок
+        if self.library_editor_title:
+            rel_path = self.library_current_file.relative_to(self.project_root / "prompt-library")
+            self.library_editor_title.configure(text=f"📝 {rel_path} ({len(self.library_tags)} tags)")
+        
+        self._log(f"➕ Добавлен тег: {new_tag}\n")
+    
+    def _delete_library_tag(self, tag: str):
+        """Удаляет тег из файла"""
+        if self.library_current_file is None:
+            return
+        
+        # Подтверждение
+        if not messagebox.askyesno("Confirm Delete", f"Удалить тег '{tag}'?"):
+            return
+        
+        # Удаляем тег
+        if tag in self.library_tags:
+            self.library_tags.remove(tag)
+        
+        # Сохраняем в файл
+        self._save_library_file()
+        
+        # Обновляем отображение
+        filter_text = self.library_search_entry.get().strip() if self.library_search_entry else ""
+        self._display_library_tags(filter_text)
+        
+        # Обновляем заголовок
+        if self.library_editor_title:
+            rel_path = self.library_current_file.relative_to(self.project_root / "prompt-library")
+            self.library_editor_title.configure(text=f"📝 {rel_path} ({len(self.library_tags)} tags)")
+        
+        self._log(f"🗑️ Удалён тег: {tag}\n")
+    
+    def _save_library_file(self):
+        """Сохраняет теги обратно в файл"""
+        if self.library_current_file is None:
+            return
+        
+        try:
+            with open(self.library_current_file, 'w', encoding='utf-8') as f:
+                for tag in self.library_tags:
+                    f.write(f"{tag}\n")
+            
+            # Инвалидируем кэш тегов
+            cache_key = str(self.library_current_file)
+            if cache_key in self._tags_cache:
+                del self._tags_cache[cache_key]
+            
+            self._log(f"💾 Файл сохранён: {self.library_current_file.name}\n")
+        except Exception as e:
+            self._log(f"❌ Ошибка сохранения: {e}\n")
+            messagebox.showerror("Error", f"Не удалось сохранить файл: {e}")
 
     # ════════════════════════════════════════════════════════════════════════════
     # 3. PROFILES: Управление списком персонажей
@@ -873,10 +1194,9 @@ class MainWindow(ctk.CTk):
             self.selected_dna_tags.append(tag_entry)
             ui['label'].configure(text_color="green")
             ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
-        self._refresh_selected_dna_tags_display()
-        # Обновляем превью и default style (для звёздочек ⭐)
-        self._refresh_yaml_preview()
-        self._refresh_hair_rules_display()
+        self._debounce_ui_update('dna_chips')
+        self._debounce_ui_update('yaml_preview')
+        self._debounce_ui_update('hair_rules')
     
     def _refresh_selected_dna_tags_display(self):
         if self.selected_dna_tags_container is None: return
@@ -905,9 +1225,9 @@ class MainWindow(ctk.CTk):
             ui = self.dna_tag_ui_elements[tag_key]
             ui['label'].configure(text_color=("gray10", "gray90"))
             ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
-        self._refresh_selected_dna_tags_display()
-        self._refresh_yaml_preview()
-        self._refresh_hair_rules_display()
+        self._debounce_ui_update('dna_chips')
+        self._debounce_ui_update('yaml_preview')
+        self._debounce_ui_update('hair_rules')
     
     def _sync_dna_tag_ui_states(self):
         if not self.dna_tag_ui_elements: return
@@ -1022,7 +1342,7 @@ class MainWindow(ctk.CTk):
             self.selected_wardrobe_tags.append(tag_entry)
             ui['label'].configure(text_color="green")
             ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
-        self._refresh_selected_tags_display()
+        self._debounce_ui_update('wardrobe_chips')
     
     def _refresh_selected_tags_display(self):
         if self.selected_tags_container is None: return
@@ -1050,7 +1370,7 @@ class MainWindow(ctk.CTk):
             ui = self.tag_ui_elements[tag_key]
             ui['label'].configure(text_color=("gray10", "gray90"))
             ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
-        self._refresh_selected_tags_display()
+        self._debounce_ui_update('wardrobe_chips')
     
     def _sync_tag_ui_states(self):
         if not self.tag_ui_elements: return
@@ -1180,7 +1500,7 @@ class MainWindow(ctk.CTk):
         elif action == 'avoid' and not was_in_avoid:
             self.avoided_personality_tags.append(tag_entry)
         self._sync_personality_ui_states()
-        self._refresh_personality_tags_display()
+        self._debounce_ui_update('personality_chips')
     
     def _sync_personality_ui_states(self):
         if not self.personality_tag_ui_elements: return
@@ -1731,7 +2051,7 @@ class MainWindow(ctk.CTk):
             self.selected_lighting_tags.append(tag)
             ui['label'].configure(text_color="green")
             ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
-        self._refresh_selected_lighting_display()
+        self._debounce_ui_update('lighting_chips')
     
     def _refresh_selected_lighting_display(self):
         if self.selected_lighting_container is None: return
@@ -1829,7 +2149,7 @@ class MainWindow(ctk.CTk):
             self.selected_weather_tags.append(tag)
             ui['label'].configure(text_color="green")
             ui['button'].configure(text="-", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'])
-        self._refresh_selected_weather_display()
+        self._debounce_ui_update('weather_chips')
     
     def _refresh_selected_weather_display(self):
         if self.selected_weather_container is None: return
@@ -1857,7 +2177,7 @@ class MainWindow(ctk.CTk):
                 ui = self.weather_tag_ui_elements[tag_key]
                 ui['label'].configure(text_color=("gray10", "gray90"))
                 ui['button'].configure(text="+", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'])
-            self._refresh_selected_weather_display()
+        self._debounce_ui_update('weather_chips')
 
     # ════════════════════════════════════════════════════════════════════════════
     # 4.6 Preview
@@ -2178,22 +2498,40 @@ class MainWindow(ctk.CTk):
     # 6. Утилиты библиотеки тегов
     # ════════════════════════════════════════════════════════════════════════════
     
-    def _load_tags_from_library(self, relative_path):
+    def _load_tags_from_library(self, relative_path: str) -> list:
+        """Загружает список тегов из файла библиотеки тегов (с кэшированием)"""
+        # 👇 Проверяем кэш
+        if relative_path in self._tags_cache:
+            return self._tags_cache[relative_path]
+        
         file_path = self.project_root / "prompt-library" / relative_path
         tags = []
         if not file_path.exists():
+            self._log(f"⚠️ Файл не найден: {relative_path}\n")
             return tags
+        
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
                         tags.append(line)
+            
+            # 👇 Сохраняем в кэш
+            self._tags_cache[relative_path] = tags
+            self._log(f"✅ Загружено {len(tags)} тегов из {relative_path}\n")
         except Exception as e:
             self._log(f"❌ Ошибка чтения {relative_path}: {e}\n")
+        
         return tags
     
-    def _load_tags_from_file(self, file_path):
+    def _load_tags_from_file(self, file_path) -> list:
+        """Загружает теги из конкретного файла (с кэшированием)"""
+        # 👇 Преобразуем Path в строку для кэша
+        cache_key = str(file_path)
+        if cache_key in self._tags_cache:
+            return self._tags_cache[cache_key]
+        
         tags = []
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -2201,9 +2539,46 @@ class MainWindow(ctk.CTk):
                     line = line.strip()
                     if line and not line.startswith('#'):
                         tags.append(line)
+            
+            # 👇 Сохраняем в кэш
+            self._tags_cache[cache_key] = tags
         except Exception as e:
             self._log(f"❌ Ошибка чтения {file_path}: {e}\n")
+        
         return tags
+
+    def _debounce_ui_update(self, update_type: str, delay_ms: int = 150):
+        """Откладывает обновление UI на delay_ms миллисекунд"""
+        self._pending_ui_updates.add(update_type)
+        
+        # Отменяем предыдущий таймер, если он есть
+        if self._ui_update_timer:
+            self.after_cancel(self._ui_update_timer)
+        
+        # Создаём новый таймер
+        self._ui_update_timer = self.after(delay_ms, self._process_pending_ui_updates)
+    
+    def _process_pending_ui_updates(self):
+        """Обрабатывает все отложенные обновления UI"""
+        updates = self._pending_ui_updates.copy()
+        self._pending_ui_updates.clear()
+        self._ui_update_timer = None
+        
+        # Выполняем все накопившиеся обновления
+        if 'dna_chips' in updates:
+            self._refresh_selected_dna_tags_display()
+        if 'wardrobe_chips' in updates:
+            self._refresh_selected_tags_display()
+        if 'personality_chips' in updates:
+            self._refresh_personality_tags_display()
+        if 'lighting_chips' in updates:
+            self._refresh_selected_lighting_display()
+        if 'weather_chips' in updates:
+            self._refresh_selected_weather_display()
+        if 'yaml_preview' in updates:
+            self._refresh_yaml_preview()
+        if 'hair_rules' in updates:
+            self._refresh_hair_rules_display()
 
     # ════════════════════════════════════════════════════════════════════════════
     # 7. GENERATE
@@ -2279,6 +2654,7 @@ class MainWindow(ctk.CTk):
         thread.start()
 
     def _run_generation(self, profile_name, num_scenes, balance_folder):
+        self.update_idletasks()
         self._log(f"\n{'='*60}\n")
         self._log(f"🚀 Starting generation: {num_scenes} scenes for '{profile_name}'\n")
         try:
@@ -2351,10 +2727,11 @@ class MainWindow(ctk.CTk):
         messagebox.showinfo("Auto-Fix Ready", f"✅ Balance from: {folder}\nНажмите '🚀 Generate Batch'!")
 
     def _analyzer_log(self, message):
+        """Добавляет сообщение в лог анализатора"""
         if self.analyzer_textbox is None: return
         self.analyzer_textbox.insert("end", message)
         self.analyzer_textbox.see("end")
-        self.update_idletasks()
+        self._debounced_update()  # 👈 Debounced вместо прямого вызова
 
     def _clear_analyzer_log(self):
         if self.analyzer_textbox is None: return
@@ -2437,12 +2814,13 @@ class MainWindow(ctk.CTk):
     # ════════════════════════════════════════════════════════════════════════════
     
     def _log(self, message):
+        """Добавляет сообщение в лог-окно (разрешено копирование, запрещено редактирование)"""
         if not hasattr(self, 'log_textbox') or self.log_textbox is None:
             print(message, end='')
             return
         self.log_textbox.insert("end", message)
         self.log_textbox.see("end")
-        self.update_idletasks()
+        self._debounced_update()  # 👈 Debounced вместо прямого вызова
     
     def _block_text_edit(self, event):
         if self.log_textbox is None: return "break"
@@ -2459,6 +2837,26 @@ class MainWindow(ctk.CTk):
         self.clipboard_append(content)
         messagebox.showinfo("Copied", "✅ Лог скопирован!")
 
+    def _debounced_update(self, delay_ms: int = 100):
+        """Откладывает update_idletasks, вызывая его не чаще 1 раза в delay_ms"""
+        # Отменяем предыдущий таймер
+        if self._update_timer:
+            self.after_cancel(self._update_timer)
+        # Создаём новый таймер
+        self._update_timer = self.after(delay_ms, self._do_update)
+    
+    def _do_update(self):
+        """Выполняет отложенный update_idletasks"""
+        self._update_timer = None
+        try:
+            self.update_idletasks()
+        except Exception:
+            pass  # Окно могло быть закрыто
+
+    def _on_closing(self):
+        """Мгновенное закрытие приложения через os._exit"""
+        print("🔄 Закрытие Dataset Composer...")
+        os._exit(0)
 
 if __name__ == "__main__":
     app = MainWindow()
