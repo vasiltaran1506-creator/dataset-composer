@@ -1,0 +1,7 @@
+[meta]
+id = "bar"
+display_name = "BAR"
+
+[soft_constraints]
+
+[hard_constraints]

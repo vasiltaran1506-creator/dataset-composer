@@ -101,6 +101,16 @@ class MainWindow(ctk.CTk):
         self.preview_scroll: ctk.CTkScrollableFrame | None = None
         self.yaml_textbox: ctk.CTkTextbox | None = None
 
+        # Scene Rules UI
+        self.scene_rules_scroll: ctk.CTkScrollableFrame | None = None
+        self.scene_rules_list_frame: ctk.CTkScrollableFrame | None = None
+        self.scene_rules_editor_frame: ctk.CTkFrame | None = None
+        self.auto_sync_var: ctk.BooleanVar | None = None
+        
+        # Scene Rules данные
+        self.scene_rules_data: dict = {}  # Загруженные данные из TOML
+        self.current_rule_file: Path | None = None  # Текущий редактируемый файл
+
         # Library UI
         self.library_tree: ctk.CTkScrollableFrame | None = None
         self.library_editor_frame: ctk.CTkFrame | None = None
@@ -470,12 +480,29 @@ class MainWindow(ctk.CTk):
         self._refresh_profiles_list()
 
     def _create_library_tab(self):
-        """Создает вкладку редактирования библиотеки тегов"""
+        """Создает вкладку редактирования библиотеки тегов и scene-rules"""
         tab = self.tabview.tab("Library")
         
+        # Создаём субвкладки
+        library_tabview = ctk.CTkTabview(tab)
+        library_tabview.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        library_tabview.add("📚 Tag Editor")
+        library_tabview.add("🎬 Scene Rules")
+        
+        # === СУБВКЛАДКА 1: Tag Editor ===
+        tag_editor_tab = library_tabview.tab("📚 Tag Editor")
+        self._create_tag_editor_content(tag_editor_tab)
+        
+        # === СУБВКЛАДКА 2: Scene Rules ===
+        scene_rules_tab = library_tabview.tab("🎬 Scene Rules")
+        self._create_scene_rules_content(scene_rules_tab)
+    
+    def _create_tag_editor_content(self, tab):
+        """Создает содержимое вкладки Tag Editor (переносим старый код сюда)"""
         # Двухколоночный layout
-        tab.grid_columnconfigure(0, weight=1)  # Дерево файлов
-        tab.grid_columnconfigure(1, weight=2)  # Редактор тегов
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=2)
         tab.grid_rowconfigure(0, weight=1)
         
         # === ЛЕВАЯ ПАНЕЛЬ: Дерево файлов ===
@@ -490,7 +517,6 @@ class MainWindow(ctk.CTk):
         self.library_tree = ctk.CTkScrollableFrame(left_frame)
         self.library_tree.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
         
-        # Строим дерево файлов
         self._build_library_tree()
         
         # === ПРАВАЯ ПАНЕЛЬ: Редактор тегов ===
@@ -499,7 +525,6 @@ class MainWindow(ctk.CTk):
         right_frame.grid_rowconfigure(2, weight=1)
         right_frame.grid_columnconfigure(0, weight=1)
         
-        # Заголовок редактора
         self.library_editor_title = ctk.CTkLabel(right_frame, text="📝 Tag Editor (select a file)",
                                                    font=ctk.CTkFont(size=18, weight="bold"))
         self.library_editor_title.grid(row=0, column=0, pady=(15, 10), padx=15, sticky="w")
@@ -536,6 +561,902 @@ class MainWindow(ctk.CTk):
         add_tag_btn.grid(row=0, column=1)
         
         self.library_editor_frame = right_frame
+    
+    def _create_scene_rules_content(self, tab):
+        """Создает содержимое вкладки Scene Rules"""
+        # === ВЕРХНЯЯ ПАНЕЛЬ: Переключатель автосинхронизации + кнопки ===
+        top_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        top_frame.pack(fill="x", padx=10, pady=(10, 5))
+        top_frame.grid_columnconfigure(1, weight=1)
+        
+        # Переключатель автосинхронизации
+        sync_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
+        sync_frame.pack(side="left", padx=(10, 5))
+        
+        self.auto_sync_var = ctk.BooleanVar(value=True)
+        sync_switch = ctk.CTkSwitch(sync_frame, text="Auto-sync", variable=self.auto_sync_var,
+                                     command=self._on_auto_sync_toggled)
+        sync_switch.pack(side="left", padx=(0, 5))
+        
+        # Кнопка с вопросом (тултип)
+        help_btn = ctk.CTkButton(sync_frame, text="?", width=25, height=25,
+                                  fg_color="gray40", hover_color="gray50",
+                                  font=ctk.CTkFont(size=12, weight="bold"),
+                                  corner_radius=12,
+                                  command=self._show_auto_sync_help)
+        help_btn.pack(side="left")
+        
+        # Кнопки справа
+        reload_btn = ctk.CTkButton(top_frame, text="🔄 Reload", width=100,
+                                    fg_color="gray40", hover_color="gray50",
+                                    command=self._reload_scene_rules)
+        reload_btn.pack(side="right", padx=(5, 10))
+        
+        save_btn = ctk.CTkButton(top_frame, text="💾 Save All", width=100,
+                                  fg_color="green", hover_color="darkgreen",
+                                  command=self._save_scene_rules)
+        save_btn.pack(side="right", padx=(5, 0))
+        
+        # === ОСНОВНОЙ КОНТЕНТ: Двухколоночный layout ===
+        content_frame = ctk.CTkFrame(tab)
+        content_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        content_frame.grid_columnconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(1, weight=2)
+        content_frame.grid_rowconfigure(0, weight=1)
+        
+        # Левая панель: список правил
+        self.scene_rules_list_frame = ctk.CTkScrollableFrame(content_frame)
+        self.scene_rules_list_frame.grid(row=0, column=0, padx=(5, 2), pady=5, sticky="nsew")
+        
+        # Правая панель: редактор
+        self.scene_rules_editor_frame = ctk.CTkFrame(content_frame)
+        self.scene_rules_editor_frame.grid(row=0, column=1, padx=(2, 5), pady=5, sticky="nsew")
+        
+        # Заглушка редактора
+        placeholder = ctk.CTkLabel(self.scene_rules_editor_frame,
+                                    text="👈 Выберите правило слева для редактирования",
+                                    font=ctk.CTkFont(size=14),
+                                    text_color="gray")
+        placeholder.pack(expand=True)
+        
+        # Загружаем данные
+        self._load_scene_rules()
+        self._build_scene_rules_list()
+
+    def _show_auto_sync_help(self):
+        """Показывает справку о функции автосинхронизации"""
+        help_text = """🔄 Автосинхронизация связей
+
+Когда ВКЛЮЧЕНА:
+• Если вы добавляете действие 'reading' в список предпочтений локации 'library'
+• Программа автоматически добавит 'library' в список предпочтений действия 'reading'
+• Это обеспечивает консистентность данных
+
+Когда ВЫКЛЮЧЕНА:
+• Вы полностью контролируете все связи вручную
+• Изменения в одном файле не влияют на другие
+• Полезно для тонкой настройки или исправления ошибок
+
+Рекомендация:
+Оставьте включенной для большинства случаев. Отключайте только если нужно создать асимметричные связи."""
+        
+        messagebox.showinfo("Auto-sync Help", help_text)
+    
+    def _on_auto_sync_toggled(self):
+        """Обработчик переключения автосинхронизации"""
+        if self.auto_sync_var is None:
+            return
+        if self.auto_sync_var.get():
+            self._log("🔄 Автосинхронизация ВКЛЮЧЕНА\n")
+        else:
+            self._log("🔒 Автосинхронизация ВЫКЛЮЧЕНА (ручной режим)\n")
+
+    # ════════════════════════════════════════════════════════════════════════════
+    # LIBRARY: Scene Rules Editor
+    # ════════════════════════════════════════════════════════════════════════════
+    
+    def _load_scene_rules(self):
+        """Загружает все TOML-файлы из папки scene-rules"""
+        self.scene_rules_data = {}
+        
+        rules_dir = self.project_root / "scene-rules"
+        if not rules_dir.exists():
+            self._log(f"⚠️ Папка scene-rules не найдена: {rules_dir}\n")
+            return
+        
+        # Сканируем все подпапки: locations, actions, location_types, weather, camera
+        for category_dir in sorted(rules_dir.iterdir()):
+            if not category_dir.is_dir():
+                continue
+            
+            category_name = category_dir.name
+            self.scene_rules_data[category_name] = {}
+            
+            for toml_file in sorted(category_dir.glob("*.toml")):
+                try:
+                    import tomli
+                    with open(toml_file, 'rb') as f:
+                        data = tomli.load(f)
+                    self.scene_rules_data[category_name][toml_file.stem] = {
+                        'path': toml_file,
+                        'data': data
+                    }
+                except ImportError:
+                    # tomli не установлен, пробуем tomllib (Python 3.11+)
+                    try:
+                        import tomllib
+                        with open(toml_file, 'rb') as f:
+                            data = tomllib.load(f)
+                        self.scene_rules_data[category_name][toml_file.stem] = {
+                            'path': toml_file,
+                            'data': data
+                        }
+                    except Exception as e:
+                        self._log(f"❌ Ошибка чтения {toml_file.name}: {e}\n")
+                except Exception as e:
+                    self._log(f"❌ Ошибка чтения {toml_file.name}: {e}\n")
+        
+        # Подсчёт
+        total_files = sum(len(v) for v in self.scene_rules_data.values())
+        self._log(f"✅ Загружено {total_files} scene-rules файлов\n")
+    
+    def _build_scene_rules_list(self):
+        """Строит список правил в левой панели с кнопками добавления"""
+        if self.scene_rules_list_frame is None:
+            return
+        
+        # Очищаем список
+        for w in self.scene_rules_list_frame.winfo_children():
+            w.destroy()
+        
+        if not self.scene_rules_data:
+            ctk.CTkLabel(self.scene_rules_list_frame,
+                         text="(No rules loaded)",
+                         text_color="gray").pack(pady=10)
+            return
+        
+        # Создаём категории
+        for category_name, rules in sorted(self.scene_rules_data.items()):
+            cat_frame = ctk.CTkFrame(self.scene_rules_list_frame, fg_color="transparent")
+            cat_frame.pack(fill="x", pady=2)
+            
+            # Заголовок категории с кнопкой добавления
+            header_frame = ctk.CTkFrame(cat_frame, fg_color="transparent")
+            header_frame.pack(fill="x")
+            
+            cat_container = ctk.CTkFrame(cat_frame, fg_color="transparent")
+            cat_container.pack(fill="x")
+            cat_container.pack_forget()
+            
+            ctk.CTkButton(
+                header_frame,
+                text=f"➤ {category_name.replace('_', ' ').title()} ({len(rules)})",
+                anchor="w", fg_color="gray30", hover_color="gray40", height=30,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                command=lambda cc=cat_container: self._toggle_scene_rules_section(cc)
+            ).pack(side="left", fill="x", expand=True)
+            
+            # Кнопка добавления нового правила
+            add_btn = ctk.CTkButton(
+                header_frame,
+                text="+",
+                width=30, height=30,
+                fg_color=COLORS['success_green'],
+                hover_color=COLORS['success_green_hover'],
+                font=ctk.CTkFont(size=16, weight="bold"),
+                command=lambda cat=category_name: self._create_new_rule(cat)
+            )
+            add_btn.pack(side="right", padx=(5, 0))
+            
+            for rule_name in sorted(rules.keys()):
+                rule_btn = ctk.CTkButton(
+                    cat_container,
+                    text=f"📄 {rule_name}",
+                    anchor="w", fg_color="transparent",
+                    text_color=("gray10", "gray90"),
+                    hover_color=("gray85", "gray30"),
+                    command=lambda c=category_name, r=rule_name: self._select_scene_rule(c, r)
+                )
+                rule_btn.pack(fill="x", padx=(20, 0), pady=1)
+    
+    def _create_new_rule(self, category: str):
+        """Создает новое правило в указанной категории"""
+        # Генерируем имя для нового правила
+        new_name = f"new_{category.lower().replace(' ', '_')}_rule"
+        
+        # Проверяем, что такого правила ещё нет
+        if new_name in self.scene_rules_data.get(category, {}):
+            # Если есть, добавляем номер
+            counter = 1
+            while f"{new_name}_{counter}" in self.scene_rules_data.get(category, {}):
+                counter += 1
+            new_name = f"{new_name}_{counter}"
+        
+        # Создаём путь к новому файлу
+        rules_dir = self.project_root / "scene-rules" / category
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        new_file_path = rules_dir / f"{new_name}.toml"
+        
+        # Создаём базовую структуру TOML
+        new_data = {
+            'meta': {
+                'id': new_name,
+                'display_name': new_name.replace('_', ' ').title(),
+            },
+            'soft_constraints': {},
+            'hard_constraints': {}
+        }
+        
+        # Для locations добавляем type
+        if category == 'locations':
+            new_data['meta']['type'] = 'indoor_private'
+        
+        # Записываем в файл
+        try:
+            import tomli_w
+            with open(new_file_path, 'wb') as f:
+                tomli_w.dump(new_data, f)
+            
+            # Перезагружаем данные
+            self._load_scene_rules()
+            self._build_scene_rules_list()
+            
+            # Автоматически открываем новое правило
+            self._select_scene_rule(category, new_name)
+            
+            self._log(f"➕ Создано новое правило: {category}/{new_name}\n")
+            messagebox.showinfo("Success", f"New rule '{new_name}' created!")
+            
+        except ImportError:
+            # Если tomli_w не установлен, пишем вручную
+            with open(new_file_path, 'w', encoding='utf-8') as f:
+                f.write("[meta]\n")
+                f.write(f'id = "{new_name}"\n')
+                f.write(f'display_name = "{new_name.replace("_", " ").title()}"\n')
+                if category == 'locations':
+                    f.write('type = "indoor_private"\n')
+                f.write("\n[soft_constraints]\n\n[hard_constraints]\n")
+            
+            self._load_scene_rules()
+            self._build_scene_rules_list()
+            self._select_scene_rule(category, new_name)
+            
+            self._log(f"➕ Создано новое правило: {category}/{new_name}\n")
+            messagebox.showinfo("Success", f"New rule '{new_name}' created!")
+            
+        except Exception as e:
+            self._log(f"❌ Ошибка создания правила: {e}\n")
+            messagebox.showerror("Error", f"Failed to create rule: {e}")
+    
+    def _toggle_scene_rules_section(self, container):
+        """Разворачивает/сворачивает категорию в списке"""
+        if container.winfo_ismapped():
+            container.pack_forget()
+        else:
+            container.pack(fill="x", padx=(20, 0))
+    
+    def _select_scene_rule(self, category: str, rule_name: str):
+        """Обработчик выбора правила из списка — отображает редактор справа"""
+        if self.scene_rules_editor_frame is None:
+            return
+        
+        # Очищаем правую панель
+        for w in self.scene_rules_editor_frame.winfo_children():
+            w.destroy()
+        
+        # Получаем данные правила
+        rule_data = self.scene_rules_data[category][rule_name]
+        self.current_rule_file = rule_data['path']
+        data = rule_data['data']
+        meta = data.get('meta', {})
+        
+        self._log(f"📄 Редактирование: {category}/{rule_name}\n")
+        
+        # === Заголовок ===
+        header_frame = ctk.CTkFrame(self.scene_rules_editor_frame, fg_color="transparent")
+        header_frame.pack(fill="x", padx=15, pady=(10, 5))
+        
+        ctk.CTkLabel(header_frame, 
+                      text=f"📝 {meta.get('display_name', rule_name)}",
+                      font=ctk.CTkFont(size=18, weight="bold")).pack(side="left")
+        
+        ctk.CTkLabel(header_frame,
+                      text=f"({category}/{rule_name}.toml)",
+                      text_color="gray60").pack(side="left", padx=(10, 0))
+        
+        # === Скроллируемая область для секций ===
+        scroll_frame = ctk.CTkScrollableFrame(self.scene_rules_editor_frame)
+        scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        # === Секция Meta ===
+        self._render_meta_section(scroll_frame, meta, category)
+        
+        # === Секции в зависимости от категории ===
+        if category == 'locations':
+            self._render_location_editor(scroll_frame, data)
+        elif category == 'actions':
+            self._render_action_editor(scroll_frame, data)
+        elif category == 'location_types':
+            self._render_location_type_editor(scroll_frame, data)
+        elif category == 'weather':
+            self._render_weather_editor(scroll_frame, data)  # 👈 Новый метод
+        elif category == 'camera':
+            self._render_camera_editor(scroll_frame, data)  # 👈 Новый метод
+
+    def _render_meta_section(self, parent, meta: dict, category: str):
+        """Рендерит секцию meta-информации (редактируемую)"""
+        meta_frame = ctk.CTkFrame(parent)
+        meta_frame.pack(fill="x", padx=5, pady=5)
+        
+        ctk.CTkLabel(meta_frame, text="🏷️ Meta Information",
+                      font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=10, pady=(8, 5))
+        
+        # ID (редактируемый)
+        id_row = ctk.CTkFrame(meta_frame, fg_color="transparent")
+        id_row.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(id_row, text="ID:", width=120, anchor="w").pack(side="left")
+        id_entry = ctk.CTkEntry(id_row, width=300)
+        id_entry.pack(side="left")
+        id_entry.insert(0, meta.get('id', ''))
+        id_entry.bind('<FocusOut>', lambda e: self._save_meta_changes('id', id_entry.get()))
+        
+        # Display Name (редактируемый)
+        name_row = ctk.CTkFrame(meta_frame, fg_color="transparent")
+        name_row.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(name_row, text="Display Name:", width=120, anchor="w").pack(side="left")
+        name_entry = ctk.CTkEntry(name_row, width=300)
+        name_entry.pack(side="left")
+        name_entry.insert(0, meta.get('display_name', ''))
+        name_entry.bind('<FocusOut>', lambda e: self._save_meta_changes('display_name', name_entry.get()))
+        
+        # Type (только для locations)
+        if category == 'locations':
+            type_row = ctk.CTkFrame(meta_frame, fg_color="transparent")
+            type_row.pack(fill="x", padx=10, pady=2)
+            ctk.CTkLabel(type_row, text="Location Type:", width=120, anchor="w").pack(side="left")
+            types = sorted(self.scene_rules_data.get('location_types', {}).keys())
+            type_combo = ctk.CTkComboBox(type_row, values=types, width=300)
+            type_combo.pack(side="left")
+            current_type = meta.get('type', '')
+            if current_type in types:
+                type_combo.set(current_type)
+            type_combo.configure(command=lambda val: self._save_meta_changes('type', val))
+
+    def _save_meta_changes(self, field: str, new_value: str):
+        """Сохраняет изменения ID/Display Name/Type в TOML файл"""
+        if self.current_rule_file is None or not self.current_rule_file.exists():
+            return
+        
+        new_value = new_value.strip()
+        if not new_value:
+            return
+        
+        # Определяем текущую категорию и имя правила
+        try:
+            rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
+            parts = rel_path.parts
+            if len(parts) < 2:
+                return
+            category = parts[0]
+            rule_name = parts[1].replace('.toml', '')
+        except Exception:
+            return
+        
+        # Загружаем текущие данные
+        rule_data = self.scene_rules_data.get(category, {}).get(rule_name, {}).get('data', {})
+        if not rule_data:
+            return
+        
+        if 'meta' not in rule_data:
+            rule_data['meta'] = {}
+        
+        old_value = rule_data['meta'].get(field, '')
+        if old_value == new_value:
+            return
+        
+        rule_data['meta'][field] = new_value
+        
+        # Сохраняем в файл
+        try:
+            import tomli_w
+            with open(self.current_rule_file, 'wb') as f:
+                tomli_w.dump(rule_data, f)
+        except ImportError:
+            # Fallback: ручная запись (упрощенная)
+            self._write_toml_manually(self.current_rule_file, rule_data)
+        
+        # Если изменился ID — переименовываем файл
+        if field == 'id' and new_value != rule_name:
+            # Проверяем, что новое имя валидно
+            safe_name = new_value.replace(' ', '_').lower()
+            new_file_path = self.current_rule_file.parent / f"{safe_name}.toml"
+            
+            if new_file_path.exists():
+                self._log(f"⚠️ Файл с ID '{safe_name}' уже существует\n")
+                messagebox.showwarning("Warning", f"Rule with ID '{safe_name}' already exists!")
+                return
+            
+            try:
+                import shutil
+                shutil.move(str(self.current_rule_file), str(new_file_path))
+                self.current_rule_file = new_file_path
+                
+                # Обновляем внутренние данные
+                self.scene_rules_data[category][safe_name] = self.scene_rules_data[category].pop(rule_name)
+                
+                # Обновляем meta внутри
+                self.scene_rules_data[category][safe_name]['path'] = new_file_path
+                self.scene_rules_data[category][safe_name]['data']['meta']['id'] = safe_name
+                
+                # Перестраиваем список слева
+                self._build_scene_rules_list()
+                
+                self._log(f"✏️ ID изменён: {rule_name} → {safe_name}\n")
+            except Exception as e:
+                self._log(f"❌ Ошибка переименования: {e}\n")
+                return
+        else:
+            self._log(f"💾 Meta сохранено: {field} = {new_value}\n")
+    
+    def _write_toml_manually(self, file_path: Path, data: dict):
+        """Простая ручная запись TOML (fallback)"""
+        import json
+        with open(file_path, 'w', encoding='utf-8') as f:
+            # Упрощённая запись — для совместимости
+            for section, content in data.items():
+                f.write(f"[{section}]\n")
+                if isinstance(content, dict):
+                    for key, value in content.items():
+                        if isinstance(value, list):
+                            f.write(f'{key} = {json.dumps(value)}\n')
+                        elif isinstance(value, str):
+                            f.write(f'{key} = "{value}"\n')
+                        elif isinstance(value, (int, float, bool)):
+                            f.write(f'{key} = {json.dumps(value)}\n')
+                f.write("\n")
+    
+    def _render_location_editor(self, parent, data: dict):
+        """Рендерит редактор для локации (locations/*.toml)"""
+        soft = data.get('soft_constraints', {})
+        
+        # 1. Prefers Actions (из prompt-library/04_action или 03_pose)
+        all_actions = self._load_all_tags_from_category("04_action")
+        if not all_actions:
+            all_actions = self._load_all_tags_from_category("03_pose")
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions", 
+            all_actions, soft.get('prefers_actions', []),
+            'prefers_actions', bg_color="gray25"
+        )
+        
+        # 2. Prefers Locations (для reference, если нужно)
+        # Пропускаем, так как это сама локация
+        
+        # 3. Prefers Props
+        all_props = self._load_all_tags_from_category("09_props")
+        self._render_checklist_section(
+            parent, "🧸 Prefers Props",
+            all_props, soft.get('prefers_props', []),
+            'prefers_props', bg_color="gray25"
+        )
+        
+        # 4. Prefers Lighting
+        all_lighting = self._load_all_tags_from_category("07_lighting")
+        self._render_checklist_section(
+            parent, "💡 Prefers Lighting",
+            all_lighting, soft.get('prefers_lighting_sources', []),
+            'prefers_lighting', bg_color="gray25"
+        )
+        
+        # 5. Prefers Weather (ДОБАВЛЕНО!)
+        all_weather = self._load_all_tags_from_category("10_weather")
+        self._render_checklist_section(
+            parent, "🌦️ Prefers Weather",
+            all_weather, soft.get('prefers_weather', []),
+            'prefers_weather', bg_color="gray25"
+        )
+    
+    def _render_action_editor(self, parent, data: dict):
+        """Рендерит редактор для действия (actions/*.toml)"""
+        soft = data.get('soft_constraints', {})
+        hard = data.get('hard_constraints', {})
+        
+        # 1. Prefers Locations
+        all_locations = self._load_all_tags_from_category("08_location")
+        self._render_checklist_section(
+            parent, "📍 Prefers Locations",
+            all_locations, soft.get('prefers_locations', []),
+            'prefers_locations', bg_color="gray25"
+        )
+        
+        # 2. Prefers Poses (с подкатегориями)
+        all_poses = self._load_all_tags_from_category("03_pose")
+        self._render_checklist_section(
+            parent, "🎭 Prefers Poses",
+            all_poses, soft.get('prefers_poses', []),
+            'prefers_poses', bg_color="gray25"
+        )
+        
+        # 3. Prefers Expressions (с подкатегориями)
+        all_expressions = self._load_all_tags_from_category("05_expression")
+        self._render_checklist_section(
+            parent, "😊 Prefers Expressions",
+            all_expressions, soft.get('prefers_expressions', []),
+            'prefers_expressions', bg_color="gray25"
+        )
+        
+        # 4. Excludes Actions
+        all_actions = self._load_all_tags_from_category("04_action")
+        if not all_actions:
+            all_actions = self._load_all_tags_from_category("03_pose")
+        self._render_checklist_section(
+            parent, "🚫 Excludes Actions",
+            all_actions, hard.get('excludes_actions', []),
+            'excludes_actions', bg_color="gray25"
+        )
+        
+        # 5. Requires Props
+        all_props = self._load_all_tags_from_category("09_props")
+        self._render_checklist_section(
+            parent, "📦 Requires Props",
+            all_props, hard.get('requires_props', []),
+            'requires_props', bg_color="gray25"
+        )
+
+    def _render_weather_editor(self, parent, data: dict):
+        """Рендерит редактор для погоды (weather/*.toml)"""
+        soft = data.get('soft_constraints', {})
+        hard = data.get('hard_constraints', {})
+        
+        # 1. Prefers Locations
+        all_locations = self._load_all_tags_from_category("08_location")
+        self._render_checklist_section(
+            parent, "📍 Prefers Locations",
+            all_locations, soft.get('prefers_locations', []),
+            'prefers_locations', bg_color="gray25"
+        )
+        
+        # 2. Prefers Actions
+        all_actions = self._load_all_tags_from_category("04_action")
+        if not all_actions:
+            all_actions = self._load_all_tags_from_category("03_pose")
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions",
+            all_actions, soft.get('prefers_actions', []),
+            'prefers_actions', bg_color="gray25"
+        )
+        
+        # 3. Prefers Lighting
+        all_lighting = self._load_all_tags_from_category("07_lighting")
+        self._render_checklist_section(
+            parent, "💡 Prefers Lighting",
+            all_lighting, soft.get('prefers_lighting_sources', []),
+            'prefers_lighting', bg_color="gray25"
+        )
+        
+        # 4. Excludes Weather (другие типы погоды)
+        all_weather = self._load_all_tags_from_category("10_weather")
+        self._render_checklist_section(
+            parent, "🚫 Excludes Weather",
+            all_weather, hard.get('excludes_weather', []),
+            'excludes_weather', bg_color="gray25"
+        )
+    
+    def _render_camera_editor(self, parent, data: dict):
+        """Рендерит редактор для камеры (camera/*.toml)"""
+        soft = data.get('soft_constraints', {})
+        hard = data.get('hard_constraints', {})
+        
+        # 1. Prefers Locations
+        all_locations = self._load_all_tags_from_category("08_location")
+        self._render_checklist_section(
+            parent, "📍 Prefers Locations",
+            all_locations, soft.get('prefers_locations', []),
+            'prefers_locations', bg_color="gray25"
+        )
+        
+        # 2. Prefers Actions
+        all_actions = self._load_all_tags_from_category("04_action")
+        if not all_actions:
+            all_actions = self._load_all_tags_from_category("03_pose")
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions",
+            all_actions, soft.get('prefers_actions', []),
+            'prefers_actions', bg_color="gray25"
+        )
+        
+        # 3. Prefers Poses
+        all_poses = self._load_all_tags_from_category("03_pose")
+        self._render_checklist_section(
+            parent, "🎭 Prefers Poses",
+            all_poses, soft.get('prefers_poses', []),
+            'prefers_poses', bg_color="gray25"
+        )
+        
+        # 4. Excludes Camera (другие ракурсы)
+        all_camera = self._load_all_tags_from_category("06_camera")
+        self._render_checklist_section(
+            parent, "🚫 Excludes Camera",
+            all_camera, hard.get('excludes_camera', []),
+            'excludes_camera', bg_color="gray25"
+        )
+    
+    def _render_location_type_editor(self, parent, data: dict):
+        """Рендерит редактор для типа локации"""
+        soft = data.get('soft_constraints', {})
+        hard = data.get('hard_constraints', {})
+        
+        all_actions = sorted(self.scene_rules_data.get('actions', {}).keys())
+        
+        # Excludes Actions
+        self._render_checklist_section(
+            parent, "🚫 Excludes Actions",
+            all_actions, hard.get('excludes_actions', []),
+            'excludes_actions'
+        )
+        
+        # Prefers Actions
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions",
+            all_actions, soft.get('prefers_actions', []),
+            'actions'
+        )
+    
+    def _render_checklist_section(self, parent, title: str, all_items, 
+                                   selected_items: list, constraint_key: str, 
+                                   bg_color="gray20"):
+        """Рендерит сворачиваемую секцию с разворачивающимися подкатегориями"""
+        section = ctk.CTkFrame(parent, fg_color=bg_color)
+        section.pack(fill="x", padx=5, pady=8)
+        
+        # Заголовок с кнопкой сворачивания
+        header = ctk.CTkFrame(section, fg_color="transparent")
+        header.pack(fill="x", padx=10, pady=(10, 5))
+        
+        toggle_btn = ctk.CTkButton(header, text=f"▶ {title}", width=400, height=28,
+                                    fg_color="gray30", hover_color="gray40",
+                                    font=ctk.CTkFont(size=13, weight="bold"),
+                                    anchor="w")
+        toggle_btn.pack(side="left")
+        
+        # Подсчёт
+        if isinstance(all_items, dict):
+            total_count = sum(len(tags) for tags in all_items.values())
+            selected_count = len([s for s in selected_items if any(s in tags for tags in all_items.values())])
+        else:
+            total_count = len(all_items) if all_items else 0
+            selected_count = len([s for s in selected_items if s in all_items])
+        
+        count_label = ctk.CTkLabel(header, 
+                                    text=f"({selected_count}/{total_count})",
+                                    text_color="gray60")
+        count_label.pack(side="left", padx=(10, 0))
+        
+        # Контейнер (изначально скрыт)
+        content_frame = ctk.CTkFrame(section, fg_color="transparent")
+        content_frame.pack(fill="x", padx=10, pady=(0, 10))
+        content_frame.pack_forget()
+        
+        # Поиск
+        search_entry = ctk.CTkEntry(content_frame, placeholder_text="🔍 Filter tags...", height=30)
+        search_entry.pack(fill="x", pady=(5, 10))
+        
+        # Скроллируемая область
+        checkbox_scroll = ctk.CTkScrollableFrame(content_frame, height=300)
+        checkbox_scroll.pack(fill="both", expand=True)
+        
+        checkboxes = {}
+        checkbox_widgets = {}
+        
+        has_subcategories = isinstance(all_items, dict)
+        
+        if has_subcategories:
+            # Рендерим с разворачивающимися подкатегориями
+            for subcat_name, tags in sorted(all_items.items()):
+                subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
+                subcat_frame.pack(fill="x", pady=2)
+                
+                # Заголовок подкатегории
+                subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
+                subcat_header.pack(fill="x")
+                
+                # Кнопка сворачивания подкатегории
+                subcat_toggle_btn = ctk.CTkButton(
+                    subcat_header, 
+                    text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(tags)})",
+                    anchor="w", fg_color="gray35", hover_color="gray45", 
+                    height=26, font=ctk.CTkFont(size=12, weight="bold")
+                )
+                subcat_toggle_btn.pack(side="left", fill="x", expand=True)
+                
+                # 👇 НОВОЕ: Кнопка Select All / Clear
+                select_all_btn = ctk.CTkButton(
+                    subcat_header,
+                    text="Select All",
+                    width=80, height=24,
+                    fg_color="gray40", hover_color="gray50",
+                    font=ctk.CTkFont(size=10),
+                    command=lambda sc=subcat_name, ts=tags, cl=count_label: 
+                        self._toggle_select_all_subcategory(sc, ts, cl, constraint_key, all_items)
+                )
+                select_all_btn.pack(side="right", padx=(5, 0))
+                
+                # Контейнер для тегов (изначально свёрнут)
+                tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
+                tags_container.pack(fill="x", padx=(30, 0))
+                tags_container.pack_forget()
+                
+                # Рендерим теги
+                for tag in sorted(tags):
+                    var = ctk.BooleanVar(value=(tag in selected_items))
+                    cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '), 
+                                          variable=var,
+                                          command=lambda i=tag, v=var, cl=count_label: 
+                                            self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                    cb.pack(anchor="w", padx=5, pady=1)
+                    checkboxes[tag] = var
+                    checkbox_widgets[tag] = cb
+                
+                # Обработчик сворачивания подкатегории
+                def toggle_subcat(btn=subcat_toggle_btn, cont=tags_container, name=subcat_name, tag_count=len(tags)):
+                    if cont.winfo_ismapped():
+                        cont.pack_forget()
+                        btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({tag_count})")
+                    else:
+                        cont.pack(fill="x", padx=(30, 0))
+                        btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({tag_count})")
+                
+                subcat_toggle_btn.configure(command=toggle_subcat)
+        else:
+            # Простой список без подкатегорий
+            if all_items:
+                for item in sorted(all_items):
+                    var = ctk.BooleanVar(value=(item in selected_items))
+                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '), 
+                                          variable=var,
+                                          command=lambda i=item, v=var, cl=count_label: 
+                                            self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                    cb.pack(anchor="w", padx=10, pady=1)
+                    checkboxes[item] = var
+                    checkbox_widgets[item] = cb
+        
+        # Обработчик поиска (глобальный фильтр)
+        def on_search(event):
+            filter_text = search_entry.get().strip().lower()
+            for item, widget in checkbox_widgets.items():
+                if filter_text in item.lower():
+                    widget.pack(anchor="w", padx=(25 if has_subcategories else 10, 0), pady=1)
+                    # Автоматически разворачиваем родительскую подкатегорию
+                    if has_subcategories:
+                        parent_frame = widget.master
+                        if parent_frame and not parent_frame.winfo_ismapped():
+                            parent_frame.pack(fill="x", padx=(30, 0))
+                else:
+                    widget.pack_forget()
+        
+        search_entry.bind('<KeyRelease>', on_search)
+        
+        # Обработчик сворачивания секции
+        def toggle_visibility():
+            if content_frame.winfo_ismapped():
+                content_frame.pack_forget()
+                toggle_btn.configure(text=f"▶ {title}")
+            else:
+                content_frame.pack(fill="x", padx=10, pady=(0, 10))
+                toggle_btn.configure(text=f"▼ {title}")
+        
+        toggle_btn.configure(command=toggle_visibility)
+        
+        # Сохраняем ссылки
+        if not hasattr(self, '_current_checkboxes'):
+            self._current_checkboxes = {}
+        self._current_checkboxes[constraint_key] = checkboxes
+
+    def _toggle_select_all_subcategory(self, subcat_name: str, tags: list, 
+                                        count_label, constraint_key: str, all_items):
+        """Переключает выбор всех тегов в подкатегории"""
+        if constraint_key not in self._current_checkboxes:
+            return
+        
+        # Проверяем, сколько тегов из этой подкатегории уже выбрано
+        selected_in_subcat = sum(1 for tag in tags 
+                                 if tag in self._current_checkboxes[constraint_key] 
+                                 and self._current_checkboxes[constraint_key][tag].get())
+        
+        # Если выбраны все или почти все — снимаем выбор, иначе — выбираем все
+        should_select = selected_in_subcat < len(tags) / 2
+        
+        for tag in tags:
+            if tag in self._current_checkboxes[constraint_key]:
+                var = self._current_checkboxes[constraint_key][tag]
+                var.set(should_select)
+        
+        # Обновляем счётчик
+        if isinstance(all_items, dict):
+            all_tags = []
+            for subcat_tags in all_items.values():
+                all_tags.extend(subcat_tags)
+            selected_count = sum(1 for tag in all_tags 
+                                if tag in self._current_checkboxes[constraint_key] 
+                                and self._current_checkboxes[constraint_key][tag].get())
+            total_count = len(all_tags)
+        else:
+            selected_count = sum(1 for v in self._current_checkboxes[constraint_key].values() if v.get())
+            total_count = len(all_items) if all_items else 0
+        
+        count_label.configure(text=f"({selected_count}/{total_count})")
+        
+        action = "выбраны" if should_select else "сняты"
+        self._log(f"{'☑' if should_select else '☐'} {subcat_name}: все теги {action}\n")
+    
+    def _on_props_checkbox_toggled(self, tag: str, var, count_label):
+        """Обработчик чекбокса для props"""
+        selected_count = sum(1 for v in self._current_checkboxes['props'].values() if v.get())
+        count_label.configure(text=f"({selected_count} selected)")
+        self._log(f"{'☑' if var.get() else '☐'} props: {tag}\n")
+    
+    def _on_checkbox_toggled(self, item: str, var, constraint_key: str, count_label, all_items):
+        """Обработчик обычного чекбокса (поддерживает dict и list)"""
+        # Подсчет выбранных элементов
+        if isinstance(all_items, dict):
+            # Собираем все теги из всех подкатегорий
+            all_tags = []
+            for tags in all_items.values():
+                all_tags.extend(tags)
+            selected_count = sum(1 for tag in all_tags 
+                                if self._current_checkboxes[constraint_key].get(tag, ctk.BooleanVar(value=False)).get())
+            total_count = len(all_tags)
+        else:
+            selected_count = sum(1 for v in self._current_checkboxes[constraint_key].values() if v.get())
+            total_count = len(all_items)
+        
+        count_label.configure(text=f"({selected_count}/{total_count})")
+        
+        # TODO: Здесь будет автосинхронизация
+        self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+    
+    def _on_category_toggled(self, cat_name: str, cat_var):
+        """Обработчик клика на категорию props"""
+        self._log(f"{'☑' if cat_var.get() else '☐'} Категория props: {cat_name}\n")
+        # TODO: Обновить все дочерние теги
+    
+    def _on_tag_toggled(self, cat_name: str, cat_var, tag_var, all_tags_in_cat):
+        """Обработчик клика на отдельный тег props"""
+        self._log(f"{'☑' if tag_var.get() else '☐'} Тег в {cat_name}\n")
+        # TODO: Обновить состояние родительской категории
+    
+    def _load_all_tags_from_category(self, category: str) -> dict:
+        """Загружает все теги из категории prompt-library с сохранением структуры подкатегорий
+        
+        Returns:
+            dict: {subcategory_name: [list_of_tags]}
+        """
+        result = {}
+        cat_dir = self.project_root / "prompt-library" / category
+        
+        if not cat_dir.exists():
+            return result
+        
+        for txt_file in sorted(cat_dir.rglob("*.txt")):
+            # Извлекаем имя подкатегории из имени файла
+            subcat_name = txt_file.stem  # arms.txt -> arms
+            tags = self._load_tags_from_file(txt_file)
+            if tags:
+                result[subcat_name] = tags
+        
+        return result
+    
+    def _reload_scene_rules(self):
+        """Перезагружает все TOML-файлы"""
+        self._load_scene_rules()
+        self._build_scene_rules_list()
+        self._log("🔄 Scene rules перезагружены\n")
+    
+    def _save_scene_rules(self):
+        """Сохраняет все изменения в TOML-файлы (заглушка)"""
+        # TODO: Реализовать сохранение
+        self._log("💾 Сохранение scene-rules (пока не реализовано)\n")
+        messagebox.showinfo("Info", "Сохранение будет реализовано на следующем этапе")
 
     def _create_generate_tab(self):
         tab = self.tabview.tab("Generate")

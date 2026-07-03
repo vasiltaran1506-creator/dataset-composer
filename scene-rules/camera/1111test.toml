@@ -1,0 +1,7 @@
+[meta]
+id = "1111test"
+display_name = "New Camera Rule"
+
+[soft_constraints]
+
+[hard_constraints]
