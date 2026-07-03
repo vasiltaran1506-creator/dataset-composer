@@ -1202,10 +1202,10 @@ class MainWindow(ctk.CTk):
             'actions'
         )
     
-    def _render_checklist_section(self, parent, title: str, all_items, 
-                                   selected_items: list, constraint_key: str, 
+    def _render_checklist_section(self, parent, title: str, all_items,
+                                   selected_items: list, constraint_key: str,
                                    bg_color="gray20"):
-        """Рендерит сворачиваемую секцию с разворачивающимися подкатегориями"""
+        """Рендерит сворачиваемую секцию с разворачивающимися подкатегориями и правильным поиском"""
         section = ctk.CTkFrame(parent, fg_color=bg_color)
         section.pack(fill="x", padx=5, pady=8)
         
@@ -1225,9 +1225,9 @@ class MainWindow(ctk.CTk):
             selected_count = len([s for s in selected_items if any(s in tags for tags in all_items.values())])
         else:
             total_count = len(all_items) if all_items else 0
-            selected_count = len([s for s in selected_items if s in all_items])
+            selected_count = len([s for s in selected_items if s in (all_items or [])])
         
-        count_label = ctk.CTkLabel(header, 
+        count_label = ctk.CTkLabel(header,
                                     text=f"({selected_count}/{total_count})",
                                     text_color="gray60")
         count_label.pack(side="left", padx=(10, 0))
@@ -1246,12 +1246,14 @@ class MainWindow(ctk.CTk):
         checkbox_scroll.pack(fill="both", expand=True)
         
         checkboxes = {}
-        checkbox_widgets = {}
-        
         has_subcategories = isinstance(all_items, dict)
         
+        # 👇 Хранилище всех виджетов для перестройки при поиске
+        # Обе переменные инициализируются как пустые словари (Pylance-friendly)
+        subcat_widgets: dict = {}
+        simple_widgets: dict = {}
+        
         if has_subcategories:
-            # Рендерим с разворачивающимися подкатегориями
             for subcat_name, tags in sorted(all_items.items()):
                 subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
                 subcat_frame.pack(fill="x", pady=2)
@@ -1260,24 +1262,21 @@ class MainWindow(ctk.CTk):
                 subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
                 subcat_header.pack(fill="x")
                 
-                # Кнопка сворачивания подкатегории
                 subcat_toggle_btn = ctk.CTkButton(
-                    subcat_header, 
+                    subcat_header,
                     text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(tags)})",
-                    anchor="w", fg_color="gray35", hover_color="gray45", 
+                    anchor="w", fg_color="gray35", hover_color="gray45",
                     height=26, font=ctk.CTkFont(size=12, weight="bold")
                 )
                 subcat_toggle_btn.pack(side="left", fill="x", expand=True)
                 
-                # 👇 НОВОЕ: Кнопка Select All / Clear
+                # Кнопка Select All / Clear
                 select_all_btn = ctk.CTkButton(
                     subcat_header,
                     text="Select All",
                     width=80, height=24,
                     fg_color="gray40", hover_color="gray50",
-                    font=ctk.CTkFont(size=10),
-                    command=lambda sc=subcat_name, ts=tags, cl=count_label: 
-                        self._toggle_select_all_subcategory(sc, ts, cl, constraint_key, all_items)
+                    font=ctk.CTkFont(size=10)
                 )
                 select_all_btn.pack(side="right", padx=(5, 0))
                 
@@ -1286,16 +1285,29 @@ class MainWindow(ctk.CTk):
                 tags_container.pack(fill="x", padx=(30, 0))
                 tags_container.pack_forget()
                 
+                subcat_checkboxes = {}
+                
                 # Рендерим теги
                 for tag in sorted(tags):
                     var = ctk.BooleanVar(value=(tag in selected_items))
-                    cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '), 
+                    cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '),
                                           variable=var,
-                                          command=lambda i=tag, v=var, cl=count_label: 
+                                          command=lambda i=tag, v=var, cl=count_label:
                                             self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
                     cb.pack(anchor="w", padx=5, pady=1)
                     checkboxes[tag] = var
-                    checkbox_widgets[tag] = cb
+                    subcat_checkboxes[tag] = {'cb': cb, 'var': var}
+                
+                # Сохраняем все виджеты подкатегории
+                subcat_widgets[subcat_name] = {
+                    'frame': subcat_frame,
+                    'header': subcat_header,
+                    'toggle_btn': subcat_toggle_btn,
+                    'select_all_btn': select_all_btn,
+                    'tags_container': tags_container,
+                    'tags': subcat_checkboxes,
+                    'tag_count': len(tags)
+                }
                 
                 # Обработчик сворачивания подкатегории
                 def toggle_subcat(btn=subcat_toggle_btn, cont=tags_container, name=subcat_name, tag_count=len(tags)):
@@ -1307,32 +1319,121 @@ class MainWindow(ctk.CTk):
                         btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({tag_count})")
                 
                 subcat_toggle_btn.configure(command=toggle_subcat)
+                
+                # Обработчик Select All / Clear
+                def select_all_handler(btn=select_all_btn, sc_name=subcat_name, ts=tags, cl=count_label):
+                    self._toggle_select_all_subcategory(sc_name, ts, cl, constraint_key, all_items, btn)
+                
+                select_all_btn.configure(command=select_all_handler)
         else:
             # Простой список без подкатегорий
             if all_items:
                 for item in sorted(all_items):
                     var = ctk.BooleanVar(value=(item in selected_items))
-                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '), 
+                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '),
                                           variable=var,
-                                          command=lambda i=item, v=var, cl=count_label: 
+                                          command=lambda i=item, v=var, cl=count_label:
                                             self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
                     cb.pack(anchor="w", padx=10, pady=1)
                     checkboxes[item] = var
-                    checkbox_widgets[item] = cb
+                    simple_widgets[item] = cb
         
-        # Обработчик поиска (глобальный фильтр)
+        # 👇 ОБНОВЛЁННАЯ ЛОГИКА ПОИСКА: перестраиваем UI полностью
         def on_search(event):
             filter_text = search_entry.get().strip().lower()
-            for item, widget in checkbox_widgets.items():
-                if filter_text in item.lower():
-                    widget.pack(anchor="w", padx=(25 if has_subcategories else 10, 0), pady=1)
-                    # Автоматически разворачиваем родительскую подкатегорию
-                    if has_subcategories:
-                        parent_frame = widget.master
-                        if parent_frame and not parent_frame.winfo_ismapped():
-                            parent_frame.pack(fill="x", padx=(30, 0))
-                else:
-                    widget.pack_forget()
+            
+            # Очищаем скролл-область
+            for w in checkbox_scroll.winfo_children():
+                w.destroy()
+            
+            if has_subcategories:
+                # Для каждой подкатегории
+                for subcat_name, widgets in subcat_widgets.items():
+                    # Находим теги, соответствующие фильтру
+                    matching_tags = [tag for tag in widgets['tags'].keys()
+                                    if filter_text in tag.lower()]
+                    
+                    # Если фильтр пустой или есть совпадения — показываем подкатегорию
+                    if not filter_text or matching_tags:
+                        # Пересоздаём подкатегорию
+                        subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
+                        subcat_frame.pack(fill="x", pady=2)
+                        
+                        subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
+                        subcat_header.pack(fill="x")
+                        
+                        # Определяем, показывать ли все теги или только совпавшие
+                        if filter_text:
+                            display_count = len(matching_tags)
+                            btn_text = f"▼ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})"
+                        else:
+                            display_count = widgets['tag_count']
+                            btn_text = f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})"
+                        
+                        subcat_toggle_btn = ctk.CTkButton(
+                            subcat_header, text=btn_text,
+                            anchor="w", fg_color="gray35", hover_color="gray45",
+                            height=26, font=ctk.CTkFont(size=12, weight="bold")
+                        )
+                        subcat_toggle_btn.pack(side="left", fill="x", expand=True)
+                        
+                        select_all_btn = ctk.CTkButton(
+                            subcat_header, text="Select All",
+                            width=80, height=24,
+                            fg_color="gray40", hover_color="gray50",
+                            font=ctk.CTkFont(size=10)
+                        )
+                        select_all_btn.pack(side="right", padx=(5, 0))
+                        
+                        tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
+                        
+                        # При поиске — сразу развёрнута
+                        if filter_text:
+                            tags_container.pack(fill="x", padx=(30, 0))
+                        else:
+                            tags_container.pack(fill="x", padx=(30, 0))
+                            tags_container.pack_forget()
+                        
+                        # Какие теги показываем
+                        tags_to_show = matching_tags if filter_text else widgets['tags'].keys()
+                        
+                        for tag in sorted(tags_to_show):
+                            var = widgets['tags'][tag]['var']
+                            cb = ctk.CTkCheckBox(tags_container, text=tag.replace('_', ' '),
+                                                  variable=var,
+                                                  command=lambda i=tag, v=var, cl=count_label:
+                                                    self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                            cb.pack(anchor="w", padx=5, pady=1)
+                        
+                        # Обновляем кнопки сворачивания/разворачивания
+                        tag_count_for_btn = len(tags_to_show)
+                        def toggle_subcat(btn=subcat_toggle_btn, cont=tags_container, name=subcat_name, cnt=tag_count_for_btn, is_filtered=bool(filter_text)):
+                            if cont.winfo_ismapped():
+                                cont.pack_forget()
+                                btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({cnt})")
+                            else:
+                                cont.pack(fill="x", padx=(30, 0))
+                                btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({cnt})")
+                        
+                        subcat_toggle_btn.configure(command=toggle_subcat)
+                        
+                        # Select All
+                        all_tags_in_subcat = list(widgets['tags'].keys())
+                        def select_all_handler(btn=select_all_btn, sc_name=subcat_name, ts=all_tags_in_subcat, cl=count_label):
+                            self._toggle_select_all_subcategory(sc_name, ts, cl, constraint_key, all_items, btn)
+                        
+                        select_all_btn.configure(command=select_all_handler)
+            else:
+                # Простой список
+                for item, cb in simple_widgets.items():
+                    if not filter_text or filter_text in item.lower():
+                        var = checkboxes[item]
+                        new_cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '),
+                                                  variable=var,
+                                                  command=lambda i=item, v=var, cl=count_label:
+                                                    self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                        new_cb.pack(anchor="w", padx=10, pady=1)
+                        simple_widgets[item] = new_cb
         
         search_entry.bind('<KeyRelease>', on_search)
         
@@ -1352,15 +1453,15 @@ class MainWindow(ctk.CTk):
             self._current_checkboxes = {}
         self._current_checkboxes[constraint_key] = checkboxes
 
-    def _toggle_select_all_subcategory(self, subcat_name: str, tags: list, 
-                                        count_label, constraint_key: str, all_items):
+    def _toggle_select_all_subcategory(self, subcat_name: str, tags: list,
+                                        count_label, constraint_key: str, all_items, button):
         """Переключает выбор всех тегов в подкатегории"""
         if constraint_key not in self._current_checkboxes:
             return
         
         # Проверяем, сколько тегов из этой подкатегории уже выбрано
-        selected_in_subcat = sum(1 for tag in tags 
-                                 if tag in self._current_checkboxes[constraint_key] 
+        selected_in_subcat = sum(1 for tag in tags
+                                 if tag in self._current_checkboxes[constraint_key]
                                  and self._current_checkboxes[constraint_key][tag].get())
         
         # Если выбраны все или почти все — снимаем выбор, иначе — выбираем все
@@ -1371,14 +1472,20 @@ class MainWindow(ctk.CTk):
                 var = self._current_checkboxes[constraint_key][tag]
                 var.set(should_select)
         
+        # 👇 ОБНОВЛЯЕМ ТЕКСТ КНОПКИ
+        if should_select:
+            button.configure(text="Clear All")
+        else:
+            button.configure(text="Select All")
+        
         # Обновляем счётчик
         if isinstance(all_items, dict):
             all_tags = []
             for subcat_tags in all_items.values():
                 all_tags.extend(subcat_tags)
-            selected_count = sum(1 for tag in all_tags 
-                                if tag in self._current_checkboxes[constraint_key] 
-                                and self._current_checkboxes[constraint_key][tag].get())
+            selected_count = sum(1 for tag in all_tags
+                                 if tag in self._current_checkboxes[constraint_key]
+                                 and self._current_checkboxes[constraint_key][tag].get())
             total_count = len(all_tags)
         else:
             selected_count = sum(1 for v in self._current_checkboxes[constraint_key].values() if v.get())
@@ -1396,24 +1503,164 @@ class MainWindow(ctk.CTk):
         self._log(f"{'☑' if var.get() else '☐'} props: {tag}\n")
     
     def _on_checkbox_toggled(self, item: str, var, constraint_key: str, count_label, all_items):
-        """Обработчик обычного чекбокса (поддерживает dict и list)"""
+        """Обработчик обычного чекбокса с Auto-sync"""
         # Подсчет выбранных элементов
         if isinstance(all_items, dict):
-            # Собираем все теги из всех подкатегорий
             all_tags = []
             for tags in all_items.values():
                 all_tags.extend(tags)
-            selected_count = sum(1 for tag in all_tags 
-                                if self._current_checkboxes[constraint_key].get(tag, ctk.BooleanVar(value=False)).get())
+            selected_count = sum(1 for tag in all_tags
+                                 if self._current_checkboxes[constraint_key].get(tag, ctk.BooleanVar(value=False)).get())
             total_count = len(all_tags)
         else:
             selected_count = sum(1 for v in self._current_checkboxes[constraint_key].values() if v.get())
-            total_count = len(all_items)
+            total_count = len(all_items) if all_items else 0
         
         count_label.configure(text=f"({selected_count}/{total_count})")
         
-        # TODO: Здесь будет автосинхронизация
+        # 👇 AUTO-SYNC: синхронизация связей при включенном переключателе
+        if self.auto_sync_var is not None and self.auto_sync_var.get() and self.current_rule_file:
+            current_category = None
+            current_rule_name = None
+            try:
+                rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
+                parts = rel_path.parts
+                if len(parts) >= 2:
+                    current_category = parts[0]
+                    current_rule_name = parts[1].replace('.toml', '')
+            except Exception:
+                pass
+            
+            if current_category and current_rule_name:
+                sync_rules = {
+                    ('locations', 'prefers_actions'): ('actions', 'prefers_locations'),
+                    ('actions', 'prefers_locations'): ('locations', 'prefers_actions'),
+                    ('actions', 'excludes_actions'): ('actions', 'excludes_actions'),
+                }
+                
+                if (current_category, constraint_key) in sync_rules:
+                    target_cat, target_field = sync_rules[(current_category, constraint_key)]
+                    
+                    if var.get():
+                        self._add_bidirectional_link(target_cat, item, target_field, current_rule_name)
+                    else:
+                        self._remove_bidirectional_link(target_cat, item, target_field, current_rule_name)
+        
         self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+        
+        # 👇 AUTO-SYNC: синхронизация связей при включенном переключателе
+        if self.auto_sync_var and self.auto_sync_var.get() and self.current_rule_file:
+            current_category = None
+            current_rule_name = None
+            try:
+                rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
+                parts = rel_path.parts
+                if len(parts) >= 2:
+                    current_category = parts[0]
+                    current_rule_name = parts[1].replace('.toml', '')
+            except Exception:
+                pass
+            
+            if current_category and current_rule_name:
+                # Карта соответствий: что синхронизировать с чем
+                sync_rules = {
+                    # Редактируем location → синхронизируем action
+                    ('locations', 'prefers_actions'): ('actions', 'prefers_locations'),
+                    # Редактируем action → синхронизируем location
+                    ('actions', 'prefers_locations'): ('locations', 'prefers_actions'),
+                    # Редактируем action → синхронизируем другое action (для excludes)
+                    ('actions', 'excludes_actions'): ('actions', 'excludes_actions'),
+                }
+                
+                if (current_category, constraint_key) in sync_rules:
+                    target_cat, target_field = sync_rules[(current_category, constraint_key)]
+                    
+                    if var.get():
+                        self._add_bidirectional_link(target_cat, item, target_field, current_rule_name)
+                    else:
+                        self._remove_bidirectional_link(target_cat, item, target_field, current_rule_name)
+        
+        self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+
+    def _add_bidirectional_link(self, target_category: str, target_name: str,
+                                 field: str, value_to_add: str):
+        """Автоматически добавляет связь в связанный TOML файл (Auto-sync)"""
+        target_path = self.project_root / "scene-rules" / target_category / f"{target_name}.toml"
+        if not target_path.exists():
+            self._log(f"⚠️ Auto-sync: файл {target_name}.toml не найден в {target_category}\n")
+            return
+        
+        try:
+            import tomli
+            import tomli_w
+            
+            with open(target_path, 'rb') as f:
+                data = tomli.load(f)
+            
+            changed = False
+            for section in ['soft_constraints', 'hard_constraints']:
+                if section in data and field in data[section]:
+                    current_list = data[section][field]
+                    if value_to_add not in current_list:
+                        current_list.append(value_to_add)
+                        data[section][field] = sorted(current_list)
+                        changed = True
+                    break
+            
+            if not changed:
+                if 'soft_constraints' not in data:
+                    data['soft_constraints'] = {}
+                data['soft_constraints'][field] = [value_to_add]
+            
+            with open(target_path, 'wb') as f:
+                tomli_w.dump(data, f)
+            
+            self._log(f"🔗 Auto-sync: {value_to_add} → {target_category}/{target_name}.{field}\n")
+            
+            if target_category in self.scene_rules_data and target_name in self.scene_rules_data[target_category]:
+                self.scene_rules_data[target_category][target_name]['data'] = data
+        
+        except ImportError:
+            self._log("⚠️ Auto-sync: установите tomli и tomli_w (pip install tomli tomli-w)\n")
+        except Exception as e:
+            self._log(f"❌ Auto-sync error: {e}\n")
+    
+    def _remove_bidirectional_link(self, target_category: str, target_name: str,
+                                    field: str, value_to_remove: str):
+        """Автоматически удаляет связь из связанного TOML файла (Auto-sync)"""
+        target_path = self.project_root / "scene-rules" / target_category / f"{target_name}.toml"
+        if not target_path.exists():
+            return
+        
+        try:
+            import tomli
+            import tomli_w
+            
+            with open(target_path, 'rb') as f:
+                data = tomli.load(f)
+            
+            changed = False
+            for section in ['soft_constraints', 'hard_constraints']:
+                if section in data and field in data[section]:
+                    current_list = data[section][field]
+                    if value_to_remove in current_list:
+                        current_list.remove(value_to_remove)
+                        data[section][field] = current_list
+                        changed = True
+                    break
+            
+            if changed:
+                with open(target_path, 'wb') as f:
+                    tomli_w.dump(data, f)
+                self._log(f"🔗 Auto-sync: удалено {value_to_remove} из {target_category}/{target_name}.{field}\n")
+                
+                if target_category in self.scene_rules_data and target_name in self.scene_rules_data[target_category]:
+                    self.scene_rules_data[target_category][target_name]['data'] = data
+        
+        except ImportError:
+            pass
+        except Exception as e:
+            self._log(f"❌ Auto-sync error: {e}\n")
     
     def _on_category_toggled(self, cat_name: str, cat_var):
         """Обработчик клика на категорию props"""
@@ -1453,10 +1700,97 @@ class MainWindow(ctk.CTk):
         self._log("🔄 Scene rules перезагружены\n")
     
     def _save_scene_rules(self):
-        """Сохраняет все изменения в TOML-файлы (заглушка)"""
-        # TODO: Реализовать сохранение
-        self._log("💾 Сохранение scene-rules (пока не реализовано)\n")
-        messagebox.showinfo("Info", "Сохранение будет реализовано на следующем этапе")
+        """Сохраняет все изменения чекбоксов в TOML-файлы"""
+        if not hasattr(self, '_current_checkboxes') or not self._current_checkboxes:
+            messagebox.showinfo("Info", "Нет изменений для сохранения")
+            return
+        
+        try:
+            import tomli
+            import tomli_w
+        except ImportError:
+            messagebox.showerror("Error", "Установите tomli и tomli-w:\npip install tomli tomli-w")
+            return
+        
+        # Собираем все изменения
+        changes = self._collect_checkbox_changes()
+        
+        if not changes:
+            messagebox.showinfo("Info", "Нет изменений для сохранения")
+            return
+        
+        # Применяем изменения к файлам
+        saved_count = 0
+        errors = []
+        
+        for category, rule_name, field, new_values in changes:
+            file_path = self.project_root / "scene-rules" / category / f"{rule_name}.toml"
+            if not file_path.exists():
+                errors.append(f"Файл не найден: {file_path.name}")
+                continue
+            
+            try:
+                with open(file_path, 'rb') as f:
+                    data = tomli.load(f)
+                
+                # Определяем, в какую секцию сохранять
+                if 'soft_constraints' not in data:
+                    data['soft_constraints'] = {}
+                
+                data['soft_constraints'][field] = new_values
+                
+                with open(file_path, 'wb') as f:
+                    tomli_w.dump(data, f)
+                
+                # Обновляем внутренние данные
+                if category in self.scene_rules_data and rule_name in self.scene_rules_data[category]:
+                    self.scene_rules_data[category][rule_name]['data'] = data
+                
+                saved_count += 1
+                
+            except Exception as e:
+                errors.append(f"{file_path.name}: {str(e)}")
+        
+        # Показываем результат
+        if errors:
+            error_msg = "\n".join(errors[:5])  # Показываем только первые 5 ошибок
+            if len(errors) > 5:
+                error_msg += f"\n... и ещё {len(errors) - 5} ошибок"
+            messagebox.showerror("Ошибки сохранения", error_msg)
+            self._log(f"⚠️ Сохранено {saved_count} файлов, {len(errors)} ошибок\n")
+        else:
+            messagebox.showinfo("Success", f"✅ Сохранено {saved_count} файлов!")
+            self._log(f"💾 Успешно сохранено {saved_count} TOML-файлов\n")
+    
+    def _collect_checkbox_changes(self) -> list:
+        """Собирает все изменения из чекбоксов
+        
+        Returns:
+            list: [(category, rule_name, field, [selected_values])]
+        """
+        changes = []
+        
+        if not self.current_rule_file:
+            return changes
+        
+        try:
+            rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
+            parts = rel_path.parts
+            if len(parts) < 2:
+                return changes
+            current_category = parts[0]
+            current_rule_name = parts[1].replace('.toml', '')
+        except Exception:
+            return changes
+        
+        # Собираем значения из каждого constraint_key
+        for constraint_key, checkboxes in self._current_checkboxes.items():
+            selected_values = [tag for tag, var in checkboxes.items() if var.get()]
+            
+            if selected_values:  # Сохраняем только если есть выбранные значения
+                changes.append((current_category, current_rule_name, constraint_key, sorted(selected_values)))
+        
+        return changes
 
     def _create_generate_tab(self):
         tab = self.tabview.tab("Generate")

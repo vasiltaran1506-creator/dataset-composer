@@ -4,7 +4,25 @@ display_name = "Library"
 type = "indoor_cultural"
 
 [soft_constraints]
-prefers_actions = ["reading", "studying", "writing", "looking_for_book", "browsing_bookshelf", "taking_notes", "thinking"]
-prefers_lighting_sources = ["lamplight", "desk_lamp", "window_light", "warm_lamp"]
-prefers_lighting_quality = ["soft_lighting", "warm_lighting", "cinematic_lighting", "chiaroscuro"]
-prefers_props = ["book", "notebook", "pen", "reading_glasses", "laptop", "stack_of_books", "bookmark"]
+prefers_actions = []
+prefers_lighting_sources = [
+    "lamplight",
+    "desk_lamp",
+    "window_light",
+    "warm_lamp",
+]
+prefers_lighting_quality = [
+    "soft_lighting",
+    "warm_lighting",
+    "cinematic_lighting",
+    "chiaroscuro",
+]
+prefers_props = [
+    "book",
+    "notebook",
+    "pen",
+    "reading_glasses",
+    "laptop",
+    "stack_of_books",
+    "bookmark",
+]
