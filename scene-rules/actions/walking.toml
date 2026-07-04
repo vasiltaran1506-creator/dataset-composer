@@ -4,17 +4,48 @@ category = "action"
 display_name = "Walking"
 
 [hard_constraints]
-allowed_location_types = ["outdoor_urban", "outdoor_recreational", "outdoor_cultural", "transit", "indoor_commercial", "indoor_institutional"]
-excludes_location_types = ["indoor_private"]
-excludes_actions = ["sleeping", "sitting", "lying_down", "taking_bath", "cooking"]
-excludes_props = ["bed", "bathtub", "stove", "desk_lamp"]
+allowed_location_types = [
+    "outdoor_urban",
+    "outdoor_recreational",
+    "outdoor_cultural",
+    "transit",
+    "indoor_commercial",
+    "indoor_institutional",
+]
+excludes_location_types = [
+    "indoor_private",
+]
+excludes_actions = []
+excludes_props = [
+    "bed",
+    "bathtub",
+    "stove",
+    "desk_lamp",
+]
+requires_props = []
+excludes_camera = []
 
 [soft_constraints]
-prefers_poses = ["walking_pose", "one_foot_forward", "arms_swinging", "looking_forward", "looking_around"]
-prefers_expressions = ["neutral", "thoughtful", "looking_around", "slight_smile"]
-prefers_locations = ["street", "park", "sidewalk", "shopping_mall", "school_corridor", "shrine_temple"]
-prefers_props = ["bag", "backpack", "smartphone", "coffee_cup", "umbrella", "headphones"]
+prefers_poses = []
+prefers_expressions = []
+prefers_locations = []
+prefers_props = [
+    "bag",
+    "backpack",
+    "smartphone",
+    "coffee_cup",
+    "umbrella",
+    "headphones",
+]
+prefers_actions = []
+actions = []
 
 [visibility_modifiers]
-reveals_features = ["full_body", "feet_footwear", "legs"]
-conceals_if_holding_bag = ["one_hand"]
+reveals_features = [
+    "full_body",
+    "feet_footwear",
+    "legs",
+]
+conceals_if_holding_bag = [
+    "one_hand",
+]

@@ -13,6 +13,12 @@ from prompt_library import PromptLibrary
 from scene_builder import SceneBuilder
 from exporter import Exporter
 from coverage_tracker import CoverageTracker
+from config_loader import ConfigLoader
+from prompt_library import PromptLibrary
+from scene_builder import SceneBuilder
+from exporter import Exporter
+from coverage_tracker import CoverageTracker
+from settings_manager import SettingsManager
 
 # ════════════════════════════════════════════════════════════════════════════
 # Глобальная настройка CustomTkinter
@@ -59,8 +65,16 @@ class MainWindow(ctk.CTk):
 
         # === Пути к директориям проекта ===
         self.project_root = Path(__file__).parent.parent.parent
-        self.output_directory = r"D:\VASILY\MY GENERATION\Test Generations"
-        self.profiles_directory = self.project_root / "character-profiles"
+        
+        # === Менеджер настроек ===
+        self.settings_manager = SettingsManager(self.project_root / "settings.json")
+        
+        # Загружаем пути из настроек (или используем дефолты)
+        saved_output = self.settings_manager.get('directories', 'output_directory')
+        self.output_directory = saved_output if saved_output else r"D:\VASILY\MY GENERATION\Test Generations"
+        
+        saved_profiles = self.settings_manager.get('directories', 'profiles_path')
+        self.profiles_directory = Path(saved_profiles) if saved_profiles else self.project_root / "character-profiles"
         self.profiles_directory.mkdir(exist_ok=True)
 
         # === Состояние редактора профиля ===
@@ -1894,7 +1908,11 @@ class MainWindow(ctk.CTk):
 
         ctk.CTkLabel(left_frame, text="🎬 Number of Scenes:", anchor="w").pack(pady=(10, 0), padx=15, fill="x")
         self.scenes_entry = ctk.CTkEntry(left_frame, placeholder_text="100")
-        self.scenes_entry.insert(0, "30")
+        # 👇 Загружаем значение из настроек
+        default_scenes = self.settings_manager.get('generation_defaults', 'num_scenes')
+        self.scenes_entry.insert(0, str(default_scenes))
+        # 👇 ОБРАТНАЯ СИНХРОНИЗАЦИЯ: при потере фокуса сохраняем в настройки
+        self.scenes_entry.bind('<FocusOut>', lambda e: self._save_scenes_from_generate())
         self.scenes_entry.pack(pady=(0, 15), padx=15, fill="x")
 
         ctk.CTkLabel(left_frame, text="📂 Save to folder:", anchor="w").pack(pady=(10, 0), padx=15, fill="x")
@@ -1902,7 +1920,9 @@ class MainWindow(ctk.CTk):
         output_frame.pack(pady=(0, 15), padx=15, fill="x")
         output_frame.grid_columnconfigure(0, weight=1)
         self.output_path_entry = ctk.CTkEntry(output_frame)
-        self.output_path_entry.insert(0, self.output_directory)
+        # 👇 Загружаем путь из настроек (если сохранён) или используем дефолт
+        saved_output = self.settings_manager.get('directories', 'output_directory')
+        self.output_path_entry.insert(0, saved_output if saved_output else self.output_directory)
         self.output_path_entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
         ctk.CTkButton(output_frame, text="Browse", width=80,
                       command=self._browse_output_folder).grid(row=0, column=1)
@@ -1921,26 +1941,40 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(balance_frame, text="Browse", width=80,
                       command=self._browse_balance_folder).grid(row=0, column=1)
 
-        self.balance_locations_var = ctk.BooleanVar(value=True)
-        self.balance_actions_var = ctk.BooleanVar(value=True)
-        self.balance_weather_var = ctk.BooleanVar(value=True)
-        self.balance_cameras_var = ctk.BooleanVar(value=True)
+        # 👇 Загружаем значения балансировки из настроек
+        self.balance_locations_var = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_locations'))
+        self.balance_actions_var = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_actions'))
+        self.balance_weather_var = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_weather'))
+        self.balance_cameras_var = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_cameras'))
 
+        # 👇 ОБРАТНАЯ СИНХРОНИЗАЦИЯ: каждый чекбокс сохраняет своё состояние в настройки
         ctk.CTkCheckBox(left_frame, text="Balance Locations",
-                        variable=self.balance_locations_var).pack(pady=2, padx=15, anchor="w")
+                        variable=self.balance_locations_var,
+                        command=lambda: self._save_balance_from_generate('balance_locations', self.balance_locations_var)).pack(pady=2, padx=15, anchor="w")
         ctk.CTkCheckBox(left_frame, text="Balance Actions",
-                        variable=self.balance_actions_var).pack(pady=2, padx=15, anchor="w")
+                        variable=self.balance_actions_var,
+                        command=lambda: self._save_balance_from_generate('balance_actions', self.balance_actions_var)).pack(pady=2, padx=15, anchor="w")
         ctk.CTkCheckBox(left_frame, text="Balance Weather",
-                        variable=self.balance_weather_var).pack(pady=2, padx=15, anchor="w")
+                        variable=self.balance_weather_var,
+                        command=lambda: self._save_balance_from_generate('balance_weather', self.balance_weather_var)).pack(pady=2, padx=15, anchor="w")
         ctk.CTkCheckBox(left_frame, text="Balance Cameras",
-                        variable=self.balance_cameras_var).pack(pady=2, padx=15, anchor="w")
+                        variable=self.balance_cameras_var,
+                        command=lambda: self._save_balance_from_generate('balance_cameras', self.balance_cameras_var)).pack(pady=2, padx=15, anchor="w")
 
         force_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         force_frame.pack(pady=(12, 2), padx=15, fill="x")
-        self.force_deficit_closure_var = ctk.BooleanVar(value=False)
+        # 👇 Загружаем значение Force Deficit Closure из настроек
+        self.force_deficit_closure_var = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'force_deficit_closure'))
+        # 👇 ОБРАТНАЯ СИНХРОНИЗАЦИЯ: сохраняем в настройки при переключении
         ctk.CTkCheckBox(force_frame, text="⚡ Force Deficit Closure",
                         variable=self.force_deficit_closure_var,
-                        font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+                        font=ctk.CTkFont(size=13, weight="bold"),
+                        command=lambda: self._save_balance_from_generate('force_deficit_closure', self.force_deficit_closure_var)).pack(side="left")
         ctk.CTkButton(force_frame, text="?", width=25, height=25,
                       fg_color="gray40", hover_color="gray50",
                       font=ctk.CTkFont(size=12, weight="bold"), corner_radius=15,
@@ -2049,12 +2083,291 @@ class MainWindow(ctk.CTk):
         self._analyzer_log("2. Нажмите '🔍 Analyze Dataset'\n")
 
     def _create_settings_tab(self):
+        """Создает вкладку Settings с реальными настройками приложения"""
         if self._tabs_created.get("Settings", False):
             return
         self._tabs_created["Settings"] = True
-
+        
         tab = self.tabview.tab("Settings")
-        self._create_placeholder(tab, "⚙️ Settings\nПути и интеграции.")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_rowconfigure(0, weight=1)
+        
+        # Скроллируемая область для всех секций
+        scroll = ctk.CTkScrollableFrame(tab)
+        scroll.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        scroll.grid_columnconfigure(0, weight=1)
+        
+        # ═══════════════════════════════════════════════
+        # СЕКЦИЯ 1: Пути к директориям
+        # ═══════════════════════════════════════════════
+        dirs_frame = ctk.CTkFrame(scroll)
+        dirs_frame.pack(fill="x", pady=(0, 15), padx=5)
+        
+        ctk.CTkLabel(dirs_frame, text="📂 Пути к директориям",
+                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=15, pady=(12, 8))
+        
+        # Output directory
+        self.settings_output_dir_var = ctk.StringVar(
+            value=self.settings_manager.get('directories', 'output_directory') or self.output_directory)
+        self._create_path_row(dirs_frame, "Output (генерация):",
+                              self.settings_output_dir_var, self._browse_settings_output,
+                              'directories', 'output_directory')
+        
+        # Profiles path
+        self.settings_profiles_dir_var = ctk.StringVar(
+            value=self.settings_manager.get('directories', 'profiles_path') or str(self.profiles_directory))
+        self._create_path_row(dirs_frame, "Profiles (персонажи):",
+                              self.settings_profiles_dir_var, self._browse_settings_profiles,
+                              'directories', 'profiles_path')
+        
+        # Кнопка сброса путей
+        reset_paths_btn = ctk.CTkButton(dirs_frame, text="🔄 Сбросить пути к дефолтным",
+                                         fg_color="gray40", hover_color="gray50",
+                                         width=250, height=32,
+                                         command=self._reset_paths_to_defaults)
+        reset_paths_btn.pack(anchor="w", padx=15, pady=(10, 12))
+        
+        # ═══════════════════════════════════════════════
+        # СЕКЦИЯ 2: Параметры генерации по умолчанию
+        # ═══════════════════════════════════════════════
+        gen_frame = ctk.CTkFrame(scroll)
+        gen_frame.pack(fill="x", pady=(0, 15), padx=5)
+        
+        ctk.CTkLabel(gen_frame, text="🎬 Параметры генерации по умолчанию",
+                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=15, pady=(12, 8))
+        
+        # Количество сцен
+        scenes_row = ctk.CTkFrame(gen_frame, fg_color="transparent")
+        scenes_row.pack(fill="x", padx=15, pady=5)
+        ctk.CTkLabel(scenes_row, text="Количество сцен:", width=180, anchor="w").pack(side="left")
+        self.settings_scenes_var = ctk.StringVar(
+            value=str(self.settings_manager.get('generation_defaults', 'num_scenes')))
+        scenes_entry = ctk.CTkEntry(scenes_row, textvariable=self.settings_scenes_var, width=120)
+        scenes_entry.pack(side="left")
+        scenes_entry.bind('<FocusOut>', lambda e: self._save_scenes_default())
+        
+        # Чекбоксы балансировки
+        self.settings_balance_locs = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_locations'))
+        self.settings_balance_acts = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_actions'))
+        self.settings_balance_weath = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_weather'))
+        self.settings_balance_cams = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'balance_cameras'))
+        
+        ctk.CTkLabel(gen_frame, text="Включить балансировку по умолчанию:",
+                     anchor="w").pack(anchor="w", padx=15, pady=(10, 5))
+        
+        balance_checkboxes_frame = ctk.CTkFrame(gen_frame, fg_color="transparent")
+        balance_checkboxes_frame.pack(fill="x", padx=15, pady=(0, 5))
+        
+        ctk.CTkCheckBox(balance_checkboxes_frame, text="Locations",
+                        variable=self.settings_balance_locs,
+                        command=lambda: self._save_balance_default('balance_locations', self.settings_balance_locs)).pack(anchor="w", pady=2)
+        ctk.CTkCheckBox(balance_checkboxes_frame, text="Actions",
+                        variable=self.settings_balance_acts,
+                        command=lambda: self._save_balance_default('balance_actions', self.settings_balance_acts)).pack(anchor="w", pady=2)
+        ctk.CTkCheckBox(balance_checkboxes_frame, text="Weather",
+                        variable=self.settings_balance_weath,
+                        command=lambda: self._save_balance_default('balance_weather', self.settings_balance_weath)).pack(anchor="w", pady=2)
+        ctk.CTkCheckBox(balance_checkboxes_frame, text="Cameras",
+                        variable=self.settings_balance_cams,
+                        command=lambda: self._save_balance_default('balance_cameras', self.settings_balance_cams)).pack(anchor="w", pady=(2, 10))
+        
+        # Force Deficit Closure
+        self.settings_force_closure = ctk.BooleanVar(
+            value=self.settings_manager.get('generation_defaults', 'force_deficit_closure'))
+        ctk.CTkCheckBox(gen_frame, text="⚡ Force Deficit Closure по умолчанию",
+                        variable=self.settings_force_closure,
+                        font=ctk.CTkFont(weight="bold"),
+                        command=lambda: self._save_balance_default('force_deficit_closure', self.settings_force_closure)).pack(anchor="w", padx=15, pady=(5, 12))
+        
+        # ═══════════════════════════════════════════════
+        # СЕКЦИЯ 3: Поведение приложения
+        # ═══════════════════════════════════════════════
+        behavior_frame = ctk.CTkFrame(scroll)
+        behavior_frame.pack(fill="x", pady=(0, 15), padx=5)
+        
+        ctk.CTkLabel(behavior_frame, text="⚙️ Поведение приложения",
+                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=15, pady=(12, 8))
+        
+        self.settings_confirm_delete = ctk.BooleanVar(
+            value=self.settings_manager.get('behavior', 'confirm_delete'))
+        ctk.CTkCheckBox(behavior_frame, text="Подтверждение перед удалением",
+                        variable=self.settings_confirm_delete,
+                        command=lambda: self._save_behavior('confirm_delete', self.settings_confirm_delete)).pack(anchor="w", padx=15, pady=3)
+        
+        # ═══════════════════════════════════════════════
+        # КНОПКА СБРОСА ВСЕХ НАСТРОЕК
+        # ═══════════════════════════════════════════════
+        reset_all_btn = ctk.CTkButton(scroll, text="🔄 Сбросить все настройки к значениям по умолчанию",
+                                       fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
+                                       font=ctk.CTkFont(size=13, weight="bold"),
+                                       height=40,
+                                       command=self._reset_all_settings)
+        reset_all_btn.pack(fill="x", pady=(5, 15), padx=5)
+        
+        # ═══════════════════════════════════════════════
+        # СЕКЦИЯ 5: О программе (About)
+        # ═══════════════════════════════════════════════
+        about_frame = ctk.CTkFrame(scroll)
+        about_frame.pack(fill="x", pady=(0, 15), padx=5)
+        
+        ctk.CTkLabel(about_frame, text="ℹ️ О программе",
+                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=15, pady=(12, 8))
+        
+        # Версия и название
+        version_label = ctk.CTkLabel(about_frame, 
+                                      text="Dataset Composer v1.1",
+                                      font=ctk.CTkFont(size=14, weight="bold"))
+        version_label.pack(anchor="w", padx=15, pady=(0, 5))
+        
+        # Описание
+        description_label = ctk.CTkLabel(about_frame,
+                                          text="Инструмент для создания и балансировки датасетов\n"
+                                               "для обучения Character LoRA моделей",
+                                          text_color="gray70",
+                                          justify="left")
+        description_label.pack(anchor="w", padx=15, pady=(0, 10))
+        
+        # Автор
+        author_row = ctk.CTkFrame(about_frame, fg_color="transparent")
+        author_row.pack(fill="x", padx=15, pady=2)
+        ctk.CTkLabel(author_row, text="Автор:", width=120, anchor="w").pack(side="left")
+        ctk.CTkLabel(author_row, text="Vasily Taran", anchor="w").pack(side="left")
+        
+        # GitHub ссылка
+        github_row = ctk.CTkFrame(about_frame, fg_color="transparent")
+        github_row.pack(fill="x", padx=15, pady=2)
+        ctk.CTkLabel(github_row, text="GitHub:", width=120, anchor="w").pack(side="left")
+        github_link = ctk.CTkLabel(github_row, 
+                                    text="dataset-composer",
+                                    text_color=COLORS['primary_blue'],
+                                    cursor="hand2")
+        github_link.pack(side="left")
+        github_link.bind("<Button-1>", lambda e: self._open_github_link())
+        
+        # Используемые библиотеки
+        libs_label = ctk.CTkLabel(about_frame,
+                                   text="Используемые библиотеки:",
+                                   font=ctk.CTkFont(weight="bold"),
+                                   anchor="w")
+        libs_label.pack(anchor="w", padx=15, pady=(10, 5))
+        
+        libs_text = ctk.CTkLabel(about_frame,
+                                  text="• CustomTkinter — современный UI фреймворк\n"
+                                       "• PyYAML — работа с YAML файлами\n"
+                                       "• tomli / tomli-w — работа с TOML файлами\n"
+                                       "• threading — многопоточность для генерации",
+                                  text_color="gray70",
+                                  justify="left",
+                                  anchor="w")
+        libs_text.pack(anchor="w", padx=15, pady=(0, 12))
+
+    # ═══════════════════════════════════════════════
+    # ОБРАБОТЧИКИ НАСТРОЕК (Settings Tab)
+    # ═══════════════════════════════════════════════
+    
+    def _create_path_row(self, parent, label: str, var: ctk.StringVar,
+                         browse_command, section: str, key: str):
+        """Создаёт строку с меткой, полем пути и кнопкой Browse."""
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", padx=15, pady=3)
+        ctk.CTkLabel(row, text=label, width=180, anchor="w").pack(side="left")
+        entry = ctk.CTkEntry(row, textvariable=var)
+        entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        entry.bind('<FocusOut>', lambda e, s=section, k=key, v=var: self._save_path(s, k, v.get()))
+        ctk.CTkButton(row, text="Browse", width=80, command=browse_command).pack(side="left")
+    
+    def _save_path(self, section: str, key: str, value: str):
+        """Сохраняет путь в настройки."""
+        self.settings_manager.set(section, key, value.strip())
+    
+    def _browse_settings_output(self):
+        folder = filedialog.askdirectory(title="Select output folder")
+        if folder:
+            self.settings_output_dir_var.set(folder)
+            self._save_path('directories', 'output_directory', folder)
+            # 👇 Синхронизируем с вкладкой Generate
+            if hasattr(self, 'output_path_entry') and self.output_path_entry:
+                self.output_path_entry.delete(0, "end")
+                self.output_path_entry.insert(0, folder)
+    
+    def _browse_settings_profiles(self):
+        folder = filedialog.askdirectory(title="Select profiles folder")
+        if folder:
+            self.settings_profiles_dir_var.set(folder)
+            self._save_path('directories', 'profiles_path', folder)
+    
+    def _reset_paths_to_defaults(self):
+        """Сбрасывает все пути к дефолтным."""
+        self.settings_manager.set('directories', 'output_directory', '')
+        self.settings_manager.set('directories', 'profiles_path', '')
+        # Обновляем UI в Settings
+        self.settings_output_dir_var.set(self.output_directory)
+        self.settings_profiles_dir_var.set(str(self.profiles_directory))
+        # 👇 Синхронизируем с вкладкой Generate
+        if hasattr(self, 'output_path_entry') and self.output_path_entry:
+            self.output_path_entry.delete(0, "end")
+            self.output_path_entry.insert(0, self.output_directory)
+        self._log("🔄 Пути сброшены к значениям по умолчанию\n")
+    
+    def _save_scenes_default(self):
+        """Сохраняет количество сцен по умолчанию."""
+        try:
+            value = int(self.settings_scenes_var.get())
+            if value > 0:
+                self.settings_manager.set('generation_defaults', 'num_scenes', value)
+                # 👇 Синхронизируем с вкладкой Generate
+                if hasattr(self, 'scenes_entry') and self.scenes_entry:
+                    self.scenes_entry.delete(0, "end")
+                    self.scenes_entry.insert(0, str(value))
+        except ValueError:
+            # Восстанавливаем предыдущее значение
+            self.settings_scenes_var.set(
+                str(self.settings_manager.get('generation_defaults', 'num_scenes')))
+    
+    def _save_balance_default(self, key: str, var: ctk.BooleanVar):
+        """Сохраняет настройку балансировки."""
+        self.settings_manager.set('generation_defaults', key, var.get())
+        # 👇 Синхронизируем с вкладкой Generate
+        var_mapping = {
+            'balance_locations': 'balance_locations_var',
+            'balance_actions': 'balance_actions_var',
+            'balance_weather': 'balance_weather_var',
+            'balance_cameras': 'balance_cameras_var',
+            'force_deficit_closure': 'force_deficit_closure_var',
+        }
+        if key in var_mapping:
+            target_var_name = var_mapping[key]
+            if hasattr(self, target_var_name):
+                target_var = getattr(self, target_var_name)
+                if target_var:
+                    target_var.set(var.get())
+    
+    def _save_behavior(self, key: str, var: ctk.BooleanVar):
+        """Сохраняет настройку поведения."""
+        self.settings_manager.set('behavior', key, var.get())
+    
+    def _reset_all_settings(self):
+        """Сбрасывает ВСЕ настройки к значениям по умолчанию."""
+        if not messagebox.askyesno("Сброс настроек",
+                                   "Вы уверены, что хотите сбросить ВСЕ настройки?\n"
+                                   "Это действие нельзя отменить."):
+            return
+        self.settings_manager.reset_to_defaults()
+        messagebox.showinfo("Success", "Все настройки сброшены.\n"
+                                        "Перезапустите приложение для полного применения.")
+        self._log("🔄 Все настройки сброшены к значениям по умолчанию\n")
+
+    def _open_github_link(self):
+        """Открывает ссылку на GitHub в браузере по умолчанию"""
+        import webbrowser
+        github_url = self.settings_manager.get('about', 'github')
+        if github_url:
+            webbrowser.open(github_url)
+            self._log(f"🌐 Открыта ссылка: {github_url}\n")
 
     # ════════════════════════════════════════════════════════════════════════
     # LIBRARY: Редактор библиотеки тегов
@@ -4032,10 +4345,50 @@ class MainWindow(ctk.CTk):
             self.balance_path_entry.insert(0, folder)
 
     def _browse_output_folder(self):
+        """Обработчик выбора папки вывода во вкладке Generate"""
         folder = filedialog.askdirectory(title="Select output folder")
         if folder:
             self.output_path_entry.delete(0, "end")
             self.output_path_entry.insert(0, folder)
+            # 👇 ОБРАТНАЯ СИНХРОНИЗАЦИЯ: сохраняем в настройки
+            self.settings_manager.set('directories', 'output_directory', folder)
+            # Обновляем поле в Settings (если вкладка уже открыта)
+            if hasattr(self, 'settings_output_dir_var') and self.settings_output_dir_var:
+                self.settings_output_dir_var.set(folder)
+
+    def _save_scenes_from_generate(self):
+        """Сохраняет количество сцен из поля Generate в настройки и синхронизирует с Settings"""
+        try:
+            value = int(self.scenes_entry.get())
+            if value > 0:
+                self.settings_manager.set('generation_defaults', 'num_scenes', value)
+                # Обновляем поле в Settings (если вкладка уже открыта)
+                if hasattr(self, 'settings_scenes_var') and self.settings_scenes_var:
+                    self.settings_scenes_var.set(str(value))
+        except ValueError:
+            # Восстанавливаем предыдущее корректное значение
+            valid_value = self.settings_manager.get('generation_defaults', 'num_scenes')
+            self.scenes_entry.delete(0, "end")
+            self.scenes_entry.insert(0, str(valid_value))
+
+    def _save_balance_from_generate(self, key: str, var):
+        """Сохраняет состояние чекбокса балансировки из Generate в настройки и синхронизирует с Settings"""
+        self.settings_manager.set('generation_defaults', key, var.get())
+        # Маппинг ключей настроек на переменные UI в Settings
+        var_mapping = {
+            'balance_locations': 'settings_balance_locs',
+            'balance_actions': 'settings_balance_acts',
+            'balance_weather': 'settings_balance_weath',
+            'balance_cameras': 'settings_balance_cams',
+            'force_deficit_closure': 'settings_force_closure',
+        }
+        # Обновляем соответствующую переменную в Settings (если вкладка уже открыта)
+        if key in var_mapping:
+            target_var_name = var_mapping[key]
+            if hasattr(self, target_var_name):
+                target_var = getattr(self, target_var_name)
+                if target_var is not None:
+                    target_var.set(var.get())
 
     def _roll_dice(self):
         """Генерирует один случайный промпт для отладки"""
@@ -4154,6 +4507,8 @@ class MainWindow(ctk.CTk):
         if folder:
             self.analyze_path_entry.delete(0, "end")
             self.analyze_path_entry.insert(0, folder)
+            # 👇 Analyzer использует свой путь, но можно синхронизировать с Generate
+            # (если хочешь, чтобы они были связаны)
 
     def _auto_fix_deficit(self):
         """Переносит настройки анализатора во вкладку Generate"""

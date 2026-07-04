@@ -5,12 +5,28 @@ display_name = "High Angle / Bird's Eye View"
 
 [hard_constraints]
 camera_angle = "high_angle"
-excludes_framing = ["extreme_close_up", "face_shot"]
+excludes_framing = [
+    "extreme_close_up",
+    "face_shot",
+]
 
 [soft_constraints]
-prefers_poses = ["sitting_on_floor", "lying_on_back", "lying_on_side", "sitting_cross_legged", "curled_up"]
-prefers_actions = ["lying_on_bed", "reading", "sitting", "sleeping", "looking_up"]
-prefers_lighting_sources = ["overhead_light", "sunlight", "lamplight"]
+prefers_poses = [
+    "sitting_on_floor",
+    "lying_on_back",
+    "lying_on_side",
+    "sitting_cross_legged",
+    "curled_up",
+]
+prefers_actions = [
+    "reading",
+    "sleeping",
+]
+prefers_lighting_sources = [
+    "overhead_light",
+    "sunlight",
+    "lamplight",
+]
 
 [coverage_impact]
 face_weight = 0.5

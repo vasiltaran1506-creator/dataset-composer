@@ -4,17 +4,66 @@ category = "weather"
 display_name = "Fog / Mist"
 
 [hard_constraints]
-excludes_lighting_quality = ["hard_lighting", "bright_sunlight", "harsh_shadows"]
+excludes_lighting_quality = [
+    "hard_lighting",
+    "bright_sunlight",
+    "harsh_shadows",
+]
 
 [soft_constraints]
-prefers_lighting_sources = ["overcast_light", "diffused_light", "lamplight", "streetlight"]
-prefers_lighting_quality = ["diffused_lighting", "soft_lighting", "hazy_lighting", "ethereal_lighting", "low_contrast"]
-prefers_mood = ["mysterious", "eerie", "dreamy", "melancholic", "peaceful", "lonely", "haunting"]
-prefers_locations = ["forest", "street", "lake", "bridge", "mountain", "park", "shrine_temple"]
-prefers_actions = ["walking", "standing", "looking_around", "looking_into_distance"]
-prefers_effects = ["fog", "mist", "dense_fog", "light_fog", "morning_mist", "haze"]
+prefers_lighting_sources = [
+    "overcast_light",
+    "diffused_light",
+    "lamplight",
+    "streetlight",
+]
+prefers_lighting_quality = [
+    "diffused_lighting",
+    "soft_lighting",
+    "hazy_lighting",
+    "ethereal_lighting",
+    "low_contrast",
+]
+prefers_mood = [
+    "mysterious",
+    "eerie",
+    "dreamy",
+    "melancholic",
+    "peaceful",
+    "lonely",
+    "haunting",
+]
+prefers_locations = [
+    "street",
+    "park",
+    "shrine_temple",
+]
+prefers_actions = [
+    "walking",
+]
+prefers_effects = [
+    "fog",
+    "mist",
+    "dense_fog",
+    "light_fog",
+    "morning_mist",
+    "haze",
+]
 
 [visibility_modifiers]
-reduces_visibility = ["background_details", "distant_objects", "far_background", "sky"]
-adds_effects = ["depth_haze", "atmospheric_perspective", "silhouette", "soft_edges"]
-reveals_features = ["face", "upper_body"]
+reduces_visibility = [
+    "background_details",
+    "distant_objects",
+    "far_background",
+    "sky",
+]
+adds_effects = [
+    "depth_haze",
+    "atmospheric_perspective",
+    "silhouette",
+    "soft_edges",
+]
+reveals_features = [
+    "face",
+    "upper_body",
+]

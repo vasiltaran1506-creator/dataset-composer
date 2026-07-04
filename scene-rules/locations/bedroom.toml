@@ -5,13 +5,42 @@ type = "indoor_private"
 
 [hard_constraints]
 allowed_outfit_categories = [
-    "02_clothing/full_body/pajamas.txt", "02_clothing/full_body/loungewear.txt",
-    "02_clothing/underwear/", "02_clothing/topwear/shirts.txt", "02_clothing/topwear/sweaters.txt",
-    "02_clothing/bottomwear/shorts.txt", "02_clothing/legwear/socks.txt"
+    "02_clothing/full_body/pajamas.txt",
+    "02_clothing/full_body/loungewear.txt",
+    "02_clothing/underwear/",
+    "02_clothing/topwear/shirts.txt",
+    "02_clothing/topwear/sweaters.txt",
+    "02_clothing/bottomwear/shorts.txt",
+    "02_clothing/legwear/socks.txt",
 ]
 
 [soft_constraints]
-prefers_actions = ["reading", "sleeping", "waking_up", "daydreaming", "looking_out_window", "using_smartphone", "stretching"]
-prefers_lighting_sources = ["lamplight", "window_light", "fairy_lights", "candlelight", "moonlight", "screen_glow"]
-prefers_lighting_quality = ["soft_lighting", "warm_lighting", "dim_lighting", "low-key_lighting"]
-prefers_props = ["book", "smartphone", "teacup", "mug", "laptop", "plush_toy", "pillow", "blanket"]
+prefers_actions = [
+    "reading",
+    "sleeping",
+    "looking_out_window",
+]
+prefers_lighting_sources = [
+    "lamplight",
+    "window_light",
+    "fairy_lights",
+    "candlelight",
+    "moonlight",
+    "screen_glow",
+]
+prefers_lighting_quality = [
+    "soft_lighting",
+    "warm_lighting",
+    "dim_lighting",
+    "low-key_lighting",
+]
+prefers_props = [
+    "book",
+    "smartphone",
+    "teacup",
+    "mug",
+    "laptop",
+    "plush_toy",
+    "pillow",
+    "blanket",
+]

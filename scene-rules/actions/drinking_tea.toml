@@ -4,16 +4,60 @@ category = "action"
 display_name = "Drinking Tea / Coffee"
 
 [hard_constraints]
-requires_prop_categories = ["09_props/food_drink.txt"]
-excludes_actions = ["running", "sleeping", "swimming", "exercising", "cooking"]
+requires_prop_categories = [
+    "09_props/food_drink.txt",
+]
+excludes_actions = [
+    "sleeping",
+    "exercising",
+    "cooking",
+]
 
 [soft_constraints]
-prefers_poses = ["sitting", "sitting_on_chair", "sitting_on_floor", "standing", "leaning_back"]
-prefers_expressions = ["gentle_smile", "relaxed", "eyes_closed_savoring", "blowing_on_cup", "content"]
-prefers_locations = ["cafe", "kitchen", "bedroom", "balcony", "living_room", "garden"]
-prefers_props = ["teacup", "coffee_cup", "mug", "saucer", "pastry", "cookie", "teapot"]
-prefers_lighting_sources = ["window_light", "warm_lamp", "sunlight", "candlelight"]
-prefers_lighting_quality = ["warm_lighting", "soft_lighting", "cozy_lighting"]
+prefers_poses = [
+    "sitting",
+    "sitting_on_chair",
+    "sitting_on_floor",
+    "standing",
+    "leaning_back",
+]
+prefers_expressions = [
+    "gentle_smile",
+    "relaxed",
+    "eyes_closed_savoring",
+    "blowing_on_cup",
+    "content",
+]
+prefers_locations = [
+    "cafe",
+    "kitchen",
+    "bedroom",
+    "balcony",
+]
+prefers_props = [
+    "teacup",
+    "coffee_cup",
+    "mug",
+    "saucer",
+    "pastry",
+    "cookie",
+    "teapot",
+]
+prefers_lighting_sources = [
+    "window_light",
+    "warm_lamp",
+    "sunlight",
+    "candlelight",
+]
+prefers_lighting_quality = [
+    "warm_lighting",
+    "soft_lighting",
+    "cozy_lighting",
+]
 
 [visibility_modifiers]
-reveals_features = ["hands", "face", "upper_body"]
+reveals_features = [
+    "hands",
+    "face",
+    "upper_body",
+]

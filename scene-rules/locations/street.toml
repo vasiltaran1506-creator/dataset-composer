@@ -4,7 +4,28 @@ display_name = "City Street"
 type = "outdoor_urban"
 
 [soft_constraints]
-prefers_actions = ["walking", "window_shopping", "holding_coffee_cup", "using_smartphone", "waiting_for_bus", "crossing_street", "taking_photos"]
-prefers_lighting_sources = ["sunlight", "streetlight", "neon_light", "shop_lights", "golden_hour", "blue_hour"]
-prefers_lighting_quality = ["natural_lighting", "urban_lighting", "neon_lighting", "cinematic_lighting"]
-prefers_props = ["coffee_cup", "shopping_bag", "smartphone", "umbrella", "backpack", "camera"]
+prefers_actions = [
+    "walking",
+]
+prefers_lighting_sources = [
+    "sunlight",
+    "streetlight",
+    "neon_light",
+    "shop_lights",
+    "golden_hour",
+    "blue_hour",
+]
+prefers_lighting_quality = [
+    "natural_lighting",
+    "urban_lighting",
+    "neon_lighting",
+    "cinematic_lighting",
+]
+prefers_props = [
+    "coffee_cup",
+    "shopping_bag",
+    "smartphone",
+    "umbrella",
+    "backpack",
+    "camera",
+]

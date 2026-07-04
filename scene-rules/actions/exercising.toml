@@ -4,16 +4,62 @@ category = "action"
 display_name = "Exercising / Workout"
 
 [hard_constraints]
-requires_outfit_categories = ["02_clothing/topwear/sportswear.txt", "02_clothing/bottomwear/sportswear.txt", "02_clothing/full_body/sportswear.txt"]
-excludes_outfit_categories = ["02_clothing/full_body/dresses.txt", "02_clothing/full_body/uniforms.txt", "02_clothing/footwear/boots.txt"]
-excludes_locations = ["library", "cafe", "school_classroom", "shrine_temple"]
-excludes_props = ["book", "laptop", "teacup", "steering_wheel"]
+requires_outfit_categories = [
+    "02_clothing/topwear/sportswear.txt",
+    "02_clothing/bottomwear/sportswear.txt",
+    "02_clothing/full_body/sportswear.txt",
+]
+excludes_outfit_categories = [
+    "02_clothing/full_body/dresses.txt",
+    "02_clothing/full_body/uniforms.txt",
+    "02_clothing/footwear/boots.txt",
+]
+excludes_locations = [
+    "library",
+    "cafe",
+    "school_classroom",
+    "shrine_temple",
+]
+excludes_props = [
+    "book",
+    "laptop",
+    "teacup",
+    "steering_wheel",
+]
 
 [soft_constraints]
-prefers_poses = ["stretching", "yoga_pose", "running_pose", "jumping", "squatting", "plank_position"]
-prefers_expressions = ["focused", "determined", "sweating", "heavy_breathing", "concentrated"]
-prefers_locations = ["gym", "park", "sports_field", "beach", "home_gym"]
-prefers_props = ["yoga_mat", "dumbbells", "water_bottle", "towel", "fitness_ball", "jump_rope"]
+prefers_poses = [
+    "stretching",
+    "yoga_pose",
+    "running_pose",
+    "jumping",
+    "squatting",
+    "plank_position",
+]
+prefers_expressions = [
+    "focused",
+    "determined",
+    "sweating",
+    "heavy_breathing",
+    "concentrated",
+]
+prefers_locations = [
+    "park",
+    "beach",
+]
+prefers_props = [
+    "yoga_mat",
+    "dumbbells",
+    "water_bottle",
+    "towel",
+    "fitness_ball",
+    "jump_rope",
+]
 
 [visibility_modifiers]
-reveals_features = ["full_body", "legs", "arms", "midriff"]
+reveals_features = [
+    "full_body",
+    "legs",
+    "arms",
+    "midriff",
+]

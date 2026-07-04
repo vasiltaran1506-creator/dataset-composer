@@ -7,8 +7,25 @@ excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/pajamas.txt",
     "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt"
+    "02_clothing/full_body/loungewear.txt",
 ]
-excludes_actions = ["sleeping", "cooking", "bathing", "taking_bath"]
-excludes_props = ["frying_pan", "bathtub", "blackboard", "torii_gate", "beach_ball", "bed"]
-excludes_lighting_sources = ["candlelight", "fairy_lights", "mirror_light", "desk_lamp", "fireplace"]
+excludes_actions = [
+    "sleeping",
+    "cooking",
+    "taking_bath",
+]
+excludes_props = [
+    "frying_pan",
+    "bathtub",
+    "blackboard",
+    "torii_gate",
+    "beach_ball",
+    "bed",
+]
+excludes_lighting_sources = [
+    "candlelight",
+    "fairy_lights",
+    "mirror_light",
+    "desk_lamp",
+    "fireplace",
+]

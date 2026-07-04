@@ -4,7 +4,30 @@ display_name = "Train Interior"
 type = "transit"
 
 [soft_constraints]
-prefers_actions = ["sitting_by_window", "looking_out_window", "reading", "listening_to_music", "using_smartphone", "sleeping", "holding_strap"]
-prefers_lighting_sources = ["window_light", "sunset", "golden_hour", "overhead_light", "scenic_light"]
-prefers_lighting_quality = ["cinematic_lighting", "warm_lighting", "dramatic_lighting", "moving_light"]
-prefers_props = ["bag", "backpack", "headphones", "smartphone", "book", "ticket", "bento"]
+prefers_actions = [
+    "looking_out_window",
+    "reading",
+    "sleeping",
+]
+prefers_lighting_sources = [
+    "window_light",
+    "sunset",
+    "golden_hour",
+    "overhead_light",
+    "scenic_light",
+]
+prefers_lighting_quality = [
+    "cinematic_lighting",
+    "warm_lighting",
+    "dramatic_lighting",
+    "moving_light",
+]
+prefers_props = [
+    "bag",
+    "backpack",
+    "headphones",
+    "smartphone",
+    "book",
+    "ticket",
+    "bento",
+]

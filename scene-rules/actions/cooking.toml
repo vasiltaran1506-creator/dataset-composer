@@ -15,7 +15,6 @@ excludes_actions = [
     "sleeping",
     "reading",
     "studying",
-    "swimming",
     "taking_bath",
     "exercising",
 ]
@@ -47,8 +46,6 @@ prefers_locations = []
 prefers_actions = [
     "reading",
     "studying",
-    "thinking",
-    "writing",
 ]
 prefers_props = [
     "book",
@@ -66,7 +63,6 @@ excludes_actions = [
     "reading",
     "sleeping",
     "studying",
-    "swimming",
 ]
 
 [visibility_modifiers]

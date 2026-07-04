@@ -4,7 +4,25 @@ display_name = "Shrine / Temple"
 type = "outdoor_cultural"
 
 [soft_constraints]
-prefers_actions = ["walking", "praying", "bowing", "looking_around", "standing_quietly", "climbing_stairs", "admiring_view"]
-prefers_lighting_sources = ["dappled_sunlight", "sunlight", "golden_hour", "soft_overcast_light"]
-prefers_lighting_quality = ["natural_lighting", "soft_lighting", "dappled_light", "ethereal_lighting"]
-prefers_props = ["ema_plaque", "fortune_paper", "prayer_beads", "parasol", "fan"]
+prefers_actions = [
+    "walking",
+]
+prefers_lighting_sources = [
+    "dappled_sunlight",
+    "sunlight",
+    "golden_hour",
+    "soft_overcast_light",
+]
+prefers_lighting_quality = [
+    "natural_lighting",
+    "soft_lighting",
+    "dappled_light",
+    "ethereal_lighting",
+]
+prefers_props = [
+    "ema_plaque",
+    "fortune_paper",
+    "prayer_beads",
+    "parasol",
+    "fan",
+]

@@ -4,13 +4,36 @@ category = "camera"
 display_name = "Full Body Shot"
 
 [hard_constraints]
-reveals_features = ["face", "upper_body", "lower_body", "feet_footwear", "full_outfit"]
-excludes_poses = ["close_up_pose", "headshot_only"]
+reveals_features = [
+    "face",
+    "upper_body",
+    "lower_body",
+    "feet_footwear",
+    "full_outfit",
+]
+excludes_poses = [
+    "close_up_pose",
+    "headshot_only",
+]
 
 [soft_constraints]
-prefers_poses = ["standing", "walking", "full_body_stretch", "jumping", "dancing"]
-prefers_lighting_quality = ["natural_lighting", "even_lighting", "cinematic_lighting"]
-prefers_locations = ["park", "street", "beach", "field", "large_room"]
+prefers_poses = [
+    "standing",
+    "walking",
+    "full_body_stretch",
+    "jumping",
+    "dancing",
+]
+prefers_lighting_quality = [
+    "natural_lighting",
+    "even_lighting",
+    "cinematic_lighting",
+]
+prefers_locations = [
+    "park",
+    "street",
+    "beach",
+]
 
 [coverage_impact]
 face_weight = 1.0

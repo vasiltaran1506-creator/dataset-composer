@@ -8,15 +8,46 @@ camera_angle = "pov"
 camera_mode = "first_person"
 
 [soft_constraints]
-prefers_actions = ["reaching_towards_viewer", "holding_hands_pov", "talking_to_viewer", "offering_food", "handing_object", "pulling_viewer", "looking_at_viewer", "smiling_at_viewer"]
-prefers_poses = ["leaning_forward", "sitting_across", "standing_close", "reaching_out", "hand_on_viewer"]
-prefers_expressions = ["looking_at_viewer", "smile", "gentle_smile", "blush", "shy", "excited", "winking"]
-prefers_framing = ["close_up", "upper_body", "cowboy_shot"]
-prefers_interaction_props = ["coffee_cup", "food", "gift", "book", "hand"]
+prefers_actions = []
+prefers_poses = [
+    "leaning_forward",
+    "sitting_across",
+    "standing_close",
+    "reaching_out",
+    "hand_on_viewer",
+]
+prefers_expressions = [
+    "looking_at_viewer",
+    "smile",
+    "gentle_smile",
+    "blush",
+    "shy",
+    "excited",
+    "winking",
+]
+prefers_framing = [
+    "close_up",
+    "upper_body",
+    "cowboy_shot",
+]
+prefers_interaction_props = [
+    "coffee_cup",
+    "food",
+    "gift",
+    "book",
+    "hand",
+]
 
 [visibility_modifiers]
-reveals_features = ["face", "hands", "upper_body"]
-conceals_features = ["feet_footwear", "lower_body"]
+reveals_features = [
+    "face",
+    "hands",
+    "upper_body",
+]
+conceals_features = [
+    "feet_footwear",
+    "lower_body",
+]
 
 [coverage_impact]
 face_weight = 1.0

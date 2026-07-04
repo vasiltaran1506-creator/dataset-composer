@@ -6,7 +6,16 @@ display_name = "Outdoor Semi-Private"
 excludes_outfit_categories = [
     "02_clothing/underwear/",
     "02_clothing/full_body/uniforms.txt",
-    "02_clothing/footwear/boots.txt"
+    "02_clothing/footwear/boots.txt",
 ]
-excludes_actions = ["cooking", "shouting", "running", "exercising"]
-excludes_props = ["steering_wheel", "frying_pan", "stove", "torii_gate", "beach_ball"]
+excludes_actions = [
+    "cooking",
+    "exercising",
+]
+excludes_props = [
+    "steering_wheel",
+    "frying_pan",
+    "stove",
+    "torii_gate",
+    "beach_ball",
+]
