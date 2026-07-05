@@ -219,17 +219,19 @@ class MainWindow(ctk.CTk):
         label.pack(expand=True)
 
 
-    def _on_main_tab_changed(self, tab_name: str | None):
+    def _on_main_tab_changed(self):
         """
-        Обработчик смены вкладки. Принудительная полная перерисовка
-        чтобы избежать артефактов (фантомов) при переключении вкладок.
+        Обработчик смены вкладки. Принудительная перерисовка
+        для устранения артефактов при переключении вкладок.
+        
+        Примечание: CTkTabview вызывает command БЕЗ аргументов,
+        поэтому параметр tab_name не нужен.
         """
         try:
-            # 👇 ФИКС: Полная перерисовка (update, а не update_idletasks)
-            self.update()
-            # Дополнительные перерисовки с задержкой, чтобы убить все "тени"
-            self.after(50, self.update)
-            self.after(100, self.update_idletasks)
+            # Обновляем интерфейс безопасно
+            self.update_idletasks()
+            # Небольшая задержка для окончательной перерисовки
+            self.after(10, lambda: self.update_idletasks())
         except Exception:
             pass
 
@@ -2546,8 +2548,10 @@ class MainWindow(ctk.CTk):
         """Удаляет тег из файла через UI"""
         if self.library_current_file is None:
             return
-        if not messagebox.askyesno("Confirm Delete", f"Удалить тег '{tag}'?"):
-            return
+        # 👇 Учитываем настройку подтверждения удаления
+        if self.settings_manager.get('behavior', 'confirm_delete'):
+            if not messagebox.askyesno("Confirm Delete", f"Удалить тег '{tag}'?"):
+                return
         if tag in self.library_tags:
             self.library_tags.remove(tag)
         self._save_library_file()
@@ -2558,6 +2562,24 @@ class MainWindow(ctk.CTk):
             rel_path = self.library_current_file.relative_to(self.project_root / "prompt-library")
             self.library_editor_title.configure(text=f"📝 {rel_path} ({len(self.library_tags)} tags)")
         self._log(f"🗑️ Удалён тег: {tag}\n")
+
+    def _delete_scene_rule(self, category: str, rule_name: str):
+        """
+        Удаляет файл правила и подчищает все зависимости в других файлах.
+        Показывает окно подтверждения перед удалением (если включено в настройках).
+        """
+        # 👇 Учитываем настройку подтверждения удаления
+        if self.settings_manager.get('behavior', 'confirm_delete'):
+            if not messagebox.askyesno(
+                "Удаление правила",
+                f"Вы уверены, что хотите удалить правило?\n\n"
+                f"📄 {category}/{rule_name}.toml\n\n"
+                f"Все ссылки на это правило в других файлах будут автоматически удалены.\n"
+                f"Это действие нельзя отменить!"
+            ):
+                return
+        
+        # Проверяем существование правила
 
     def _save_library_file(self):
         """Сохраняет теги обратно в .txt файл"""
@@ -2716,10 +2738,12 @@ class MainWindow(ctk.CTk):
         if not self.current_profile_name:
             messagebox.showwarning("Warning", "No profile selected")
             return
-        if not messagebox.askyesno("Confirm Delete",
-                                   f"Are you sure you want to delete '{self.current_profile_name}'?\n"
-                                   "This cannot be undone!"):
-            return
+        # 👇 Учитываем настройку подтверждения удаления
+        if self.settings_manager.get('behavior', 'confirm_delete'):
+            if not messagebox.askyesno("Confirm Delete",
+                                       f"Are you sure you want to delete '{self.current_profile_name}'?\n"
+                                       "This cannot be undone!"):
+                return
         profile_path = self.profiles_directory / f"{self.current_profile_name}.yaml"
         if not profile_path.exists():
             profile_path = self.project_root / "character-profile.yaml"
