@@ -5,15 +5,51 @@ display_name = "Profile / Side View"
 
 [hard_constraints]
 camera_angle = "profile"
-conceals_features = ["one_eye", "front_face_full"]
+conceals_features = [
+    "one_eye",
+    "front_face_full",
+]
 
 [soft_constraints]
-prefers_framing = ["portrait", "upper_body", "cowboy_shot", "close_up"]
-prefers_poses = ["standing", "sitting", "looking_away", "looking_into_distance", "head_tilt", "leaning"]
-prefers_expressions = ["neutral", "thoughtful", "gentle_smile", "looking_away", "windblown_hair"]
-prefers_lighting_direction = ["backlighting", "rim_light", "side_lighting", "split_lighting"]
-prefers_lighting_quality = ["cinematic_lighting", "dramatic_lighting", "silhouette", "golden_hour"]
-prefers_outfit_visibility = ["silhouette", "collar_detail", "hair_profile", "neckline"]
+prefers_framing = [
+    "portrait",
+    "upper_body",
+    "cowboy_shot",
+    "close_up",
+]
+prefers_poses = [
+    "standing",
+    "sitting",
+    "looking away",
+    "looking_into_distance",
+    "head tilt",
+    "leaning",
+]
+prefers_expressions = [
+    "neutral",
+    "thoughtful",
+    "gentle smile",
+    "looking away",
+    "windblown_hair",
+]
+prefers_lighting_direction = [
+    "backlighting",
+    "rim_light",
+    "side_lighting",
+    "split_lighting",
+]
+prefers_lighting_quality = [
+    "cinematic_lighting",
+    "dramatic_lighting",
+    "silhouette",
+    "golden_hour",
+]
+prefers_outfit_visibility = [
+    "silhouette",
+    "collar_detail",
+    "hair_profile",
+    "neckline",
+]
 
 [coverage_impact]
 face_weight = 0.7

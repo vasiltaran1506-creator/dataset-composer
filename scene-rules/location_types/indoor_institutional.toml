@@ -15,14 +15,14 @@ excludes_actions = [
     "eating",
     "cooking",
     "taking_bath",
-    "playing_instrument",
+    "playing instrument",
 ]
 excludes_props = [
     "beach_ball",
     "surfboard",
     "frying_pan",
     "bathtub",
-    "steering_wheel",
+    "steering wheel",
     "torii_gate",
     "flat screen tv",
 ]

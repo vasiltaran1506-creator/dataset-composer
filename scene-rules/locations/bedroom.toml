@@ -40,7 +40,7 @@ prefers_props = [
     "teacup",
     "mug",
     "laptop",
-    "plush_toy",
+    "plush toy",
     "pillow",
     "blanket",
 ]

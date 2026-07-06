@@ -19,7 +19,7 @@ excludes_props = [
     "beach_ball",
     "frying_pan",
     "bathtub",
-    "steering_wheel",
+    "steering wheel",
     "torii_gate",
     "flat screen tv",
 ]

@@ -1,72 +1,7 @@
 [meta]
 id = "eating"
-category = "action"
-display_name = "Eating / Having a Meal"
-
-[hard_constraints]
-requires_prop_categories = [
-    "09_props/food_drink.txt",
-]
-excludes_actions = [
-    "sleeping",
-    "exercising",
-    "taking_bath",
-]
-excludes_props = [
-    "steering_wheel",
-    "laptop",
-    "torii_gate",
-    "blackboard",
-]
+display_name = "Eating"
 
 [soft_constraints]
-prefers_poses = [
-    "sitting",
-    "sitting_at_table",
-    "sitting_on_floor",
-    "standing",
-]
-prefers_expressions = [
-    "open_mouth",
-    "chewing",
-    "gentle_smile",
-    "happy",
-    "content",
-    "blowing_on_food",
-    "savoring",
-]
-prefers_locations = [
-    "kitchen",
-    "cafe",
-    "bedroom",
-    "park",
-    "school_classroom",
-]
-prefers_props = [
-    "burger",
-    "slice_of_cake",
-    "sandwich",
-    "pizza",
-    "ramen",
-    "sushi",
-    "ice_cream",
-    "donut",
-    "onigiri",
-    "bento",
-    "chopsticks",
-    "fork",
-    "spoon",
-    "plate",
-    "bowl",
-]
 
-[visibility_modifiers]
-reveals_features = [
-    "hands",
-    "face",
-    "upper_body",
-]
-conceals_if_sitting_at_table = [
-    "lower_body",
-    "feet_footwear",
-]
+[hard_constraints]

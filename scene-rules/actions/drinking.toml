@@ -1,0 +1,29 @@
+[meta]
+id = "drinking"
+display_name = "Drinking"
+
+[soft_constraints]
+prefers_locations = [
+    "airplane interior",
+    "bar",
+    "basement",
+    "cafe",
+    "car interior",
+    "cinema",
+    "classroom",
+    "coffee shop",
+    "dining room",
+    "gym",
+    "hallway",
+    "hotel room",
+    "kitchen",
+    "living room",
+    "nightclub",
+    "restaurant",
+]
+prefers_poses = []
+prefers_expressions = []
+
+[hard_constraints]
+excludes_actions = []
+requires_props = []

@@ -1,74 +1,12 @@
 [meta]
-id = "looking_out_window"
-category = "action"
+id = "looking out window"
 display_name = "Looking out window"
 
-[hard_constraints]
-requires_location_features = [
-    "window",
-    "balcony",
-    "glass_door",
-]
-excludes_actions = [
-    "sleeping",
-    "exercising",
-    "cooking",
-]
-
 [soft_constraints]
-prefers_poses = [
-    "standing",
-    "sitting",
-    "leaning_on_railing",
-    "leaning_on_windowsill",
-]
-prefers_expressions = [
-    "thoughtful",
-    "dreamy",
-    "fascinated",
-    "gentle_smile",
-    "melancholy",
-]
-prefers_locations = [
-    "bedroom",
-    "balcony",
-    "cafe",
-    "train_interior",
-    "library",
-]
-prefers_props = [
-    "teacup",
-    "mug",
-    "book",
-    "blanket",
-    "plush_toy",
-]
-prefers_lighting_sources = [
-    "window_light",
-    "sunset",
-    "sunrise",
-    "moonlight",
-]
+prefers_locations = []
+prefers_poses = []
+prefers_expressions = []
 
-[weather_interaction]
-if_weather_is_rain_prefers_expressions = [
-    "fascinated",
-    "melancholy",
-    "thoughtful",
-]
-if_weather_is_rain_prefers_props = [
-    "hot_drink",
-    "blanket",
-]
-if_weather_is_rain_prefers_lighting = [
-    "soft_lighting",
-    "moody_lighting",
-]
-if_weather_is_clear_prefers_expressions = [
-    "dreamy",
-    "gentle_smile",
-]
-if_weather_is_clear_prefers_lighting = [
-    "golden_hour",
-    "sunlight",
-]
+[hard_constraints]
+excludes_actions = []
+requires_props = []

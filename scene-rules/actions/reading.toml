@@ -1,84 +1,10 @@
 [meta]
 id = "reading"
-category = "action"
 display_name = "Reading"
 
-[hard_constraints]
-requires_prop_categories = [
-    "09_props/stationery.txt",
-    "09_props/books.txt",
-]
-excludes_actions = [
-    "sleeping",
-    "exercising",
-    "cooking",
-    "taking_bath",
-]
-excludes_props = [
-    "steering_wheel",
-    "frying_pan",
-    "bathtub",
-    "beach_ball",
-    "yoga_mat",
-]
-
 [soft_constraints]
-prefers_poses = [
-    "sitting",
-    "sitting_cross_legged",
-    "leaning_back",
-    "lying_on_stomach",
-    "standing",
-]
-prefers_expressions = [
-    "focused",
-    "thoughtful",
-    "gentle_smile",
-    "curious",
-    "fascinated",
-    "sleepy",
-]
-prefers_locations = [
-    "library",
-    "bedroom",
-    "cafe",
-    "park",
-    "train_interior",
-    "balcony",
-    "school_classroom",
-]
-prefers_props = [
-    "book",
-    "novel",
-    "manga",
-    "textbook",
-    "magazine",
-    "newspaper",
-    "e_reader",
-    "bookmark",
-    "reading_glasses",
-]
-prefers_lighting_sources = [
-    "desk_lamp",
-    "window_light",
-    "warm_lamp",
-    "sunlight",
-    "lamplight",
-]
-prefers_lighting_quality = [
-    "soft_lighting",
-    "warm_lighting",
-    "focused_lighting",
-    "natural_lighting",
+excludes_actions = [
+    "cooking",
 ]
 
-[visibility_modifiers]
-reveals_features = [
-    "hands",
-    "face",
-    "upper_body",
-]
-conceals_if_holding_book = [
-    "one_hand",
-    "lower_body_if_sitting",
-]
+[hard_constraints]

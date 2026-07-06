@@ -5,14 +5,45 @@ display_name = "Low Angle / From Below"
 
 [hard_constraints]
 camera_angle = "low_angle"
-excludes_angles = ["from_above", "bird_eye_view"]
+excludes_angles = [
+    "from_above",
+    "bird_eye_view",
+]
 
 [soft_constraints]
-prefers_poses = ["standing", "looking_down_at_viewer", "hand_on_hip", "arms_crossed", "walking", "looking_over_shoulder"]
-prefers_expressions = ["looking_down", "confident", "smirk", "gentle_smile", "surprised", "serious"]
-prefers_angles = ["from_below", "low_angle", "worm_eye_view"]
-prefers_outfit_focus = ["shoes", "boots", "legwear", "skirt_hem", "pants_cuff"]
-prefers_lighting_sources = ["sunlight", "blue_sky", "overhead_light"]
+prefers_poses = [
+    "standing",
+    "looking_down_at_viewer",
+    "hand on hip",
+    "arms crossed",
+    "walking",
+    "looking over shoulder",
+]
+prefers_expressions = [
+    "looking down",
+    "confident",
+    "smirk",
+    "gentle smile",
+    "surprised",
+    "serious",
+]
+prefers_angles = [
+    "from_below",
+    "low_angle",
+    "worm_eye_view",
+]
+prefers_outfit_focus = [
+    "shoes",
+    "boots",
+    "legwear",
+    "skirt_hem",
+    "pants_cuff",
+]
+prefers_lighting_sources = [
+    "sunlight",
+    "blue_sky",
+    "overhead_light",
+]
 
 [coverage_impact]
 face_weight = 0.8

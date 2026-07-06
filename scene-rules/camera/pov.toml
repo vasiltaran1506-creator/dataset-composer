@@ -10,16 +10,16 @@ camera_mode = "first_person"
 [soft_constraints]
 prefers_actions = []
 prefers_poses = [
-    "leaning_forward",
+    "leaning forward",
     "sitting_across",
     "standing_close",
-    "reaching_out",
+    "reaching out",
     "hand_on_viewer",
 ]
 prefers_expressions = [
-    "looking_at_viewer",
+    "looking at viewer",
     "smile",
-    "gentle_smile",
+    "gentle smile",
     "blush",
     "shy",
     "excited",

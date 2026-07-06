@@ -12,9 +12,9 @@ excludes_framing = [
 
 [soft_constraints]
 prefers_poses = [
-    "sitting_on_floor",
-    "lying_on_back",
-    "lying_on_side",
+    "sitting on floor",
+    "lying on back",
+    "lying on side",
     "sitting_cross_legged",
     "curled_up",
 ]

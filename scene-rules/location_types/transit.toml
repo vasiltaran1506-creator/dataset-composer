@@ -15,7 +15,7 @@ excludes_actions = [
     "taking_bath",
 ]
 excludes_props = [
-    "steering_wheel",
+    "steering wheel",
     "car_interior",
     "dashboard",
     "frying_pan",

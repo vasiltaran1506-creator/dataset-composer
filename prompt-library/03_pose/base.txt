@@ -29,3 +29,21 @@ bending forward
 arched back
 twisting torso
 upside down
+sitting_at_table
+stretching
+yoga_pose
+plank_position
+leaning_on_railing
+leaning_on_windowsill
+sitting_on_stool
+sitting_in_tub
+reclining_in_tub
+lying_in_tub
+sitting_at_desk
+hunched_over
+full_body_stretch
+sitting_across
+standing_close
+leaning
+casual_stance
+curled_up

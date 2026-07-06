@@ -5,11 +5,12 @@ type = "indoor_commercial"
 
 [soft_constraints]
 prefers_actions = [
+    "drinking",
     "drinking_tea",
     "eating",
+    "looking_out_window",
     "reading",
     "studying",
-    "looking_out_window",
 ]
 prefers_lighting_sources = [
     "window_light",
@@ -24,7 +25,7 @@ prefers_lighting_quality = [
     "cinematic_lighting",
 ]
 prefers_props = [
-    "coffee_cup",
+    "coffee cup",
     "teacup",
     "latte_art",
     "pastry",

@@ -16,7 +16,7 @@ excludes_actions = [
     "sleeping",
 ]
 excludes_props = [
-    "steering_wheel",
+    "steering wheel",
     "frying_pan",
     "bathtub",
     "blackboard",

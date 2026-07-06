@@ -13,7 +13,7 @@ excludes_actions = [
     "exercising",
 ]
 excludes_props = [
-    "steering_wheel",
+    "steering wheel",
     "frying_pan",
     "stove",
     "torii_gate",

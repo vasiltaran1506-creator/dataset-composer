@@ -4,12 +4,30 @@ category = "camera"
 display_name = "Cowboy Shot (Knee-up)"
 
 [hard_constraints]
-reveals_features = ["face", "upper_body", "mid_body", "thighs"]
-conceals_features = ["lower_legs", "feet_footwear"]
+reveals_features = [
+    "face",
+    "upper_body",
+    "mid_body",
+    "thighs",
+]
+conceals_features = [
+    "lower_legs",
+    "feet_footwear",
+]
 
 [soft_constraints]
-prefers_poses = ["standing", "hand_on_hip", "arms_crossed", "leaning", "casual_stance"]
-prefers_lighting_quality = ["cinematic_lighting", "dramatic_lighting", "rim_light"]
+prefers_poses = [
+    "standing",
+    "hand on hip",
+    "arms crossed",
+    "leaning",
+    "casual_stance",
+]
+prefers_lighting_quality = [
+    "cinematic_lighting",
+    "dramatic_lighting",
+    "rim_light",
+]
 
 [coverage_impact]
 face_weight = 1.0

@@ -22,7 +22,7 @@ prefers_lighting_quality = [
     "cinematic_lighting",
 ]
 prefers_props = [
-    "coffee_cup",
+    "coffee cup",
     "shopping_bag",
     "smartphone",
     "umbrella",

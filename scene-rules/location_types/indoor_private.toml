@@ -12,8 +12,8 @@ excludes_props = [
     "traffic_light",
     "crosswalk",
     "bus_stop",
-    "vending_machine",
-    "steering_wheel",
+    "vending machine",
+    "steering wheel",
     "torii_gate",
 ]
 excludes_lighting_sources = [

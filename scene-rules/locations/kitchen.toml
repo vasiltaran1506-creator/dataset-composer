@@ -15,8 +15,7 @@ allowed_outfit_categories = [
 [soft_constraints]
 prefers_actions = [
     "cooking",
-    "eating",
-    "drinking_tea",
+    "drinking",
 ]
 prefers_lighting_sources = [
     "overhead_light",
@@ -29,7 +28,7 @@ prefers_lighting_quality = [
     "warm_lighting",
 ]
 prefers_props = [
-    "coffee_cup",
+    "coffee cup",
     "teacup",
     "plate",
     "frying_pan",
