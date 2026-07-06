@@ -774,21 +774,28 @@ class MainWindow(ctk.CTk):
 
         # Кнопки справа
         reload_btn = ctk.CTkButton(top_frame, text="🔄 Reload", width=100,
-                                    fg_color="gray40", hover_color="gray50",
-                                    command=self._reload_scene_rules)
+                                   fg_color="gray40", hover_color="gray50",
+                                   command=self._reload_scene_rules)
         reload_btn.pack(side="right", padx=(5, 10))
         
         save_btn = ctk.CTkButton(top_frame, text="💾 Save All", width=100,
-                                  fg_color="green", hover_color="darkgreen",
-                                  command=self._save_scene_rules)
+                                 fg_color="green", hover_color="darkgreen",
+                                 command=self._save_scene_rules)
         save_btn.pack(side="right", padx=(5, 0))
         
-        # 👇 ВОЗВРАЩАЕМ КНОПКУ VALIDATE
+        # 👇 НОВАЯ КНОПКА: Validate целостности
         validate_btn = ctk.CTkButton(top_frame, text="✅ Validate", width=100,
-                                      fg_color=COLORS['primary_blue'], 
-                                      hover_color=COLORS['primary_blue_hover'],
-                                      command=self._validate_scene_rules_integrity)
+                                     fg_color=COLORS['primary_blue'],
+                                     hover_color=COLORS['primary_blue_hover'],
+                                     command=self._validate_scene_rules_integrity)
         validate_btn.pack(side="right", padx=(5, 0))
+
+        # 👇 КНОПКА: Auto-fix формата тегов
+        autofix_btn = ctk.CTkButton(top_frame, text="🔧 Auto-fix", width=100,
+                                     fg_color=COLORS['primary_blue'],
+                                     hover_color=COLORS['primary_blue_hover'],
+                                     command=self._auto_fix_tag_format)
+        autofix_btn.pack(side="right", padx=(5, 0))
 
         # === ОСНОВНОЙ КОНТЕНТ: Двухколоночный layout ===
         content_frame = ctk.CTkFrame(tab)
@@ -2079,6 +2086,145 @@ class MainWindow(ctk.CTk):
             else:
                 messagebox.showwarning("Validation Complete", msg)
 
+    def _auto_fix_tag_format(self):
+        """
+        Автоматически исправляет формат тегов в TOML-файлах.
+        Заменяет подчёркивания на пробелы для тегов, которые существуют
+        в библиотеке в формате с пробелами.
+        """
+        self._log("\n🔧 Запуск Auto-fix формата тегов...\n")
+        
+        # Собираем все доступные теги из библиотеки (нормализованные)
+        available_tags_normalized = {
+            'actions': {},
+            'locations': {},
+            'weather': {},
+            'camera': {},
+            'props': {},
+            'lighting': {},
+            'poses': {},
+            'expressions': {},
+        }
+        
+        tag_mapping = {
+            '04_action': 'actions',
+            '08_location': 'locations',
+            '10_weather': 'weather',
+            '06_camera': 'camera',
+            '09_props': 'props',
+            '07_lighting': 'lighting',
+            '03_pose': 'poses',
+            '05_expression': 'expressions',
+        }
+        
+        library_path = self.project_root / "prompt-library"
+        
+        for folder_name, tag_type in tag_mapping.items():
+            folder = library_path / folder_name
+            if folder.exists():
+                for txt_file in folder.rglob("*.txt"):
+                    tags = self._load_tags_from_file(txt_file)
+                    for tag in tags:
+                        # Нормализация: убираем лишние пробелы, приводим к нижнему регистру
+                        norm = tag.strip().lower().replace('_', ' ')
+                        available_tags_normalized[tag_type][norm] = tag
+        
+        # Маппинг полей на типы тегов
+        field_to_type = {
+            'prefers_actions': 'actions',
+            'prefers_locations': 'locations',
+            'prefers_weather': 'weather',
+            'prefers_camera': 'camera',
+            'prefers_props': 'props',
+            'prefers_lighting': 'lighting',
+            'prefers_poses': 'poses',
+            'prefers_expressions': 'expressions',
+            'excludes_actions': 'actions',
+            'excludes_locations': 'locations',
+            'excludes_weather': 'weather',
+            'excludes_camera': 'camera',
+            'excludes_props': 'props',
+            'excludes_lighting': 'lighting',
+            'excludes_poses': 'poses',
+            'excludes_expressions': 'expressions',
+            'requires_props': 'props',
+            'requires_actions': 'actions',
+            'requires_locations': 'locations',
+        }
+        
+        rules_dir = self.project_root / "scene-rules"
+        if not rules_dir.exists():
+            messagebox.showwarning("Warning", "Папка scene-rules не найдена")
+            return
+        
+        fixed_count = 0
+        files_fixed = 0
+        
+        for category_dir in sorted(rules_dir.iterdir()):
+            if not category_dir.is_dir():
+                continue
+            
+            for toml_file in sorted(category_dir.glob("*.toml")):
+                try:
+                    import tomli
+                    import tomli_w
+                    
+                    with open(toml_file, 'rb') as f:
+                        data = tomli.load(f)
+                    
+                    changed = False
+                    
+                    # Проверяем soft_constraints и hard_constraints
+                    for section_name in ['soft_constraints', 'hard_constraints']:
+                        section = data.get(section_name, {})
+                        
+                        for field, tags in section.items():
+                            if field in field_to_type and isinstance(tags, list):
+                                tag_type = field_to_type[field]
+                                new_tags = []
+                                
+                                for tag in tags:
+                                    # Нормализуем тег
+                                    norm_tag = tag.strip().lower().replace('_', ' ')
+                                    
+                                    # Если нормализованный тег есть в библиотеке — используем правильный формат
+                                    if norm_tag in available_tags_normalized[tag_type]:
+                                        correct_tag = available_tags_normalized[tag_type][norm_tag]
+                                        if correct_tag != tag:
+                                            fixed_count += 1
+                                            changed = True
+                                        new_tags.append(correct_tag)
+                                    else:
+                                        # Тег не найден — оставляем как есть
+                                        new_tags.append(tag)
+                                
+                                section[field] = new_tags
+                    
+                    # Сохраняем изменения, если были
+                    if changed:
+                        with open(toml_file, 'wb') as f:
+                            tomli_w.dump(data, f)
+                        files_fixed += 1
+                        
+                        # Обновляем данные в памяти
+                        rel_path = toml_file.relative_to(rules_dir)
+                        category = rel_path.parts[0]
+                        rule_name = toml_file.stem
+                        
+                        if category in self.scene_rules_data and rule_name in self.scene_rules_data[category]:
+                            self.scene_rules_data[category][rule_name]['data'] = data
+                
+                except Exception as e:
+                    self._log(f"❌ Ошибка обработки {toml_file.name}: {e}\n")
+        
+        self._log(f"\n✅ Auto-fix завершён!\n")
+        self._log(f"📄 Исправлено файлов: {files_fixed}\n")
+        self._log(f"🔧 Исправлено тегов: {fixed_count}\n")
+        
+        messagebox.showinfo("Auto-fix Complete",
+                           f"✅ Исправлено {fixed_count} тегов в {files_fixed} файлах!\n\n"
+                           f"Запустите Validate заново для проверки.")
+
     def _save_scene_rules(self):
         """Сохраняет все изменения чекбоксов в TOML-файлы"""
         if not hasattr(self, '_current_checkboxes') or not self._current_checkboxes:
@@ -2845,16 +2991,53 @@ class MainWindow(ctk.CTk):
         Удаляет файл правила и подчищает все зависимости в других файлах.
         Показывает окно подтверждения перед удалением (если включено в настройках).
         """
-        # 👇 Учитываем настройку подтверждения удаления
+        # Учитываем настройку подтверждения удаления
         if self.settings_manager.get('behavior', 'confirm_delete'):
             if not messagebox.askyesno(
                 "Удаление правила",
-                f"Вы уверены, что хотите удалить правило?\n\n"
-                f"📄 {category}/{rule_name}.toml\n\n"
+                f"Вы уверены, что хотите удалить правило?\n"
+                f"📄 {category}/{rule_name}.toml\n"
                 f"Все ссылки на это правило в других файлах будут автоматически удалены.\n"
                 f"Это действие нельзя отменить!"
             ):
                 return
+        
+        # Проверяем существование правила
+        rule_path = self.project_root / "scene-rules" / category / f"{rule_name}.toml"
+        
+        if not rule_path.exists():
+            self._log(f"⚠️ Файл не найден: {rule_path}\n")
+            return
+        
+        # Удаляем файл
+        try:
+            rule_path.unlink()
+            
+            # Удаляем из памяти
+            if category in self.scene_rules_data and rule_name in self.scene_rules_data[category]:
+                del self.scene_rules_data[category][rule_name]
+            
+            # Перестраиваем список
+            self._build_scene_rules_list()
+            
+            # Очищаем редактор справа
+            if self.scene_rules_editor_frame:
+                for w in self.scene_rules_editor_frame.winfo_children():
+                    w.destroy()
+                placeholder = ctk.CTkLabel(self.scene_rules_editor_frame,
+                                           text="👈 Выберите правило слева для редактирования",
+                                           font=ctk.CTkFont(size=14),
+                                           text_color="gray")
+                placeholder.pack(expand=True)
+            
+            self.current_rule_file = None
+            
+            self._log(f"🗑️ Удалено правило: {category}/{rule_name}\n")
+            messagebox.showinfo("Success", f"Правило '{rule_name}' удалено!")
+        
+        except Exception as e:
+            self._log(f"❌ Ошибка удаления: {e}\n")
+            messagebox.showerror("Error", f"Не удалось удалить: {e}")
         
         # Проверяем существование правила
 
