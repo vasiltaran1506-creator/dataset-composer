@@ -5,8 +5,20 @@ import os
 from pathlib import Path
 import threading
 
-# Добавляем корень проекта в sys.path, чтобы работали импорты соседних модулей
-sys.path.append(str(Path(__file__).parent.parent))
+# === FIX для PyInstaller ===
+# Добавляем папку со скриптом и папку выше в sys.path.
+# Это гарантирует, что импорты найдутся и в dev-режиме, и в .exe
+current_dir = Path(__file__).parent
+parent_dir = current_dir.parent
+
+sys.path.insert(0, str(current_dir))
+sys.path.insert(0, str(parent_dir))
+
+# Если запущено через PyInstaller, добавляем корневую папку бандла
+meipass = getattr(sys, '_MEIPASS', None)
+if meipass is not None:
+    sys.path.insert(0, meipass)
+# ============================
 
 from config_loader import ConfigLoader
 from prompt_library import PromptLibrary
@@ -19,6 +31,25 @@ from scene_builder import SceneBuilder
 from exporter import Exporter
 from coverage_tracker import CoverageTracker
 from settings_manager import SettingsManager
+
+# ════════════════════════════════════════════════════════════════════════════
+# ОПТИМИЗАЦИЯ: Повышение приоритета процесса
+# ════════════════════════════════════════════════════════════════════════════
+def set_high_priority():
+    """Повышает приоритет процесса для лучшей отзывчивости UI"""
+    try:
+        if os.name == 'nt':  # Windows
+            import ctypes
+            # ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000
+            handle = ctypes.windll.kernel32.GetCurrentProcess()
+            ctypes.windll.kernel32.SetPriorityClass(handle, 0x00008000)
+        else:  # Linux/Mac
+            os.nice(-5)  # Понижаем значение nice = повышаем приоритет
+    except Exception:
+        pass  # Тихо пропускаем, если нет прав
+
+# Вызываем сразу после импортов
+set_high_priority()
 
 # ════════════════════════════════════════════════════════════════════════════
 # Глобальная настройка CustomTkinter
@@ -46,28 +77,51 @@ class MainWindow(ctk.CTk):
         super().__init__()
 
         # 👇 ФИКС "ЖЕЛЕ": Включаем двойную буферизацию для всего окна (только Windows)
-        if os.name == 'nt':
-            try:
-                import ctypes
-                hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
-                GWL_EXSTYLE = -20
-                WS_EX_COMPOSITED = 0x02000000
-                style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_COMPOSITED)
-            except Exception:
-                pass  # Тихо пропускаем, если WinAPI недоступен
+       # if os.name == 'nt':
+       #     try:
+       #         import ctypes
+       #         hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+       #         GWL_EXSTYLE = -20
+       #         WS_EX_COMPOSITED = 0x02000000
+       #         style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+       #         ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_COMPOSITED)
+       #     except Exception:
+       #         pass  # Тихо пропускаем, если WinAPI недоступен
 
         self.title("Dataset Composer v1.1 - Character LoRA Pipeline")
-        self.minsize(1000, 600)
+        # Фиксированный базовый размер — окно не меняет размер при переключении вкладок
+        self.geometry("1600x1000")
+        self.minsize(1400, 900)
         # Растягиваем главный контейнер по сетке
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
         # === Пути к директориям проекта ===
-        self.project_root = Path(__file__).parent.parent.parent
+        # Определяем корень проекта по-разному для dev и .exe режимов
+        if hasattr(sys, '_MEIPASS'):
+            # Режим .exe: .exe находится в папке dist/Dataset Composer/
+            self.project_root = Path(sys.executable).parent
+        else:
+            # Dev режим: main_window.py в src/ui/, корень на 2 уровня выше
+            self.project_root = Path(__file__).parent.parent.parent
         
         # === Менеджер настроек ===
         self.settings_manager = SettingsManager(self.project_root / "settings.json")
+        
+        # === Пути к папкам ===
+        # Output directory (по умолчанию в корне проекта, можно изменить через Settings)
+        saved_output = self.settings_manager.get('directories', 'output_directory')
+        self.output_directory = saved_output if saved_output else r"D:\VASILY\MY GENERATION\Test Generations"
+        
+        # Папка с профилями персонажей
+        saved_profiles = self.settings_manager.get('directories', 'profiles_path')
+        if saved_profiles:
+            self.profiles_directory = Path(saved_profiles)
+        else:
+            self.profiles_directory = self.project_root / "character-profiles"
+        
+        # Создаём папку профилей, если её нет
+        self.profiles_directory.mkdir(parents=True, exist_ok=True)
         
         # Загружаем пути из настроек (или используем дефолты)
         saved_output = self.settings_manager.get('directories', 'output_directory')
@@ -98,6 +152,8 @@ class MainWindow(ctk.CTk):
 
         # === Signature ===
         self.signature_props: list[dict] = []
+        self._popup_selected_tags: set[str] = set()
+        self._popup_selected_actions: set[str] = set()
         self.hair_rules_data: dict = {'default': '', 'conditional': []}
 
         # === Atmosphere ===
@@ -183,12 +239,10 @@ class MainWindow(ctk.CTk):
             'Settings': False
         }
 
-        # Создаём все вкладки лениво
+        # 👇 ОПТИМИЗАЦИЯ: Создаём только Profiles и Generate (часто используемые)
+        # Остальные вкладки создаются при первом переключении
         self._create_profiles_tab()
         self._create_generate_tab()
-        self._create_library_tab()
-        self._create_analyzer_tab()
-        self._create_settings_tab()
 
         # Обработчик переключения вкладок (для борьбы с фантомами при смене)
         self.tabview.configure(command=self._on_main_tab_changed)
@@ -197,10 +251,23 @@ class MainWindow(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         # ════════════════════════════════════════════════════════════════
+        # 👇 ФИКС "ЖЕЛЕ": Debounced redraw при перемещении/ресайзе окна
+        # ════════════════════════════════════════════════════════════════
+        self._configure_timer = None
+        self.bind('<Configure>', self._on_window_configure)
+
+        # ════════════════════════════════════════════════════════════════
         # 👇 ФИКС ФАНТОМОВ ПРИ СТАРТЕ (радикальный метод)
         # ════════════════════════════════════════════════════════════════
         # Ждём, пока все виджеты рассчитают свои размеры
         self.update_idletasks()
+        
+        # Центрирование окна ПОСЛЕ всех расчётов
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width - 1600) // 2
+        y = (screen_height - 1000) // 2
+        self.geometry(f"+{x}+{y}")
         
         # Трюк: прячем окно из Windows и показываем заново.
         # Это форсирует ОС пересоздать оконный хэндл и перерисовать
@@ -210,8 +277,10 @@ class MainWindow(ctk.CTk):
         
         # Финальная полная перерисовка
         self.update()
-
         self.update()
+        
+        # Дополнительная перерисовка через 100мс (для полной гарантии)
+        self.after(100, lambda: self.update_idletasks())
 
 
     def _create_placeholder(self, tab, text):
@@ -220,35 +289,45 @@ class MainWindow(ctk.CTk):
 
 
     def _on_main_tab_changed(self):
-        """
-        Обработчик смены вкладки. Принудительная перерисовка
-        для устранения артефактов при переключении вкладок.
-        
-        Примечание: CTkTabview вызывает command БЕЗ аргументов,
-        поэтому параметр tab_name не нужен.
-        """
+        """Обработчик смены вкладки с ленивой инициализацией"""
         try:
-            # Обновляем интерфейс безопасно
+            # 👇 ОПТИМИЗАЦИЯ: Создаём вкладку при первом переключении
+            current_tab = self.tabview.get()
+            if current_tab == "Library" and not self._tabs_created.get('Library', False):
+                self._create_library_tab()
+            elif current_tab == "Analyzer" and not self._tabs_created.get('Analyzer', False):
+                self._create_analyzer_tab()
+            elif current_tab == "Settings" and not self._tabs_created.get('Settings', False):
+                self._create_settings_tab()
+            
             self.update_idletasks()
-            # Небольшая задержка для окончательной перерисовки
             self.after(10, lambda: self.update_idletasks())
         except Exception:
             pass
 
-    def _force_window_redraw(self):
+    def _on_window_configure(self, event):
         """
-        Принудительно перерисовывает окно, симулируя минимальное изменение размера.
-        Это решает проблему фантомов при запуске на Windows.
+        Обработчик изменения размера/позиции окна.
+        Запускает таймер на 50мс для debounced redraw.
+        Это устраняет артефакты 'желе' при движении окна,
+        НЕ ломая popup-окна (в отличие от WS_EX_COMPOSITED).
         """
+        # Обрабатываем только события главного окна, а не дочерних виджетов
+        if event.widget != self:
+            return
+        
+        # Сбрасываем предыдущий таймер (debounce)
+        if self._configure_timer:
+            self.after_cancel(self._configure_timer)
+        
+        # Запускаем новый таймер на 50мс
+        self._configure_timer = self.after(50, self._force_redraw_after_configure)
+    
+    def _force_redraw_after_configure(self):
+        """Принудительная перерисовка после остановки движения окна"""
+        self._configure_timer = None
         try:
-            # Получаем текущие размеры
-            current_width = self.winfo_width()
-            current_height = self.winfo_height()
-            
-            # Увеличиваем на 1 пиксель
-            self.geometry(f"{current_width + 1}x{current_height}")
             self.update_idletasks()
-            
         except Exception:
             pass
 
@@ -698,11 +777,18 @@ class MainWindow(ctk.CTk):
                                     fg_color="gray40", hover_color="gray50",
                                     command=self._reload_scene_rules)
         reload_btn.pack(side="right", padx=(5, 10))
-
+        
         save_btn = ctk.CTkButton(top_frame, text="💾 Save All", width=100,
                                   fg_color="green", hover_color="darkgreen",
                                   command=self._save_scene_rules)
         save_btn.pack(side="right", padx=(5, 0))
+        
+        # 👇 ВОЗВРАЩАЕМ КНОПКУ VALIDATE
+        validate_btn = ctk.CTkButton(top_frame, text="✅ Validate", width=100,
+                                      fg_color=COLORS['primary_blue'], 
+                                      hover_color=COLORS['primary_blue_hover'],
+                                      command=self._validate_scene_rules_integrity)
+        validate_btn.pack(side="right", padx=(5, 0))
 
         # === ОСНОВНОЙ КОНТЕНТ: Двухколоночный layout ===
         content_frame = ctk.CTkFrame(tab)
@@ -860,15 +946,31 @@ class MainWindow(ctk.CTk):
             add_btn.pack(side="right", padx=(5, 0))
 
             for rule_name in sorted(rules.keys()):
+                # Обёртка для кнопки правила и кнопки удаления
+                rule_row = ctk.CTkFrame(cat_container, fg_color="transparent")
+                rule_row.pack(fill="x", padx=(20, 0), pady=1)
+                
+                # Кнопка выбора правила
                 rule_btn = ctk.CTkButton(
-                    cat_container,
+                    rule_row,
                     text=f"📄 {rule_name}",
                     anchor="w", fg_color="transparent",
                     text_color=("gray10", "gray90"),
                     hover_color=("gray85", "gray30"),
                     command=lambda c=category_name, r=rule_name: self._select_scene_rule(c, r)
                 )
-                rule_btn.pack(fill="x", padx=(20, 0), pady=1)
+                rule_btn.pack(side="left", fill="x", expand=True)
+                
+                # Кнопка удаления (🗑️)
+                delete_btn = ctk.CTkButton(
+                    rule_row,
+                    text="🗑️",
+                    width=30, height=30,
+                    fg_color="gray40", hover_color="gray50",
+                    font=ctk.CTkFont(size=12),
+                    command=lambda c=category_name, r=rule_name: self._delete_scene_rule(c, r)
+                )
+                delete_btn.pack(side="right", padx=(5, 0))
 
     def _create_new_rule(self, category: str):
         """Создает новое правило БЕЗ полной перезагрузки списка"""
@@ -994,7 +1096,9 @@ class MainWindow(ctk.CTk):
         if container.winfo_ismapped():
             self._hide_container(container)
         else:
-            container.pack(fill="x", padx=(20, 0))
+            self._show_container(container, padx=(20, 0))
+            # Принудительная перерисовка после разворачивания
+            self.after(10, lambda: self.update_idletasks())
 
     def _select_scene_rule(self, category: str, rule_name: str):
         """Обработчик выбора правила из списка — отображает редактор справа с индикатором загрузки"""
@@ -1802,6 +1906,179 @@ class MainWindow(ctk.CTk):
         self._build_scene_rules_list()
         self._log("🔄 Scene rules перезагружены\n")
 
+    def _validate_scene_rules_integrity(self):
+        """Проверяет целостность scene-rules: ищет битые ссылки на несуществующие теги"""
+        self._log("\n🔍 Проверка целостности scene-rules...\n")
+        
+        issues_format = 0    # Проблемы с форматом (пробел vs подчёркивание)
+        issues_missing = 0   # Теги, которых нет вообще
+        files_checked = 0
+        
+        # Загружаем все доступные теги из prompt-library
+        available_tags = {
+            'actions': set(),
+            'locations': set(),
+            'weather': set(),
+            'camera': set(),
+            'props': set(),
+            'lighting': set(),
+            'poses': set(),
+            'expressions': set(),
+        }
+        
+        # Также храним нормализованные версии для сравнения
+        normalized_tags = {
+            'actions': {},
+            'locations': {},
+            'weather': {},
+            'camera': {},
+            'props': {},
+            'lighting': {},
+            'poses': {},
+            'expressions': {},
+        }
+        
+        tag_mapping = {
+            '04_action': 'actions',
+            '08_location': 'locations',
+            '10_weather': 'weather',
+            '06_camera': 'camera',
+            '09_props': 'props',
+            '07_lighting': 'lighting',
+            '03_pose': 'poses',
+            '05_expression': 'expressions',
+        }
+        
+        library_path = self.project_root / "prompt-library"
+        
+        for folder_name, tag_type in tag_mapping.items():
+            folder = library_path / folder_name
+            if folder.exists():
+                for txt_file in folder.rglob("*.txt"):
+                    tags = self._load_tags_from_file(txt_file)
+                    available_tags[tag_type].update(tags)
+                    # Строим словарь нормализованных тегов
+                    for tag in tags:
+                        # Нормализация: убираем лишние пробелы, приводим к нижнему регистру
+                        norm = tag.strip().lower().replace('_', ' ')
+                        normalized_tags[tag_type][norm] = tag
+        
+        # Маппинг полей на типы тегов
+        field_to_type = {
+            'prefers_actions': 'actions',
+            'prefers_locations': 'locations',
+            'prefers_weather': 'weather',
+            'prefers_camera': 'camera',
+            'prefers_props': 'props',
+            'prefers_lighting': 'lighting',
+            'prefers_poses': 'poses',
+            'prefers_expressions': 'expressions',
+            'excludes_actions': 'actions',
+            'excludes_locations': 'locations',
+            'excludes_weather': 'weather',
+            'excludes_camera': 'camera',
+            'excludes_props': 'props',
+            'excludes_lighting': 'lighting',
+            'excludes_poses': 'poses',
+            'excludes_expressions': 'expressions',
+            'requires_props': 'props',
+            'requires_actions': 'actions',
+            'requires_locations': 'locations',
+        }
+        
+        rules_dir = self.project_root / "scene-rules"
+        if not rules_dir.exists():
+            messagebox.showwarning("Warning", "Папка scene-rules не найдена")
+            return
+        
+        for category_dir in sorted(rules_dir.iterdir()):
+            if not category_dir.is_dir():
+                continue
+            
+            category_name = category_dir.name
+            
+            for toml_file in sorted(category_dir.glob("*.toml")):
+                files_checked += 1
+                file_issues = []
+                
+                try:
+                    import tomli
+                    with open(toml_file, 'rb') as f:
+                        data = tomli.load(f)
+                except Exception as e:
+                    file_issues.append(f"❌ Ошибка чтения TOML: {e}")
+                    issues_missing += 1
+                    self._log(f"\n❌ {category_name}/{toml_file.name}: Ошибка чтения: {e}\n")
+                    continue
+                
+                # Собираем все поля с тегами
+                all_tag_fields = {}
+                
+                for section_name in ['soft_constraints', 'hard_constraints']:
+                    section = data.get(section_name, {})
+                    for field, tags in section.items():
+                        if field in field_to_type and isinstance(tags, list):
+                            full_key = f"{section_name}.{field}"
+                            all_tag_fields[full_key] = (tags, field_to_type[field])
+                
+                # Проверяем каждый тег
+                for field_key, (tags, tag_type) in all_tag_fields.items():
+                    for tag in tags:
+                        # 1. Проверяем точное совпадение
+                        if tag in available_tags[tag_type]:
+                            continue  # ✅ Тег найден, всё ок
+                        
+                        # 2. Проверяем нормализованное совпадение (пробел vs подчёркивание)
+                        norm_tag = tag.strip().lower().replace('_', ' ')
+                        if norm_tag in normalized_tags[tag_type]:
+                            real_tag = normalized_tags[tag_type][norm_tag]
+                            file_issues.append(
+                                f"🔄 {field_key}: '{tag}' → найдено как '{real_tag}' (проблема с форматом)"
+                            )
+                            issues_format += 1
+                        else:
+                            file_issues.append(
+                                f"❌ {field_key}: тег '{tag}' НЕ СУЩЕСТВУЕТ в библиотеке"
+                            )
+                            issues_missing += 1
+                
+                if file_issues:
+                    self._log(f"\n⚠️ {category_name}/{toml_file.name}:\n")
+                    for issue in file_issues:
+                        self._log(f"   {issue}\n")
+        
+        # Итоговый отчёт
+        self._log(f"\n{'='*60}\n")
+        total_issues = issues_format + issues_missing
+        
+        if total_issues == 0:
+            self._log(f"✅ Проверка завершена: {files_checked} файлов, проблем не найдено\n")
+            messagebox.showinfo("Validation Complete",
+                              f"✅ Все {files_checked} файлов прошли проверку!\nПроблем не найдено.")
+        else:
+            self._log(f"\n📊 ИТОГО:\n")
+            self._log(f"   📁 Проверено файлов: {files_checked}\n")
+            self._log(f"   🔄 Проблем с форматом (пробел/подчёркивание): {issues_format}\n")
+            self._log(f"   ❌ Отсутствующих тегов: {issues_missing}\n")
+            self._log(f"   📌 Всего проблем: {total_issues}\n")
+            
+            msg = (
+                f"📊 Проверка завершена\n\n"
+                f"📁 Файлов проверено: {files_checked}\n"
+                f"🔄 Проблем с форматом: {issues_format}\n"
+                f"❌ Отсутствующих тегов: {issues_missing}\n\n"
+                f"Смотрите лог для деталей."
+            )
+            
+            if issues_missing > 0 and issues_format > 0:
+                messagebox.showwarning("Validation Complete", msg)
+            elif issues_format > 0:
+                messagebox.showinfo("Validation Complete", 
+                    msg + "\n\n💡 Все теги найдены, но формат различается.\n"
+                    "Рекомендуется привести к единому формату.")
+            else:
+                messagebox.showwarning("Validation Complete", msg)
+
     def _save_scene_rules(self):
         """Сохраняет все изменения чекбоксов в TOML-файлы"""
         if not hasattr(self, '_current_checkboxes') or not self._current_checkboxes:
@@ -2445,7 +2722,7 @@ class MainWindow(ctk.CTk):
         if container.winfo_ismapped():
             self._hide_container(container)
         else:
-            container.pack(fill="x", padx=(20, 0))
+            self._show_container(container, padx=(20, 0))
 
     # ════════════════════════════════════════════════════════════════════════
     # LIBRARY: Редактор библиотеки тегов (продолжение)
@@ -3527,24 +3804,45 @@ class MainWindow(ctk.CTk):
         popup.title("Browse Tags (Props)")
         popup.geometry("500x600")
         popup.transient(self)
+        popup.lift()
+        
+        # WS_EX_COMPOSITED для popup (двойная буферизация)
+        if os.name == 'nt':
+            try:
+                import ctypes
+                popup.update_idletasks()
+                hwnd = ctypes.windll.user32.GetParent(popup.winfo_id())
+                GWL_EXSTYLE = -20
+                WS_EX_COMPOSITED = 0x02000000
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_COMPOSITED)
+            except Exception:
+                pass
+        
+        # 👇 КРИТИЧНО: Принудительная отрисовка ПЕРЕД grab_set
+        popup.update_idletasks()
+        popup.update()
+        
+        # grab_set ПОСЛЕ отрисовки
         popup.grab_set()
-
+        
         ctk.CTkLabel(popup, text="🧸 Select tags (multiple allowed):",
                      font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
-
+        
         scroll_frame = ctk.CTkScrollableFrame(popup)
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
+        
         props_dir = self.project_root / "prompt-library" / "09_props"
         if not props_dir.exists():
             ctk.CTkLabel(scroll_frame, text=f"⚠️ Папка не найдена: {props_dir}",
                          text_color="red").pack(pady=20)
-            ctk.CTkButton(popup, text="Close", fg_color="gray", command=popup.destroy).pack(pady=10)
+            ctk.CTkButton(popup, text="Close", fg_color="gray",
+                          command=popup.destroy).pack(pady=10)
             return
-
+        
         current_tags = set(self.signature_props[prop_index]['tags'])
         self._popup_selected_tags = set(current_tags)
-
+        
         categories = {}
         for txt_file in sorted(props_dir.rglob("*.txt")):
             parts = txt_file.relative_to(props_dir).parts
@@ -3557,59 +3855,92 @@ class MainWindow(ctk.CTk):
             if main_cat not in categories:
                 categories[main_cat] = {}
             categories[main_cat][sub_cat] = txt_file
-
+        
+        subcat_data = {}
+        
         for main_cat, subcats in sorted(categories.items()):
             cat_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
             cat_frame.pack(fill="x", pady=2)
-
+            
             cat_container = ctk.CTkFrame(cat_frame, fg_color="transparent")
             cat_container.pack(fill="x")
-            cat_container.pack_forget()  # INIT: изначально скрыт
-
+            cat_container.pack_forget()
+            
             ctk.CTkButton(cat_frame, text=f"➤ {main_cat.replace('_', ' ').title()}",
-                          anchor="w", fg_color="gray30", hover_color="gray40", height=30,
-                          font=ctk.CTkFont(size=13, weight="bold"),
-                          command=lambda cc=cat_container: self._toggle_popup_section(cc)).pack(fill="x")
-
+                anchor="w", fg_color="gray30", hover_color="gray40", height=30,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                command=lambda cc=cat_container: self._toggle_popup_section(cc)
+            ).pack(fill="x")
+            
             for sub_cat, file_path in sorted(subcats.items()):
                 sub_frame = ctk.CTkFrame(cat_container, fg_color="transparent")
                 sub_frame.pack(fill="x", padx=(20, 0), pady=1)
-
+                
                 sub_container = ctk.CTkFrame(sub_frame, fg_color="transparent")
                 sub_container.pack(fill="x", padx=(20, 0))
-                sub_container.pack_forget()  # INIT: изначально скрыт
-
-                ctk.CTkButton(sub_frame, text=f"➤ {sub_cat.replace('_', ' ').title()}",
-                              anchor="w", fg_color="gray25", hover_color="gray35", height=26,
-                              font=ctk.CTkFont(size=12),
-                              command=lambda sc=sub_container: self._toggle_popup_section(sc)).pack(fill="x")
-
-                for tag in self._load_tags_from_file(file_path):
-                    var = ctk.BooleanVar(value=(tag in current_tags))
-                    ctk.CTkCheckBox(sub_container, text=tag, variable=var,
-                                    command=lambda t=tag, v=var: self._toggle_tag_selection(t, v)
-                                    ).pack(anchor="w", padx=10, pady=2)
-
+                sub_container.pack_forget()
+                
+                tag_count = len(self._load_tags_from_file(file_path))
+                
+                sub_toggle_btn = ctk.CTkButton(sub_frame,
+                    text=f"▶ 📁 {sub_cat.replace('_', ' ').title()} ({tag_count})",
+                    anchor="w", fg_color="gray25", hover_color="gray35", height=26,
+                    font=ctk.CTkFont(size=12))
+                sub_toggle_btn.pack(fill="x")
+                
+                subcat_key = f"{main_cat}::{sub_cat}"
+                subcat_data[subcat_key] = {
+                    'toggle_btn': sub_toggle_btn, 'container': sub_container,
+                    'file_path': file_path, 'name': sub_cat,
+                    'count': tag_count, 'loaded': False
+                }
+                
+                def toggle_subcat(key=subcat_key, btn=sub_toggle_btn,
+                                   cont=sub_container, fp=file_path,
+                                   name=sub_cat, cnt=tag_count):
+                    data = subcat_data[key]
+                    if not data['loaded']:
+                        for tag in self._load_tags_from_file(fp):
+                            var = ctk.BooleanVar(value=(tag in current_tags))
+                            ctk.CTkCheckBox(cont, text=tag, variable=var,
+                                command=lambda t=tag, v=var: self._toggle_tag_selection(t, v)
+                            ).pack(anchor="w", padx=10, pady=2)
+                        data['loaded'] = True
+                    if cont.winfo_ismapped():
+                        self._hide_container(cont)
+                        btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({cnt})")
+                    else:
+                        self._show_container(cont, padx=(20, 0))
+                        btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({cnt})")
+                
+                sub_toggle_btn.configure(command=toggle_subcat)
+        
         def apply():
             new_tags = sorted(list(self._popup_selected_tags))
             self.signature_props[prop_index]['tags'] = new_tags
             self._refresh_signature_props_display()
             popup.destroy()
             self._log(f"✅ Теги обновлены ({len(new_tags)} total)\n")
-
+        
         btn_frame = ctk.CTkFrame(popup, fg_color="transparent")
         btn_frame.pack(pady=10)
-        ctk.CTkButton(btn_frame, text="✅ Confirm", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                      width=120, command=apply).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="❌ Cancel", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
-                      width=120, command=popup.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="✅ Confirm", fg_color=COLORS['success_green'],
+            hover_color=COLORS['success_green_hover'], width=120,
+            command=apply).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="❌ Cancel", fg_color=COLORS['danger_red'],
+            hover_color=COLORS['danger_red_hover'], width=120,
+            command=popup.destroy).pack(side="left", padx=5)
+        
+        # 👇 Финальная принудительная отрисовка
+        popup.update_idletasks()
+        popup.update()
 
     def _toggle_popup_section(self, container):
         """Разворачивает/сворачивает секцию в popup"""
         if container.winfo_ismapped():
             self._hide_container(container)
         else:
-            container.pack(fill="x", padx=(20, 0))
+            self._show_container(container, padx=(20, 0))
 
     def _toggle_tag_selection(self, tag, var):
         if var.get():
@@ -3623,24 +3954,39 @@ class MainWindow(ctk.CTk):
         popup.title("Select Hair Style")
         popup.geometry("350x500")
         popup.transient(self)
+        popup.lift()
+        
+        if os.name == 'nt':
+            try:
+                import ctypes
+                popup.update_idletasks()
+                hwnd = ctypes.windll.user32.GetParent(popup.winfo_id())
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+                ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x02000000)
+            except Exception:
+                pass
+        
+        popup.update_idletasks()
+        popup.update()
         popup.grab_set()
-
+        
         ctk.CTkLabel(popup, text="💇 Select hair style:",
                      font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
-
         scroll_frame = ctk.CTkScrollableFrame(popup)
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
         dna_styles = [t['tag'] for t in self.selected_dna_tags if t['category'] == 'Hair Style']
         for tag in self._load_tags_from_library("01_character/hair/style.txt"):
             star = " ⭐" if tag in dna_styles else ""
             ctk.CTkButton(scroll_frame, text=f"{tag}{star}", anchor="w",
-                          fg_color="transparent", text_color=("gray10", "gray90"),
-                          hover_color=("gray85", "gray30"),
-                          command=lambda t=tag: self._select_style(t, rule_index, button_widget, popup)).pack(fill="x", padx=5, pady=1)
-
+                fg_color="transparent", text_color=("gray10", "gray90"),
+                hover_color=("gray85", "gray30"),
+                command=lambda t=tag: self._select_style(t, rule_index, button_widget, popup)
+            ).pack(fill="x", padx=5, pady=1)
         ctk.CTkButton(popup, text="Cancel", fg_color="gray", hover_color="darkgray",
                       command=popup.destroy).pack(pady=10)
+        
+        popup.update_idletasks()
+        popup.update()
 
     def _select_style(self, style, rule_index, button_widget, popup):
         self._update_hair_rule_style(rule_index, style)
@@ -3655,24 +4001,39 @@ class MainWindow(ctk.CTk):
         popup.title("Select Default Hair Style")
         popup.geometry("350x500")
         popup.transient(self)
+        popup.lift()
+        
+        if os.name == 'nt':
+            try:
+                import ctypes
+                popup.update_idletasks()
+                hwnd = ctypes.windll.user32.GetParent(popup.winfo_id())
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+                ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x02000000)
+            except Exception:
+                pass
+        
+        popup.update_idletasks()
+        popup.update()
         popup.grab_set()
-
+        
         ctk.CTkLabel(popup, text="💇 Select default hair style:",
                      font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
-
         scroll_frame = ctk.CTkScrollableFrame(popup)
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
         dna_styles = [t['tag'] for t in self.selected_dna_tags if t['category'] == 'Hair Style']
         for tag in self._load_tags_from_library("01_character/hair/style.txt"):
             star = " ⭐" if tag in dna_styles else ""
             ctk.CTkButton(scroll_frame, text=f"{tag}{star}", anchor="w",
-                          fg_color="transparent", text_color=("gray10", "gray90"),
-                          hover_color=("gray85", "gray30"),
-                          command=lambda t=tag: self._select_default_style(t, popup)).pack(fill="x", padx=5, pady=1)
-
+                fg_color="transparent", text_color=("gray10", "gray90"),
+                hover_color=("gray85", "gray30"),
+                command=lambda t=tag: self._select_default_style(t, popup)
+            ).pack(fill="x", padx=5, pady=1)
         ctk.CTkButton(popup, text="Cancel", fg_color="gray", hover_color="darkgray",
                       command=popup.destroy).pack(pady=10)
+        
+        popup.update_idletasks()
+        popup.update()
 
     def _select_default_style(self, style, popup):
         self.hair_rules_data['default'] = style
@@ -3688,47 +4049,88 @@ class MainWindow(ctk.CTk):
         popup.title("Select Actions")
         popup.geometry("500x600")
         popup.transient(self)
+        popup.lift()
+        
+        if os.name == 'nt':
+            try:
+                import ctypes
+                popup.update_idletasks()
+                hwnd = ctypes.windll.user32.GetParent(popup.winfo_id())
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+                ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x02000000)
+            except Exception:
+                pass
+        
+        popup.update_idletasks()
+        popup.update()
         popup.grab_set()
-
+        
         ctk.CTkLabel(popup, text="🎬 Select actions:",
                      font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
-
         scroll_frame = ctk.CTkScrollableFrame(popup)
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
         actions_dir = self.project_root / "prompt-library" / "04_action"
         if not actions_dir.exists():
             actions_dir = self.project_root / "prompt-library" / "03_pose"
-
         current_actions = set(self.hair_rules_data['conditional'][rule_index]['if_action'])
         self._popup_selected_actions = set(current_actions)
-
+        cat_data = {}
         if actions_dir.exists():
             for txt_file in sorted(actions_dir.rglob("*.txt")):
                 tag_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
                 tag_frame.pack(fill="x", pady=2)
-                ctk.CTkLabel(tag_frame, text=f"➤ {txt_file.stem.replace('_', ' ').title()}",
-                             font=ctk.CTkFont(weight="bold"), anchor="w").pack(fill="x", padx=5, pady=2)
-
-                for tag in self._load_tags_from_file(txt_file):
-                    var = ctk.BooleanVar(value=(tag in current_actions))
-                    ctk.CTkCheckBox(tag_frame, text=tag, variable=var,
-                                    command=lambda t=tag, v=var: self._toggle_action_selection(t, v)
-                                    ).pack(anchor="w", padx=15, pady=1)
-
+                tags_container = ctk.CTkFrame(tag_frame, fg_color="transparent")
+                tags_container.pack(fill="x", padx=(20, 0))
+                tags_container.pack_forget()
+                tag_count = len(self._load_tags_from_file(txt_file))
+                cat_name = txt_file.stem.replace('_', ' ').title()
+                toggle_btn = ctk.CTkButton(tag_frame,
+                    text=f"▶ 📁 {cat_name} ({tag_count})",
+                    anchor="w", fg_color="gray30", hover_color="gray40", height=28,
+                    font=ctk.CTkFont(size=12, weight="bold"))
+                toggle_btn.pack(fill="x")
+                cat_data[txt_file.stem] = {
+                    'toggle_btn': toggle_btn, 'container': tags_container,
+                    'file_path': txt_file, 'name': cat_name,
+                    'count': tag_count, 'loaded': False
+                }
+                def toggle_cat(key=txt_file.stem, btn=toggle_btn,
+                               cont=tags_container, fp=txt_file,
+                               name=cat_name, cnt=tag_count):
+                    data = cat_data[key]
+                    if not data['loaded']:
+                        for tag in self._load_tags_from_file(fp):
+                            var = ctk.BooleanVar(value=(tag in current_actions))
+                            ctk.CTkCheckBox(cont, text=tag, variable=var,
+                                command=lambda t=tag, v=var: self._toggle_action_selection(t, v)
+                            ).pack(anchor="w", padx=15, pady=1)
+                        data['loaded'] = True
+                    if cont.winfo_ismapped():
+                        self._hide_container(cont)
+                        btn.configure(text=f"▶ 📁 {name} ({cnt})")
+                    else:
+                        self._show_container(cont, padx=(20, 0))
+                        btn.configure(text=f"▼ 📁 {name} ({cnt})")
+                toggle_btn.configure(command=toggle_cat)
+        
         def apply():
             actions_list = sorted(list(self._popup_selected_actions))
             self.hair_rules_data['conditional'][rule_index]['if_action'] = actions_list
             entry_widget.delete(0, "end")
             entry_widget.insert(0, ", ".join(actions_list))
             popup.destroy()
-
+        
         btn_frame = ctk.CTkFrame(popup, fg_color="transparent")
         btn_frame.pack(pady=10)
-        ctk.CTkButton(btn_frame, text="✅ Confirm", fg_color=COLORS['success_green'], hover_color=COLORS['success_green_hover'],
-                      command=apply).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="❌ Cancel", fg_color=COLORS['danger_red'], hover_color=COLORS['danger_red_hover'],
-                      command=popup.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="✅ Confirm", fg_color=COLORS['success_green'],
+            hover_color=COLORS['success_green_hover'],
+            command=apply).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="❌ Cancel", fg_color=COLORS['danger_red'],
+            hover_color=COLORS['danger_red_hover'],
+            command=popup.destroy).pack(side="left", padx=5)
+        
+        popup.update_idletasks()
+        popup.update()
 
     def _toggle_action_selection(self, tag, var):
         if var.get():
@@ -4469,10 +4871,16 @@ class MainWindow(ctk.CTk):
 
     def _run_generation(self, profile_name, num_scenes, balance_folder):
         """Основная логика генерации датасета (выполняется в thread)"""
-        self.update_idletasks()
-        self._log(f"\n{'=' * 60}\n")
-        self._log(f"🚀 Starting generation: {num_scenes} scenes for '{profile_name}'\n")
+        # 👇 ОПТИМИЗАЦИЯ: Отключаем GC на время генерации (устраняет микро-фризы)
+        import gc
+        gc_was_enabled = gc.isenabled()
+        if gc_was_enabled:
+            gc.disable()
+
         try:
+            self.update_idletasks()
+            self._log(f"\n{'=' * 60}\n")
+            self._log(f"🚀 Starting generation: {num_scenes} scenes for '{profile_name}'\n")
             self._log("📦 Initializing engine...\n")
             builder = self._init_builder(profile_name)
 
@@ -4521,6 +4929,11 @@ class MainWindow(ctk.CTk):
             import traceback
             self._log(traceback.format_exc())
             messagebox.showerror("Generation Error", str(e))
+        finally:
+            # 👇 Возвращаем GC в исходное состояние
+            if gc_was_enabled:
+                gc.enable()
+                gc.collect()  # Однократная очистка в конце
 
     # ════════════════════════════════════════════════════════════════════════
     # ANALYZER
@@ -4681,23 +5094,30 @@ class MainWindow(ctk.CTk):
         self._update_timer = self.after(delay_ms, self._do_update)
 
     def _hide_container(self, container):
-        """Безопасно скрывает контейнер и принудительно обновляет экран"""
+        """Безопасно скрывает контейнер"""
         if container is None or not container.winfo_ismapped():
             return
-        container.pack_forget()  # Используем прямой вызов
+        container.pack_forget()
         try:
             parent = container.master
-            if parent:
+            if parent and parent.winfo_exists():
                 parent.update_idletasks()
-                # Дополнительная перерисовка для устранения артефактов
-                self.after(10, lambda: self.update_idletasks())
         except Exception:
             pass
+    
 
     def _show_container(self, container, padx=(30, 0)):
         """Показывает скрытый контейнер"""
-        if container is not None and not container.winfo_ismapped():
-            container.pack(fill="x", padx=padx)
+        if container is None or container.winfo_ismapped():
+            return
+        container.pack(fill="x", padx=padx)
+        try:
+            container.update_idletasks()
+            parent = container.master
+            if parent and parent.winfo_exists():
+                parent.update_idletasks()
+        except Exception:
+            pass
 
     def _batch_load_ui(self, tasks: list, delay_ms: int = 1):
         """

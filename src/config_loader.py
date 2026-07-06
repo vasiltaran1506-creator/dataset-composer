@@ -2,7 +2,10 @@
 Config Loader - читает character-profile.yaml и scene-rules/*.toml
 """
 import yaml
-import toml
+try:
+    import tomli as toml  # Для Python < 3.11
+except ImportError:
+    import tomllib as toml  # Для Python 3.11+
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -42,7 +45,7 @@ class ConfigLoader:
             relative_path = toml_file.relative_to(rules_path)
             key = str(relative_path.with_suffix('')).replace('\\', '.').replace('/', '.')
             
-            with open(toml_file, 'r', encoding='utf-8') as f:
+            with open(toml_file, 'rb') as f:
                 self.scene_rules[key] = toml.load(f)
             
             print(f"✓ Loaded scene rule: {key}")
@@ -79,7 +82,7 @@ class ConfigLoader:
             
         for toml_file in types_path.rglob("*.toml"):
             key = toml_file.stem # Например, "indoor_cultural"
-            with open(toml_file, 'r', encoding='utf-8') as f:
+            with open(toml_file, 'rb') as f:
                 self.location_types[key] = toml.load(f)
             print(f"✓ Loaded location type: {key}")
             

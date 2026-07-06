@@ -1,0 +1,22 @@
+{
+  "directories": {
+    "output_directory": "",
+    "profiles_path": ""
+  },
+  "generation_defaults": {
+    "num_scenes": 30,
+    "force_deficit_closure": false,
+    "balance_locations": true,
+    "balance_actions": true,
+    "balance_weather": true,
+    "balance_cameras": true
+  },
+  "behavior": {
+    "confirm_delete": true
+  },
+  "about": {
+    "version": "1.1.0",
+    "author": "Vasily Taran",
+    "github": "https://github.com/vasiltaran1506-creator/dataset-composer"
+  }
+}
