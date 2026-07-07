@@ -31,10 +31,14 @@ excludes_outfit_categories = [
     "underwear",
 ]
 excludes_weather = [
+    "clear_sky",
+    "cloudy",
     "fog",
+    "overcast",
     "rain",
     "snow",
     "storm",
+    "sunny",
 ]
 excludes_lighting_sources = [
     "candlelight",

@@ -31,7 +31,9 @@ excludes_outfit_categories = [
 ]
 excludes_weather = [
     "clear_sky",
+    "cloudy",
     "fog",
+    "overcast",
     "rain",
     "snow",
     "storm",
@@ -99,9 +101,4 @@ prefers_props = [
     "steamer",
     "skillet",
     "dutch_oven",
-    "bed",
-    "single bed",
-    "double bed",
-    "bunk bed",
-    "canopy bed",
 ]

@@ -64,9 +64,6 @@ prefers_props = [
     "rose",
     "sunflower",
     "lily",
-    "bed",
-    "single bed",
-    "double bed",
     "tree",
 ]
 prefers_weather = [

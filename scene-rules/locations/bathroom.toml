@@ -27,7 +27,9 @@ allowed_outfit_categories = [
 excludes_weather = [
     "clear sky",
     "clear_sky",
+    "cloudy",
     "fog",
+    "overcast",
     "rain",
     "snow",
     "storm",
@@ -37,6 +39,7 @@ excludes_outfit_categories = [
     "bottomwear",
     "footwear",
     "full_body",
+    "legwear",
     "topwear",
 ]
 excludes_lighting_sources = [

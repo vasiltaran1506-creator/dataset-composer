@@ -66,7 +66,7 @@ class SceneBuilder:
             
         return merged
         
-    def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list, 
+    def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list,
                              avoid_categories: list | None = None, preferred_categories: list | None = None) -> dict:
         """Умный выбор одежды с поддержкой мягких банов (avoid) и приоритетов (preferred)"""
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
@@ -78,13 +78,12 @@ class SceneBuilder:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
         
         # Собираем все доступные варианты одежды из всех стилей
-        all_outfit_options = []  # Список словарей: {"type": "full_body"|"topwear"|..., "tags": [...], "style": "..."}
+        all_outfit_options = []
         
         for style_name, style_data in whitelist.items():
             if not isinstance(style_data, dict):
                 continue
             
-            # Проверяем каждый тип одежды внутри стиля
             if "full_body" in style_data and isinstance(style_data["full_body"], list):
                 all_outfit_options.append({
                     "type": "full_body",
@@ -99,7 +98,6 @@ class SceneBuilder:
                     "style": style_name
                 })
             
-            # Topwear + Bottomwear идут вместе
             has_top = "topwear" in style_data and isinstance(style_data["topwear"], list)
             has_bottom = "bottomwear" in style_data and isinstance(style_data["bottomwear"], list)
             if has_top and has_bottom:
@@ -110,14 +108,11 @@ class SceneBuilder:
                     "style": style_name
                 })
         
-        # Фильтруем через allowed_categories
         valid_options = []
         option_weights = []
         
         for option in all_outfit_options:
             option_type = option["type"]
-            
-            # Проверяем, подходит ли этот тип под allowed_categories
             is_allowed = False
             
             if allowed_categories:
@@ -126,13 +121,10 @@ class SceneBuilder:
                 elif option_type == "swimsuit":
                     is_allowed = any("swimsuit" in cat or "swimsuits" in cat for cat in allowed_categories)
                 elif option_type == "topwear_bottomwear":
-                    is_allowed = (any("topwear" in cat for cat in allowed_categories) and 
+                    is_allowed = (any("topwear" in cat for cat in allowed_categories) and
                                  any("bottomwear" in cat for cat in allowed_categories))
             else:
-                # Если allowed_categories пустой — всё разрешено (кроме excluded)
                 is_allowed = True
-                
-                # Проверяем excludes
                 if option_type == "full_body":
                     if any("full_body" in cat for cat in excluded_categories):
                         is_allowed = False
@@ -140,17 +132,14 @@ class SceneBuilder:
                     if any("swimsuit" in cat or "swimsuits" in cat for cat in excluded_categories):
                         is_allowed = False
                 elif option_type == "topwear_bottomwear":
-                    if (any("topwear" in cat for cat in excluded_categories) or 
+                    if (any("topwear" in cat for cat in excluded_categories) or
                         any("bottomwear" in cat for cat in excluded_categories)):
                         is_allowed = False
             
             if not is_allowed:
                 continue
             
-            # Рассчитываем вес
             weight = 1.0
-            
-            # Preferred увеличивает вес
             if option_type == "full_body" and any("full_body" in cat for cat in preferred_categories):
                 weight *= 5.0
             elif option_type == "swimsuit" and any("swimsuit" in cat or "swimsuits" in cat for cat in preferred_categories):
@@ -161,7 +150,6 @@ class SceneBuilder:
                 if any("bottomwear" in cat for cat in preferred_categories):
                     weight *= 3.0
             
-            # Avoid уменьшает вес
             if option_type == "full_body" and any("full_body" in cat for cat in avoid_categories):
                 weight *= 0.1
             elif option_type == "swimsuit" and any("swimsuit" in cat or "swimsuits" in cat for cat in avoid_categories):
@@ -175,7 +163,6 @@ class SceneBuilder:
             valid_options.append(option)
             option_weights.append(weight)
         
-        # Fallback: если ничего не подошло, берём все варианты
         if not valid_options:
             valid_options = all_outfit_options
             option_weights = [1.0 for _ in valid_options]
@@ -183,10 +170,8 @@ class SceneBuilder:
         if not valid_options:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
         
-        # Выбираем вариант с учётом весов
         chosen_option = random.choices(valid_options, weights=option_weights, k=1)[0]
         
-        # Заполняем outfit
         if chosen_option["type"] == "full_body":
             outfit["full"] = random.choice(chosen_option["tags"])
         elif chosen_option["type"] == "swimsuit":
@@ -195,12 +180,9 @@ class SceneBuilder:
             outfit["top"] = random.choice(chosen_option["top_tags"])
             outfit["bottom"] = random.choice(chosen_option["bottom_tags"])
             
-            # Legwear (70% шанс, если есть)
             style_data = whitelist[chosen_option["style"]]
             if "legwear" in style_data and isinstance(style_data["legwear"], list) and random.random() < 0.7:
                 outfit["legwear"] = random.choice(style_data["legwear"])
-            
-            # Footwear (50% шанс, если есть)
             if "footwear" in style_data and isinstance(style_data["footwear"], list) and random.random() < 0.5:
                 outfit["footwear"] = random.choice(style_data["footwear"])
         
@@ -351,6 +333,38 @@ class SceneBuilder:
             if scene.weather in loc_hard.get("excludes_weather", []):
                 return False
             
+        # ═══════════════════════════════════════════════════
+        # 6. АВТОЗАЩИТА PROPS: кровати только в bedroom
+        # ═══════════════════════════════════════════════════
+        bed_tags = {"bed", "single bed", "double bed", "bunk bed", "canopy bed", 
+                    "mattress", "pillow", "blanket", "duvet", "sheet", "nightstand"}
+        bedroom_only_locations = {"bedroom"}  # Только эти локации могут иметь кровати
+        
+        if scene.location not in bedroom_only_locations:
+            for prop in scene.props:
+                if prop.lower() in bed_tags:
+                    return False  # Кровать в публичном месте!
+        
+        # 7. АВТОЗАЩИТА: абсурдное освещение в indoor
+        indoor_forbidden_lighting = {"headlights", "bioluminescence", "fireplace light", 
+                                      "firelight", "strobe light", "concert lights", 
+                                      "stage lights", "laser light", "store lights"}
+        location_type = self._get_location_type(scene.location)
+        if location_type.startswith("indoor"):
+            if scene.lighting_source.lower() in indoor_forbidden_lighting:
+                return False
+            
+        # ═══════════════════════════════════════════════════
+        # 8. АВТОЗАЩИТА: экстремальная погода + активные действия
+        # ═══════════════════════════════════════════════════
+        extreme_weather = {"storm", "heavy rain", "blizzard", "snowstorm", "thunderstorm"}
+        outdoor_active_actions = {"dancing", "exercising", "running", "jogging", "shopping"}
+        
+        if scene.weather in extreme_weather and scene.action in outdoor_active_actions:
+            # Активное действие в экстремальную погоду — только если это не street
+            if scene.location != "street":
+                return False
+
         return True # Сцена идеальна!
     
     def get_hard_constraints_for_location(self, location_id: str) -> dict:
@@ -530,56 +544,62 @@ class SceneBuilder:
         # 4. ВЫБОР ПОГОДЫ И КАМЕРЫ с учетом весов балансировки и ограничений
         excludes_weather = hard.get("excludes_weather", [])
         avoid_weather = soft.get("avoid_weather", [])
+
+        # 🛡️ АВТОЗАЩИТА: indoor локации автоматически запрещают любую погоду
+        location_type = location_rule.get("meta", {}).get("type", "")
+        if location_type.startswith("indoor") or type_id.startswith("indoor"):
+            auto_exclude_weather = ["sunny", "clear_sky", "rain", "snow", "fog", "storm", 
+                                    "cloudy", "overcast", "light rain", "heavy rain", "blizzard"]
+            excludes_weather = list(set(excludes_weather + auto_exclude_weather))
         
         # 👇 КРОСС-ВАЛИДАЦИЯ: учитываем excludes_weather из action.toml
         excludes_weather_from_action = action_hard.get("excludes_weather", [])
         all_excludes_weather = list(set(excludes_weather + excludes_weather_from_action))
         
+        # 🛑 ИСПРАВЛЕНИЕ: Инициализация переменных погоды (защита от UnboundLocalError)
+        weather_rule = {}
+        weather_hard = {}
+        weather_soft = {}
+        
         # Фильтруем доступные погоды через excludes_weather (жёсткий бан)
         valid_weathers = [w for w in self.available_weathers if w not in all_excludes_weather]
+        
+        # 🛑 ИСПРАВЛЕНИЕ: Если все погоды запрещены (indoor), погода должна быть пустой!
         if not valid_weathers:
-            valid_weathers = self.available_weathers
-        
-        weather_weights = self.generation_weights.get('weather', {})
-        
-        if weather_weights or avoid_weather:
-            # Рассчитываем веса для каждой погоды
-            weights = []
-            for weather in valid_weathers:
-                # Базовый вес из generation_weights
-                base_weight = weather_weights.get(weather, 1.0)
-                
-                # Если погода в avoid_weather, уменьшаем вес в 10 раз
-                if weather in avoid_weather:
-                    base_weight *= 0.1
-                
-                weights.append(base_weight)
-            
-            scene.weather = random.choices(valid_weathers, weights=weights, k=1)[0]
+            scene.weather = ""
         else:
-            scene.weather = random.choice(valid_weathers)
-        
-        # 👇 КРОСС-ВАЛИДАЦИЯ: проверяем, не запрещено ли действие в эту погоду
-        # Если weather.toml запрещает это действие, пытаемся выбрать другую погоду
-        weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
-        weather_hard = weather_rule.get("hard_constraints", {})
-        weather_soft = weather_rule.get("soft_constraints", {})
-        
-        excluded_actions_in_weather = weather_hard.get("excludes_actions", [])
-        if scene.action in excluded_actions_in_weather:
-            # Действие запрещено в эту погоду — пытаемся найти совместимую погоду
-            for retry in range(5):
-                candidate_weather = random.choice(valid_weathers)
-                candidate_rule = self.scene_rules.get(f"weather.{candidate_weather}", {})
-                candidate_hard = candidate_rule.get("hard_constraints", {})
-                candidate_excluded_actions = candidate_hard.get("excludes_actions", [])
+            weather_weights = self.generation_weights.get('weather', {})
+            
+            if weather_weights or avoid_weather:
+                weights = []
+                for weather in valid_weathers:
+                    base_weight = weather_weights.get(weather, 1.0)
+                    if weather in avoid_weather:
+                        base_weight *= 0.1
+                    weights.append(base_weight)
+                scene.weather = random.choices(valid_weathers, weights=weights, k=1)[0]
+            else:
+                scene.weather = random.choice(valid_weathers)
                 
-                if scene.action not in candidate_excluded_actions:
-                    scene.weather = candidate_weather
-                    weather_rule = candidate_rule
-                    weather_hard = candidate_hard
-                    weather_soft = candidate_rule.get("soft_constraints", {})
-                    break
+            # КРОСС-ВАЛИДАЦИЯ: проверяем, не запрещено ли действие в эту погоду
+            weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
+            weather_hard = weather_rule.get("hard_constraints", {})
+            weather_soft = weather_rule.get("soft_constraints", {})
+            
+            excluded_actions_in_weather = weather_hard.get("excludes_actions", [])
+            if scene.action in excluded_actions_in_weather:
+                for retry in range(5):
+                    candidate_weather = random.choice(valid_weathers)
+                    candidate_rule = self.scene_rules.get(f"weather.{candidate_weather}", {})
+                    candidate_hard = candidate_rule.get("hard_constraints", {})
+                    candidate_excluded_actions = candidate_hard.get("excludes_actions", [])
+                    
+                    if scene.action not in candidate_excluded_actions:
+                        scene.weather = candidate_weather
+                        weather_rule = candidate_rule
+                        weather_hard = candidate_hard
+                        weather_soft = candidate_rule.get("soft_constraints", {})
+                        break
         
         camera_weights = self.generation_weights.get('camera')
         if camera_weights:
@@ -587,9 +607,28 @@ class SceneBuilder:
             scene.camera = random.choices(self.available_cameras, weights=c_list, k=1)[0]
         else:
             scene.camera = random.choice(self.available_cameras)
+
+        # 🛡️ АВТОЗАЩИТА: Специфичные действия переопределяют одежду
+        action_outfit_overrides = {
+            # Плавание и купание — только купальник
+            'swimming': {'allowed': ['swimsuit'], 'excluded': ['full_body', 'topwear', 'bottomwear', 'legwear', 'footwear']},
+            'bathing': {'allowed': ['swimsuit'], 'excluded': ['full_body', 'topwear', 'bottomwear', 'legwear', 'footwear']},
+            'sunbathing': {'allowed': ['swimsuit'], 'excluded': ['full_body', 'topwear', 'bottomwear', 'legwear', 'footwear']},
+            # Сон — только пижамы/ночные рубашки
+            'sleeping': {'allowed': ['full_body'], 'excluded': ['swimsuit']},
+            # Готовка — без купальников и пижам
+            'cooking': {'excluded': ['swimsuit', 'full_body']},
+        }
         
         allowed_categories = hard.get("allowed_outfit_categories", [])
         excluded_categories = hard.get("excludes_outfit_categories", [])
+        
+        if scene.action in action_outfit_overrides:
+            override = action_outfit_overrides[scene.action]
+            if 'allowed' in override:
+                allowed_categories = override['allowed']
+            if 'excluded' in override:
+                excluded_categories = list(set(excluded_categories + override['excluded']))
         avoid_categories = soft.get("avoid_outfit_categories", [])
         preferred_categories = soft.get("preferred_outfit_categories", [])
         
@@ -676,6 +715,42 @@ class SceneBuilder:
         )
         excludes_lighting = hard.get("excludes_lighting_sources", [])
         avoid_lighting = soft.get("avoid_lighting_sources", [])
+
+        # 🛡️ АВТОЗАЩИТА ОСВЕЩЕНИЯ: запрещаем абсурдные источники для indoor/outdoor
+        location_type = location_rule.get("meta", {}).get("type", "")
+        is_indoor = location_type.startswith("indoor")
+        is_outdoor = location_type.startswith("outdoor")
+        
+        auto_exclude_lighting = []
+        if is_indoor:
+            auto_exclude_lighting = [
+                # Уличные источники
+                "sunlight", "bright sunlight", "moonlight", "starlight",
+                "streetlight", "street lamp", "traffic lights",
+                "neon glow", "neon light", "headlights",
+                "city lights", "store lights",
+                # Атмосферные outdoor-эффекты
+                "foggy lighting", "misty lighting", "hazy lighting",
+                "gloomy lighting", "ethereal lighting", "dreamy lighting",
+                "crepuscular rays", "sunbeams", "god rays",
+                "sunrise light", "sunset light", "golden hour", "blue hour", "twilight", "magic hour",
+                # Студийные/сценические (для дома не подходят)
+                "camera flash", "flash photography", "strobe light",
+                "concert lights", "stage lights", "spotlight",
+                "laser light", "bioluminescence",
+                "blinding light", "harsh lighting"
+            ]
+        elif is_outdoor:
+            auto_exclude_lighting = [
+                # Сугубо комнатные источники
+                "ring light", "fireplace light", "chandelier", "ceiling light",
+                "flash photography", "camera flash", "studio lighting",
+                "fairy lights", "paper lantern", "lantern light",
+                "lamp light", "lamplight", "desk lamp", "table lamp",
+                "monitor glow", "smartphone glow", "screen glow"
+            ]
+        
+        excludes_lighting = list(set(excludes_lighting + auto_exclude_lighting))
         
         # Если нет явных предпочтений — берём все доступные источники освещения из prompt-library
         if not lighting_sources:
@@ -690,9 +765,15 @@ class SceneBuilder:
         # Фильтруем через excludes (жёсткий бан)
         valid_sources = [s for s in lighting_sources if s not in excludes_lighting]
         
-        # Если после фильтрации ничего не осталось, fallback на все доступные
+        # 🛑 ИСПРАВЛЕНИЕ: Если предпочтения запрещены, ищем fallback во ВСЕЙ библиотеке, кроме banned
         if not valid_sources:
-            valid_sources = lighting_sources
+            all_lighting = []
+            lighting_dir = self.library.library_path / "07_lighting"
+            if lighting_dir.exists():
+                for txt_file in lighting_dir.rglob("*.txt"):
+                    with open(txt_file, 'r', encoding='utf-8') as f:
+                        all_lighting.extend([line.strip() for line in f if line.strip() and not line.startswith('#')])
+            valid_sources = [s for s in all_lighting if s not in excludes_lighting]
         
         # Применяем веса с учётом avoid (мягкий бан)
         if valid_sources:
@@ -704,6 +785,8 @@ class SceneBuilder:
                 scene.lighting_source = random.choices(valid_sources, weights=weights, k=1)[0]
             else:
                 scene.lighting_source = random.choice(valid_sources)
+        else:
+            scene.lighting_source = ""
             
         lighting_quality = (
             weather_soft.get("prefers_lighting_quality", []) or
