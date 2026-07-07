@@ -18,3 +18,11 @@ medium build
 fit
 svelte
 statuesque
+muscular
+voluptuous
+buxom
+plump
+chubby
+thin
+skinny
+lanky
