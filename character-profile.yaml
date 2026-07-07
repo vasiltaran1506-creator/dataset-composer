@@ -4,6 +4,7 @@
 
 character:
   name: "Luna"
+  character_trigger: "luna_character"
   age: 18
   archetype: "quiet intellectual dreamer"
 

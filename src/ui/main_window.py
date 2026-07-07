@@ -70,6 +70,40 @@ COLORS = {
 
 class MainWindow(ctk.CTk):
 
+        # ════════════════════════════════════════════════════════════════════════
+    # КОНСТАНТЫ ДЛЯ БЕЙДЖЕЙ (цветные метки статуса тегов)
+    # ════════════════════════════════════════════════════════════════════════
+    
+    # Группировка constraint_key по семантическим группам
+    BADGE_GROUPS = {
+        'outfit': ['allowed_outfit_categories', 'excludes_outfit_categories', 'preferred_outfit_categories', 'avoid_outfit_categories'],
+        'actions': ['allowed_actions', 'excludes_actions', 'prefers_actions', 'avoid_actions'],
+        'props': ['required_props', 'required_props_pool', 'prefers_props', 'excludes_props', 'avoid_props'],
+        'lighting': ['excludes_lighting_sources', 'prefers_lighting_sources', 'avoid_lighting_sources'],
+        'weather': ['excludes_weather', 'prefers_weather', 'avoid_weather'],
+        'locations': ['allowed_locations', 'excluded_locations', 'prefers_locations', 'avoid_locations'],
+        'poses': ['allowed_poses', 'excludes_poses', 'prefers_poses', 'avoid_poses'],
+        'camera': ['excludes_camera', 'prefers_camera', 'avoid_camera'],
+    }
+    
+    # Приоритет статусов (от сильного к слабому)
+    BADGE_PRIORITY = {
+        'allowed': 4,
+        'required': 4,
+        'excluded': 3,
+        'preferred': 2,
+        'avoided': 1,
+    }
+    
+    # Цвета для каждого статуса
+    BADGE_COLORS = {
+        'allowed': '#4ade80',   # Зелёный
+        'required': '#4ade80',  # Зелёный
+        'excluded': '#f87171',  # Красный
+        'preferred': '#60a5fa', # Синий
+        'avoided': '#fb923c',   # Оранжевый
+    }
+
     # ════════════════════════════════════════════════════════════════════════
     # 1. ИНИЦИАЛИЗАЦИЯ
     # ════════════════════════════════════════════════════════════════════════
@@ -1155,33 +1189,57 @@ class MainWindow(ctk.CTk):
             category, rule_name, rule_data, data, meta, loading_frame))
 
     def _render_scene_rule_content(self, category, rule_name, rule_data, data, meta, loading_frame):
-        """Отложенный рендеринг содержимого Scene Rule"""
+        """Отложенный рендеринг содержимого Scene Rule с обработкой ошибок"""
         # Убираем индикатор загрузки
         if loading_frame and loading_frame.winfo_exists():
             loading_frame.destroy()
-
-        # === Скроллируемая область для секций ===
-        scroll_frame = ctk.CTkScrollableFrame(self.scene_rules_editor_frame)
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-        # === Секция Meta ===
-        self._render_meta_section(scroll_frame, meta, category)
-
-        # === Секции в зависимости от категории ===
-        if category == 'locations':
-            self._render_location_editor(scroll_frame, data)
-        elif category == 'actions':
-            self._render_action_editor(scroll_frame, data)
-        elif category == 'location_types':
-            self._render_location_type_editor(scroll_frame, data)
-        elif category == 'weather':
-            self._render_weather_editor(scroll_frame, data)
-        elif category == 'camera':
-            self._render_camera_editor(scroll_frame, data)
-
-        # Финальная перерисовка
-        if self.scene_rules_editor_frame is not None:
-            self.scene_rules_editor_frame.update_idletasks()
+        
+        try:
+            # === Скроллируемая область для секций ===
+            scroll_frame = ctk.CTkScrollableFrame(self.scene_rules_editor_frame)
+            scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
+            
+            # === Секция Meta ===
+            self._render_meta_section(scroll_frame, meta, category)
+            
+            # === Секции в зависимости от категории ===
+            if category == 'locations':
+                self._render_location_editor(scroll_frame, data)
+            elif category == 'actions':
+                self._render_action_editor(scroll_frame, data)
+            elif category == 'location_types':
+                self._render_location_type_editor(scroll_frame, data)
+            elif category == 'weather':
+                self._render_weather_editor(scroll_frame, data)
+            elif category == 'camera':
+                self._render_camera_editor(scroll_frame, data)
+            
+            # Финальная перерисовка
+            if self.scene_rules_editor_frame is not None:
+                self.scene_rules_editor_frame.update_idletasks()
+                
+        except Exception as e:
+            # 👇 КРИТИЧНО: Логируем ошибку, чтобы она не терялась молча
+            import traceback
+            error_msg = traceback.format_exc()
+            self._log(f"\n❌ ОШИБКА при рендеринге {category}/{rule_name}:\n{error_msg}\n")
+            
+            # Показываем ошибку в редакторе, чтобы пользователь увидел
+            if self.scene_rules_editor_frame is not None:
+                error_frame = ctk.CTkFrame(self.scene_rules_editor_frame, fg_color="#2d1b1b")
+                error_frame.pack(fill="both", expand=True, padx=10, pady=10)
+                ctk.CTkLabel(
+                    error_frame,
+                    text=f"❌ Ошибка рендеринга: {e}",
+                    font=ctk.CTkFont(size=14, weight="bold"),
+                    text_color="#ff6b6b"
+                ).pack(anchor="w", padx=15, pady=(15, 5))
+                ctk.CTkLabel(
+                    error_frame,
+                    text=f"Категория: {category}/{rule_name}\n\nСмотри лог для деталей.",
+                    text_color="#ff9999",
+                    justify="left"
+                ).pack(anchor="w", padx=15, pady=(0, 15))
 
     def _render_meta_section(self, parent, meta: dict, category: str):
         """Рендерит секцию meta-информации (редактируемую)"""
@@ -1305,150 +1363,605 @@ class MainWindow(ctk.CTk):
                             f.write(f'{key} = {json.dumps(value)}\n')
                 f.write("\n")
 
-    def _render_location_editor(self, parent, data: dict):
-        """Рендерит редактор для локации (locations/*.toml)"""
-        soft = data.get('soft_constraints', {})
+    def _render_section_header(self, parent, title: str, emoji: str = "📋"):
+        """Рендерит визуальный разделитель секции с заголовком"""
+        separator_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        separator_frame.pack(fill="x", padx=5, pady=(20, 5))
+        
+        # Верхняя линия
+        top_line = ctk.CTkFrame(separator_frame, height=2, fg_color="gray40")
+        top_line.pack(fill="x", padx=10, pady=(0, 5))
+        
+        # Заголовок секции
+        header_frame = ctk.CTkFrame(separator_frame, fg_color="gray30", corner_radius=8)
+        header_frame.pack(fill="x", padx=5, pady=(0, 5))
+        
+        title_label = ctk.CTkLabel(
+            header_frame, 
+            text=f"{emoji} {title}",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color="white"
+        )
+        title_label.pack(anchor="w", padx=15, pady=8)
+        
+        # Нижняя линия
+        bottom_line = ctk.CTkFrame(separator_frame, height=2, fg_color="gray40")
+        bottom_line.pack(fill="x", padx=10, pady=(5, 0))
 
+    def _get_badge_group(self, constraint_key: str) -> str | None:
+        """Определяет группу для constraint_key"""
+        for group_name, keys in self.BADGE_GROUPS.items():
+            if constraint_key in keys:
+                return group_name
+        return None
+    
+    def _get_status_from_key(self, constraint_key: str) -> str:
+        """Определяет статус по названию constraint_key"""
+        if 'allowed' in constraint_key or 'required' in constraint_key:
+            return 'allowed' if 'allowed' in constraint_key else 'required'
+        elif 'excluded' in constraint_key or 'excludes' in constraint_key:
+            return 'excluded'
+        elif 'preferred' in constraint_key or 'prefers' in constraint_key:
+            return 'preferred'
+        elif 'avoid' in constraint_key:
+            return 'avoided'
+        return ''
+    
+    def _update_badge_for_tag(self, tag: str, current_constraint_key: str):
+        """Обновляет бейдж для конкретного тега во всей группе"""
+        group = self._get_badge_group(current_constraint_key)
+        if not group:
+            return
+        
+        # Находим, в каком списке этой группы выбран тег (с учётом приоритета)
+        current_status = None
+        current_priority = 0
+        
+        for constraint_key in self.BADGE_GROUPS.get(group, []):
+            if constraint_key not in self._current_checkboxes:
+                continue
+            if tag in self._current_checkboxes[constraint_key]:
+                if self._current_checkboxes[constraint_key][tag].get():
+                    status = self._get_status_from_key(constraint_key)
+                    priority = self.BADGE_PRIORITY.get(status, 0)
+                    if priority > current_priority:
+                        current_status = status
+                        current_priority = priority
+        
+        # Обновляем все бейджи этого тега в группе
+        for constraint_key in self.BADGE_GROUPS.get(group, []):
+            if not hasattr(self, '_badge_widgets'):
+                continue
+            if constraint_key not in self._badge_widgets:
+                continue
+            if tag not in self._badge_widgets[constraint_key]:
+                continue
+            
+            badge = self._badge_widgets[constraint_key][tag]
+            this_status = self._get_status_from_key(constraint_key)
+            
+            # Показываем бейдж, если тег выбран в ДРУГОМ списке этой группы
+            if current_status and current_status != this_status:
+                text = f"[{current_status.upper()}]"
+                color = self.BADGE_COLORS.get(current_status, "gray")
+                badge.configure(text=text, text_color=color)
+            else:
+                # Скрываем бейдж
+                badge.configure(text="")
+    
+    def _update_badges_for_group(self, group: str):
+        """Обновляет все бейджи в группе (вызывается при изменении любого чекбокса)"""
+        if group not in self.BADGE_GROUPS:
+            return
+        
+        # Собираем все уникальные теги из всех списков группы
+        all_tags = set()
+        for constraint_key in self.BADGE_GROUPS[group]:
+            if constraint_key in self._current_checkboxes:
+                all_tags.update(self._current_checkboxes[constraint_key].keys())
+        
+        # Обновляем бейдж для каждого тега
+        for tag in all_tags:
+            # Используем первый доступный constraint_key из группы
+            for constraint_key in self.BADGE_GROUPS[group]:
+                if constraint_key in self._current_checkboxes:
+                    self._update_badge_for_tag(tag, constraint_key)
+                    break
+
+    def _render_location_editor(self, parent, data: dict):
+        """Рендерит редактор для локации (locations/*.toml) с визуальной группировкой"""
+        soft = data.get('soft_constraints', {})
+        hard = data.get('hard_constraints', {})
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: OUTFIT (Одежда)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "OUTFIT (Одежда)", "👗")
+        
+        all_outfit_styles = self._load_all_tags_from_category("02_clothing")
+        
+        self._render_checklist_section(
+            parent, "✅ Allowed Outfit Styles (Hard Whitelist)",
+            all_outfit_styles, hard.get('allowed_outfit_categories', []),
+            'allowed_outfit_categories', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Outfit Styles (Hard Ban)",
+            all_outfit_styles, hard.get('excludes_outfit_categories', []),
+            'excludes_outfit_categories', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "⭐ Preferred Outfit Styles (Soft Priority)",
+            all_outfit_styles, soft.get('preferred_outfit_categories', []),
+            'preferred_outfit_categories', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Outfit Styles (Soft Ban)",
+            all_outfit_styles, soft.get('avoid_outfit_categories', []),
+            'avoid_outfit_categories', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: ACTIONS (Действия)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "ACTIONS (Действия)", "🎬")
+        
         all_actions = self._load_all_tags_from_category("04_action")
         if not all_actions:
             all_actions = self._load_all_tags_from_category("03_pose")
+            
         self._render_checklist_section(
-            parent, "🎬 Prefers Actions",
+            parent, "✅ Allowed Actions (Hard Whitelist)",
+            all_actions, hard.get('allowed_actions', []),
+            'allowed_actions', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Actions (Hard Ban)",
+            all_actions, hard.get('excludes_actions', []),
+            'excludes_actions', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions (Soft Priority)",
             all_actions, soft.get('prefers_actions', []),
             'prefers_actions', bg_color="gray25"
         )
-
-        all_props = self._load_all_tags_from_category("09_props")
         self._render_checklist_section(
-            parent, "🧸 Prefers Props",
+            parent, "⚠️ Avoid Actions (Soft Ban)",
+            all_actions, soft.get('avoid_actions', []),
+            'avoid_actions', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: PROPS (Реквизит)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "PROPS (Реквизит)", "📦")
+        
+        all_props = self._load_all_tags_from_category("09_props")
+        
+        self._render_checklist_section(
+            parent, "📦 Required Props (100% попадание)",
+            all_props, hard.get('required_props', []),
+            'required_props', bg_color="gray25"
+        )
+        
+        self._render_checklist_section(
+            parent, "🎲 Required Props Pool (случайный выбор)",
+            all_props, hard.get('required_props_pool', []),
+            'required_props_pool', bg_color="gray25"
+        )
+        
+        # Числовое поле для required_props_count
+        count_frame = ctk.CTkFrame(parent, fg_color="gray25")
+        count_frame.pack(fill="x", padx=5, pady=8)
+        
+        count_header = ctk.CTkFrame(count_frame, fg_color="transparent")
+        count_header.pack(fill="x", padx=10, pady=(10, 5))
+        
+        ctk.CTkLabel(count_header, text="🔢 Required Props Count (сколько выбрать из пула)",
+                     font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+        
+        count_entry = ctk.CTkEntry(count_header, width=100)
+        count_entry.pack(side="left", padx=(10, 0))
+        current_count = hard.get('required_props_count', 0)
+        count_entry.insert(0, str(current_count))
+        
+        # Сохраняем ссылку на поле для последующего сбора данных
+        if not hasattr(self, '_props_count_entries'):
+            self._props_count_entries = {}
+        self._props_count_entries['required_props_count'] = count_entry
+        
+        self._render_checklist_section(
+            parent, "🧸 Prefers Props (высокий приоритет)",
             all_props, soft.get('prefers_props', []),
             'prefers_props', bg_color="gray25"
         )
-
-        all_lighting = self._load_all_tags_from_category("07_lighting")
+        
         self._render_checklist_section(
-            parent, "💡 Prefers Lighting",
-            all_lighting, soft.get('prefers_lighting_sources', []),
-            'prefers_lighting', bg_color="gray25"
+            parent, "🚫 Excluded Props (жёсткий бан)",
+            all_props, hard.get('excludes_props', []),
+            'excludes_props', bg_color="gray25"
         )
-
-        all_weather = self._load_all_tags_from_category("10_weather")
+        
         self._render_checklist_section(
-            parent, "🌦️ Prefers Weather",
+            parent, "⚠️ Avoid Props (мягкий бан - 30% шанс)",
+            all_props, soft.get('avoid_props', []),
+            'avoid_props', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: LIGHTING & WEATHER (Освещение и Погода)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "LIGHTING & WEATHER (Освещение и Погода)", "🌤️")
+        
+        all_lighting = self._load_all_tags_from_category("07_lighting")
+        
+        self._render_checklist_section(
+            parent, "🚫 Excluded Lighting Sources (жёсткий бан)",
+            all_lighting, hard.get('excludes_lighting_sources', []),
+            'excludes_lighting_sources', bg_color="gray25"
+        )
+        
+        self._render_checklist_section(
+            parent, "💡 Prefers Lighting (высокий приоритет)",
+            all_lighting, soft.get('prefers_lighting_sources', []),
+            'prefers_lighting_sources', bg_color="gray25"
+        )
+        
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Lighting Sources (мягкий бан)",
+            all_lighting, soft.get('avoid_lighting_sources', []),
+            'avoid_lighting_sources', bg_color="gray25"
+        )
+        
+        all_weather = self._load_all_tags_from_category("10_weather")
+        
+        self._render_checklist_section(
+            parent, "🚫 Excluded Weather (жёсткий бан)",
+            all_weather, hard.get('excludes_weather', []),
+            'excludes_weather', bg_color="gray25"
+        )
+        
+        self._render_checklist_section(
+            parent, "🌦️ Prefers Weather (высокий приоритет)",
             all_weather, soft.get('prefers_weather', []),
             'prefers_weather', bg_color="gray25"
         )
+        
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Weather (мягкий бан)",
+            all_weather, soft.get('avoid_weather', []),
+            'avoid_weather', bg_color="gray25"
+        )
 
     def _render_action_editor(self, parent, data: dict):
-        """Рендерит редактор для действия (actions/*.toml)"""
+        """Рендерит редактор для действия (actions/*.toml) с визуальной группировкой"""
         soft = data.get('soft_constraints', {})
         hard = data.get('hard_constraints', {})
-
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: LOCATIONS (Локации)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "LOCATIONS (Локации)", "📍")
         all_locations = self._load_all_tags_from_category("08_location")
+        
         self._render_checklist_section(
-            parent, "📍 Prefers Locations",
+            parent, "✅ Allowed Locations (Hard Whitelist)",
+            all_locations, hard.get('allowed_locations', []),
+            'allowed_locations', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Locations (Hard Ban)",
+            all_locations, hard.get('excluded_locations', []),
+            'excluded_locations', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "📍 Prefers Locations (Soft Priority)",
             all_locations, soft.get('prefers_locations', []),
             'prefers_locations', bg_color="gray25"
         )
-
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Locations (Soft Ban)",
+            all_locations, soft.get('avoid_locations', []),
+            'avoid_locations', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: POSES & EXPRESSIONS (Позы и Эмоции)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "POSES & EXPRESSIONS (Позы и Эмоции)", "🎭")
         all_poses = self._load_all_tags_from_category("03_pose")
         self._render_checklist_section(
             parent, "🎭 Prefers Poses",
             all_poses, soft.get('prefers_poses', []),
             'prefers_poses', bg_color="gray25"
         )
-
         all_expressions = self._load_all_tags_from_category("05_expression")
         self._render_checklist_section(
             parent, "😊 Prefers Expressions",
             all_expressions, soft.get('prefers_expressions', []),
             'prefers_expressions', bg_color="gray25"
         )
-
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: PROPS (Реквизит)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "PROPS (Реквизит)", "📦")
+        all_props = self._load_all_tags_from_category("09_props")
+        
+        self._render_checklist_section(
+            parent, "📦 Required Props (100% попадание)",
+            all_props, hard.get('required_props', []),
+            'required_props', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🎲 Required Props Pool (случайный выбор)",
+            all_props, hard.get('required_props_pool', []),
+            'required_props_pool', bg_color="gray25"
+        )
+        
+        # Числовое поле для required_props_count
+        count_frame = ctk.CTkFrame(parent, fg_color="gray25")
+        count_frame.pack(fill="x", padx=5, pady=8)
+        count_header = ctk.CTkFrame(count_frame, fg_color="transparent")
+        count_header.pack(fill="x", padx=10, pady=(10, 5))
+        ctk.CTkLabel(count_header, text="🔢 Required Props Count (сколько выбрать из пула)",
+                     font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+        count_entry = ctk.CTkEntry(count_header, width=100)
+        count_entry.pack(side="left", padx=(10, 0))
+        current_count = hard.get('required_props_count', 0)
+        count_entry.insert(0, str(current_count))
+        if not hasattr(self, '_props_count_entries'):
+            self._props_count_entries = {}
+        self._props_count_entries['required_props_count'] = count_entry
+        
+        self._render_checklist_section(
+            parent, "🧸 Prefers Props (высокий приоритет)",
+            all_props, soft.get('prefers_props', []),
+            'prefers_props', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Props (жёсткий бан)",
+            all_props, hard.get('excludes_props', []),
+            'excludes_props', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Props (мягкий бан - 30% шанс)",
+            all_props, soft.get('avoid_props', []),
+            'avoid_props', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: ACTIONS (Взаимоисключающие действия)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "ACTIONS (Взаимоисключающие действия)", "🎬")
         all_actions = self._load_all_tags_from_category("04_action")
         if not all_actions:
             all_actions = self._load_all_tags_from_category("03_pose")
+            
         self._render_checklist_section(
-            parent, "🚫 Excludes Actions",
+            parent, "🚫 Excludes Actions (жёсткий бан)",
             all_actions, hard.get('excludes_actions', []),
             'excludes_actions', bg_color="gray25"
         )
-
-        all_props = self._load_all_tags_from_category("09_props")
         self._render_checklist_section(
-            parent, "📦 Requires Props",
-            all_props, hard.get('requires_props', []),
-            'requires_props', bg_color="gray25"
+            parent, "⚠️ Avoid Actions (мягкий бан)",
+            all_actions, soft.get('avoid_actions', []),
+            'avoid_actions', bg_color="gray25"
         )
 
     def _render_weather_editor(self, parent, data: dict):
-        """Рендерит редактор для погоды (weather/*.toml)"""
+        """Рендерит редактор для погоды (weather/*.toml) с визуальной группировкой"""
         soft = data.get('soft_constraints', {})
         hard = data.get('hard_constraints', {})
-
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: LOCATIONS (Локации)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "LOCATIONS (Локации)", "📍")
         all_locations = self._load_all_tags_from_category("08_location")
+        
         self._render_checklist_section(
-            parent, "📍 Prefers Locations",
+            parent, "✅ Allowed Locations (Hard Whitelist)",
+            all_locations, hard.get('allowed_locations', []),
+            'allowed_locations', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Locations (Hard Ban)",
+            all_locations, hard.get('excluded_locations', []),
+            'excluded_locations', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "📍 Prefers Locations (Soft Priority)",
             all_locations, soft.get('prefers_locations', []),
             'prefers_locations', bg_color="gray25"
         )
-
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Locations (Soft Ban)",
+            all_locations, soft.get('avoid_locations', []),
+            'avoid_locations', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: ACTIONS (Действия)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "ACTIONS (Действия)", "🎬")
         all_actions = self._load_all_tags_from_category("04_action")
         if not all_actions:
             all_actions = self._load_all_tags_from_category("03_pose")
+            
         self._render_checklist_section(
-            parent, "🎬 Prefers Actions",
+            parent, "✅ Allowed Actions (Hard Whitelist)",
+            all_actions, hard.get('allowed_actions', []),
+            'allowed_actions', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Actions (Hard Ban)",
+            all_actions, hard.get('excludes_actions', []),
+            'excludes_actions', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions (Soft Priority)",
             all_actions, soft.get('prefers_actions', []),
             'prefers_actions', bg_color="gray25"
         )
-
-        all_lighting = self._load_all_tags_from_category("07_lighting")
         self._render_checklist_section(
-            parent, "💡 Prefers Lighting",
-            all_lighting, soft.get('prefers_lighting_sources', []),
-            'prefers_lighting', bg_color="gray25"
+            parent, "⚠️ Avoid Actions (Soft Ban)",
+            all_actions, soft.get('avoid_actions', []),
+            'avoid_actions', bg_color="gray25"
         )
-
-        all_weather = self._load_all_tags_from_category("10_weather")
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: LIGHTING (Освещение)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "LIGHTING (Освещение)", "💡")
+        all_lighting = self._load_all_tags_from_category("07_lighting")
+        
         self._render_checklist_section(
-            parent, "🚫 Excludes Weather",
+            parent, "🚫 Excluded Lighting Sources (жёсткий бан)",
+            all_lighting, hard.get('excludes_lighting_sources', []),
+            'excludes_lighting_sources', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "💡 Prefers Lighting (высокий приоритет)",
+            all_lighting, soft.get('prefers_lighting_sources', []),
+            'prefers_lighting_sources', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Lighting Sources (мягкий бан)",
+            all_lighting, soft.get('avoid_lighting_sources', []),
+            'avoid_lighting_sources', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: WEATHER (Собственные ограничения)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "WEATHER (Собственные ограничения)", "🌦️")
+        all_weather = self._load_all_tags_from_category("10_weather")
+        
+        self._render_checklist_section(
+            parent, "🚫 Excludes Weather (жёсткий бан)",
             all_weather, hard.get('excludes_weather', []),
             'excludes_weather', bg_color="gray25"
         )
+        self._render_checklist_section(
+            parent, "🌦️ Prefers Weather (высокий приоритет)",
+            all_weather, soft.get('prefers_weather', []),
+            'prefers_weather', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Weather (мягкий бан)",
+            all_weather, soft.get('avoid_weather', []),
+            'avoid_weather', bg_color="gray25"
+        )
 
     def _render_camera_editor(self, parent, data: dict):
-        """Рендерит редактор для камеры (camera/*.toml)"""
+        """Рендерит редактор для камеры (camera/*.toml) с визуальной группировкой"""
         soft = data.get('soft_constraints', {})
         hard = data.get('hard_constraints', {})
-
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: LOCATIONS (Локации)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "LOCATIONS (Локации)", "📍")
         all_locations = self._load_all_tags_from_category("08_location")
+        
         self._render_checklist_section(
-            parent, "📍 Prefers Locations",
+            parent, "✅ Allowed Locations (Hard Whitelist)",
+            all_locations, hard.get('allowed_locations', []),
+            'allowed_locations', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Locations (Hard Ban)",
+            all_locations, hard.get('excluded_locations', []),
+            'excluded_locations', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "📍 Prefers Locations (Soft Priority)",
             all_locations, soft.get('prefers_locations', []),
             'prefers_locations', bg_color="gray25"
         )
-
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Locations (Soft Ban)",
+            all_locations, soft.get('avoid_locations', []),
+            'avoid_locations', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: ACTIONS (Действия)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "ACTIONS (Действия)", "🎬")
         all_actions = self._load_all_tags_from_category("04_action")
         if not all_actions:
             all_actions = self._load_all_tags_from_category("03_pose")
+            
         self._render_checklist_section(
-            parent, "🎬 Prefers Actions",
+            parent, "✅ Allowed Actions (Hard Whitelist)",
+            all_actions, hard.get('allowed_actions', []),
+            'allowed_actions', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Actions (Hard Ban)",
+            all_actions, hard.get('excludes_actions', []),
+            'excludes_actions', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🎬 Prefers Actions (Soft Priority)",
             all_actions, soft.get('prefers_actions', []),
             'prefers_actions', bg_color="gray25"
         )
-
-        all_poses = self._load_all_tags_from_category("03_pose")
         self._render_checklist_section(
-            parent, "🎭 Prefers Poses",
+            parent, "⚠️ Avoid Actions (Soft Ban)",
+            all_actions, soft.get('avoid_actions', []),
+            'avoid_actions', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: POSES (Позы)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "POSES (Позы)", "🎭")
+        all_poses = self._load_all_tags_from_category("03_pose")
+        
+        self._render_checklist_section(
+            parent, "✅ Allowed Poses (Hard Whitelist)",
+            all_poses, hard.get('allowed_poses', []),
+            'allowed_poses', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🚫 Excluded Poses (Hard Ban)",
+            all_poses, hard.get('excludes_poses', []),
+            'excludes_poses', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "🎭 Prefers Poses (Soft Priority)",
             all_poses, soft.get('prefers_poses', []),
             'prefers_poses', bg_color="gray25"
         )
-
-        all_camera = self._load_all_tags_from_category("06_camera")
         self._render_checklist_section(
-            parent, "🚫 Excludes Camera",
+            parent, "⚠️ Avoid Poses (Soft Ban)",
+            all_poses, soft.get('avoid_poses', []),
+            'avoid_poses', bg_color="gray25"
+        )
+        
+        # ═══════════════════════════════════════════════════
+        # СЕКЦИЯ: CAMERA (Собственные ограничения)
+        # ═══════════════════════════════════════════════════
+        self._render_section_header(parent, "CAMERA (Собственные ограничения)", "📸")
+        all_camera = self._load_all_tags_from_category("06_camera")
+        
+        self._render_checklist_section(
+            parent, "🚫 Excludes Camera (жёсткий бан)",
             all_camera, hard.get('excludes_camera', []),
             'excludes_camera', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "📸 Prefers Camera (высокий приоритет)",
+            all_camera, soft.get('prefers_camera', []),
+            'prefers_camera', bg_color="gray25"
+        )
+        self._render_checklist_section(
+            parent, "⚠️ Avoid Camera (мягкий бан)",
+            all_camera, soft.get('avoid_camera', []),
+            'avoid_camera', bg_color="gray25"
         )
 
     def _render_location_type_editor(self, parent, data: dict):
@@ -1470,221 +1983,348 @@ class MainWindow(ctk.CTk):
         )
 
     def _render_checklist_section(self, parent, title: str, all_items,
-                                   selected_items: list, constraint_key: str,
-                                   bg_color="gray20"):
-        """Рендерит сворачиваемую секцию с ленивой загрузкой и поиском"""
+                                  selected_items: list, constraint_key: str,
+                                  bg_color="gray20"):
+        """Рендерит сворачиваемую секцию с двумя уровнями вложенности, 
+        кнопками Select All/Clear All и отказоустойчивым поиском."""
         section = ctk.CTkFrame(parent, fg_color=bg_color)
         section.pack(fill="x", padx=5, pady=8)
-
+        
         header = ctk.CTkFrame(section, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 5))
-
+        
         toggle_btn = ctk.CTkButton(header, text=f"▶ {title}", width=400, height=28,
-                                    fg_color="gray30", hover_color="gray40",
-                                    font=ctk.CTkFont(size=13, weight="bold"), anchor="w")
+                                   fg_color="gray30", hover_color="gray40",
+                                   font=ctk.CTkFont(size=13, weight="bold"), anchor="w")
         toggle_btn.pack(side="left")
-
+        
         # Подсчёт выбранных / всего
         if isinstance(all_items, dict):
-            total_count = sum(len(tags) for tags in all_items.values())
-            selected_count = len([s for s in selected_items
-                                  if any(s in tags for tags in all_items.values())])
+            total_count = 0
+            selected_count = 0
+            for main_cat, subcats in all_items.items():
+                if isinstance(subcats, dict):
+                    for subcat_name, tags in subcats.items():
+                        total_count += len(tags)
+                        selected_count += len([s for s in selected_items if s in tags])
+                else:
+                    total_count += len(subcats)
+                    selected_count += len([s for s in selected_items if s in subcats])
         else:
             total_count = len(all_items) if all_items else 0
             selected_count = len([s for s in selected_items if s in (all_items or [])])
-
+        
         count_label = ctk.CTkLabel(header, text=f"({selected_count}/{total_count})",
-                                    text_color="gray60")
+                                   text_color="gray60")
         count_label.pack(side="left", padx=(10, 0))
-
+        
         content_frame = ctk.CTkFrame(section, fg_color="transparent")
         content_frame.pack(fill="x", padx=10, pady=(0, 10))
-        content_frame.pack_forget()  # INIT: изначально скрыт
-
+        content_frame.pack_forget()
+        
         search_entry = ctk.CTkEntry(content_frame, placeholder_text="🔍 Filter tags...", height=30)
         search_entry.pack(fill="x", pady=(5, 10))
-
+        
         checkbox_scroll = ctk.CTkScrollableFrame(content_frame, height=300)
         checkbox_scroll.pack(fill="both", expand=True)
-
-        # Явная типизация для Pylance
+        
         checkboxes: dict[str, ctk.BooleanVar] = {}
         has_subcategories = isinstance(all_items, dict)
-
-        # Словарь для хранения состояний подкатегорий (ленивая загрузка)
-        subcat_data: dict[str, dict] = {}
-
-        def render_subcat_tags(subcat_name: str, tags: list, container: ctk.CTkFrame):
-            """Рендерит теги внутри подкатегории (вызывается при первом разворачивании)"""
-            for tag in sorted(tags):
-                var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
-                cb = ctk.CTkCheckBox(container, text=tag.replace('_', ' '),
-                                      variable=var,
-                                      command=lambda i=tag, v=var, cl=count_label:
-                                      self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
-                cb.pack(anchor="w", padx=5, pady=1)
-                checkboxes[tag] = var
-                subcat_data[subcat_name]['widgets'][tag] = cb
-
+        
+        # Словари для хранения ссылок на виджеты (заполняются при старте)
+        maincat_widgets: dict[str, dict] = {}
+        subcat_widgets: dict[str, dict] = {}
+        tag_widgets: dict[str, ctk.CTkCheckBox] = {}
+        
+        def _update_count():
+            if isinstance(all_items, dict):
+                sel = 0
+                tot = 0
+                for mc, scs in all_items.items():
+                    if isinstance(scs, dict):
+                        for sn, tgs in scs.items():
+                            tot += len(tgs)
+                            sel += sum(1 for t in tgs if checkboxes.get(t, ctk.BooleanVar(value=False)).get())
+                count_label.configure(text=f"({sel}/{tot})")
+        
+        def _toggle_select_all_for_subcat(main_cat: str, subcat_name: str, tags: list, button):
+            all_selected = all(checkboxes.get(t, ctk.BooleanVar(value=False)).get() for t in tags)
+            new_value = not all_selected
+            for tag in tags:
+                if tag in checkboxes:
+                    checkboxes[tag].set(new_value)
+                    self._on_checkbox_toggled(tag, checkboxes[tag], constraint_key, count_label, all_items)
+            button.configure(text="Clear All" if new_value else "Select All")
+        
         if has_subcategories:
-            for subcat_name, tags in sorted(all_items.items()):
-                subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
-                subcat_frame.pack(fill="x", pady=2)
-
-                subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                subcat_header.pack(fill="x")
-
-                subcat_toggle_btn = ctk.CTkButton(
-                    subcat_header,
-                    text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(tags)})",
+            for main_cat_name, subcats in sorted(all_items.items()):
+                if not isinstance(subcats, dict):
+                    continue
+                
+                cat_total_tags = sum(len(tags) for tags in subcats.values())
+                
+                main_cat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
+                main_cat_frame.pack(fill="x", pady=2)
+                
+                main_cat_header = ctk.CTkFrame(main_cat_frame, fg_color="transparent")
+                main_cat_header.pack(fill="x")
+                
+                main_cat_toggle_btn = ctk.CTkButton(
+                    main_cat_header,
+                    text=f"▶ 📁 {main_cat_name.replace('_', ' ').title()} ({cat_total_tags})",
                     anchor="w", fg_color="gray35", hover_color="gray45",
-                    height=26, font=ctk.CTkFont(size=12, weight="bold")
+                    height=28, font=ctk.CTkFont(size=13, weight="bold")
                 )
-                subcat_toggle_btn.pack(side="left", fill="x", expand=True)
-
-                select_all_btn = ctk.CTkButton(
-                    subcat_header, text="Select All", width=80, height=24,
-                    fg_color="gray40", hover_color="gray50", font=ctk.CTkFont(size=10)
-                )
-                select_all_btn.pack(side="right", padx=(5, 0))
-
-                tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                tags_container.pack(fill="x", padx=(30, 0))
-                tags_container.pack_forget()  # INIT: изначально скрыт
-
-                subcat_data[subcat_name] = {
-                    'toggle_btn': subcat_toggle_btn,
-                    'select_all_btn': select_all_btn,
-                    'container': tags_container,
-                    'tags': tags,
-                    'widgets': {},
-                    'loaded': False
+                main_cat_toggle_btn.pack(side="left", fill="x", expand=True)
+                
+                subcats_container = ctk.CTkFrame(main_cat_frame, fg_color="transparent")
+                subcats_container.pack(fill="x", padx=(20, 0))
+                subcats_container.pack_forget()
+                
+                maincat_widgets[main_cat_name] = {
+                    'frame': main_cat_frame,
+                    'toggle_btn': main_cat_toggle_btn,
+                    'container': subcats_container,
+                    'subcats': subcats
                 }
+                
+                for subcat_name, tags in sorted(subcats.items()):
+                    subcat_frame = ctk.CTkFrame(subcats_container, fg_color="transparent")
+                    subcat_frame.pack(fill="x", pady=1)
+                    subcat_frame.pack_forget()
+                    
+                    subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
+                    subcat_header.pack(fill="x")
+                    
+                    subcat_toggle_btn = ctk.CTkButton(
+                        subcat_header,
+                        text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(tags)})",
+                        anchor="w", fg_color="gray30", hover_color="gray40",
+                        height=24, font=ctk.CTkFont(size=11)
+                    )
+                    subcat_toggle_btn.pack(side="left", fill="x", expand=True)
+                    
+                    select_all_btn = ctk.CTkButton(
+                        subcat_header, text="Select All", width=80, height=24,
+                        fg_color="gray40", hover_color="gray50",
+                        font=ctk.CTkFont(size=10)
+                    )
+                    select_all_btn.pack(side="right", padx=(5, 0))
+                    
+                    tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
+                    tags_container.pack(fill="x", padx=(30, 0))
+                    tags_container.pack_forget()
+                    
+                    subcat_key = f"{main_cat_name}::{subcat_name}"
+                    subcat_widgets[subcat_key] = {
+                        'frame': subcat_frame,
+                        'toggle_btn': subcat_toggle_btn,
+                        'container': tags_container,
+                        'select_all_btn': select_all_btn,
+                        'tags': tags,
+                        'loaded': False,
+                        'main_cat': main_cat_name
+                    }
+                    
+                    def make_select_all_handler(sn=subcat_name, tgs=tags, sab=select_all_btn, mc=main_cat_name):
+                        return lambda: _toggle_select_all_for_subcat(mc, sn, tgs, sab)
+                    select_all_btn.configure(command=make_select_all_handler())
+                    
+                    def make_sub_toggle(sn=subcat_name, stbtn=subcat_toggle_btn, 
+                                           tcont=tags_container, tgs=tags, nm=subcat_name, mc=main_cat_name):
+                        def toggle_sub():
+                            sdata = subcat_widgets[f"{mc}::{sn}"]
+                            if not sdata['loaded']:
+                                for tag in sorted(tgs):
+                                    var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
 
-                def toggle_subcat(sn=subcat_name, btn=subcat_toggle_btn, cont=tags_container,
-                                name=subcat_name, tag_count=len(tags)):
-                    # 👇 ФИКС ПУСТЫХ СПИСКОВ: Рендерим теги при первом разворачивании подкатегории
-                    if not subcat_data[sn]['loaded']:
-                        render_subcat_tags(sn, subcat_data[sn]['tags'], cont)
-                        subcat_data[sn]['loaded'] = True
+                                    # Создаём фрейм для чекбокса + бейджа
+                                    tag_row = ctk.CTkFrame(tcont, fg_color="transparent")
+                                    tag_row.pack(anchor="w", padx=5, pady=1, fill="x")
 
-                    if cont.winfo_ismapped():
-                        self._hide_container(cont)
-                        btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({tag_count})")
-                    else:
-                        self._show_container(cont, padx=(30, 0))
-                        btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({tag_count})")
+                                    cb = ctk.CTkCheckBox(tag_row, text=tag.replace('_', ' '),
+                                                         variable=var,
+                                                         command=lambda i=tag, v=var: self._on_checkbox_toggled(i, v, constraint_key, count_label, all_items))
+                                    cb.pack(side="left")
 
-                subcat_toggle_btn.configure(command=toggle_subcat)
+                                    # Создаём label для бейджа (изначально пустой)
+                                    badge_label = ctk.CTkLabel(tag_row, text="", 
+                                                               font=ctk.CTkFont(size=10, weight="bold"))
+                                    badge_label.pack(side="left", padx=(5, 0))
 
-                def select_all_handler(sn=subcat_name):
-                    data = subcat_data[sn]
-                    self._toggle_select_all_subcategory(
-                        sn, data['tags'], count_label, constraint_key,
-                        all_items, data['select_all_btn'])
+                                    checkboxes[tag] = var
+                                    tag_widgets[tag] = cb
 
-                select_all_btn.configure(command=select_all_handler)
-                if not tags:
-                    continue  # Пропускаем пустые подкатегории
+                                    # Сохраняем ссылку на бейдж
+                                    if not hasattr(self, '_badge_widgets'):
+                                        self._badge_widgets = {}
+                                    if constraint_key not in self._badge_widgets:
+                                        self._badge_widgets[constraint_key] = {}
+                                    self._badge_widgets[constraint_key][tag] = badge_label
+
+                                    # Сразу обновляем бейдж для этого тега
+                                    self._update_badge_for_tag(tag, constraint_key)
+                                sdata['loaded'] = True
+                            
+                            if tcont.winfo_ismapped():
+                                self._hide_container(tcont)
+                                stbtn.configure(text=f"▶ 📁 {nm.replace('_', ' ').title()} ({len(tgs)})")
+                            else:
+                                self._show_container(tcont, padx=(30, 0))
+                                stbtn.configure(text=f"▼ 📁 {nm.replace('_', ' ').title()} ({len(tgs)})")
+                        return toggle_sub
+                    subcat_toggle_btn.configure(command=make_sub_toggle())
+                
+                def make_main_toggle(mcn=main_cat_name, btn=main_cat_toggle_btn, 
+                                      cont=subcats_container, tag_count=cat_total_tags):
+                    def toggle():
+                        if cont.winfo_ismapped():
+                            self._hide_container(cont)
+                            btn.configure(text=f"▶ 📁 {mcn.replace('_', ' ').title()} ({tag_count})")
+                        else:
+                            # Показываем все подкатегории при разворачивании
+                            for sk, sdata in subcat_widgets.items():
+                                if sdata['main_cat'] == mcn:
+                                    sdata['frame'].pack(fill="x", pady=1)
+                            self._show_container(cont, padx=(20, 0))
+                            btn.configure(text=f"▼ 📁 {mcn.replace('_', ' ').title()} ({tag_count})")
+                    return toggle
+                main_cat_toggle_btn.configure(command=make_main_toggle())
         else:
             if all_items:
                 for item in sorted(all_items):
                     var = ctk.BooleanVar(value=(item in selected_items))
-                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '),
-                                          variable=var,
-                                          command=lambda i=item, v=var, cl=count_label:
-                                          self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
-                    cb.pack(anchor="w", padx=10, pady=1)
+                    
+                    # Создаём фрейм для чекбокса + бейджа
+                    tag_row = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
+                    tag_row.pack(anchor="w", padx=10, pady=1, fill="x")
+                    
+                    cb = ctk.CTkCheckBox(tag_row, text=item.replace('_', ' '),
+                                         variable=var,
+                                         command=lambda i=item, v=var:
+                                         self._on_checkbox_toggled(i, v, constraint_key, count_label, all_items))
+                    cb.pack(side="left")
+                    
+                    # Создаём label для бейджа
+                    badge_label = ctk.CTkLabel(tag_row, text="",
+                                               font=ctk.CTkFont(size=10, weight="bold"))
+                    badge_label.pack(side="left", padx=(5, 0))
+                    
                     checkboxes[item] = var
-
-        # ── Логика поиска с debouncing (задержка 250мс) ──
+                    tag_widgets[item] = cb
+                    
+                    # Сохраняем ссылку на бейдж
+                    if not hasattr(self, '_badge_widgets'):
+                        self._badge_widgets = {}
+                    if constraint_key not in self._badge_widgets:
+                        self._badge_widgets[constraint_key] = {}
+                    self._badge_widgets[constraint_key][item] = badge_label
+                    
+                    # Сразу обновляем бейдж
+                    self._update_badge_for_tag(item, constraint_key)
+        
+        # ═══════════════════════════════════════════════════════════
+        # НАДЁЖНЫЙ ПОИСК (без уничтожения виджетов)
+        # ═══════════════════════════════════════════════════════════
         def _do_search():
-            """Выполняет поиск после задержки"""
             filter_text = search_entry.get().strip().lower()
-
-            for w in checkbox_scroll.winfo_children():
-                w.destroy()
-
-            if has_subcategories:
-                for subcat_name, data in subcat_data.items():
-                    matching_tags = [t for t in data['tags'] if filter_text in t.lower()]
-                    if not filter_text or matching_tags:
-                        subcat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
-                        subcat_frame.pack(fill="x", pady=2)
-
-                        subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                        subcat_header.pack(fill="x")
-
-                        display_count = len(matching_tags) if filter_text else len(data['tags'])
-                        btn_text = (f"▼ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})"
-                                    if filter_text
-                                    else f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({display_count})")
-
-                        subcat_toggle_btn = ctk.CTkButton(
-                            subcat_header, text=btn_text, anchor="w",
-                            fg_color="gray35", hover_color="gray45",
-                            height=26, font=ctk.CTkFont(size=12, weight="bold"))
-                        subcat_toggle_btn.pack(side="left", fill="x", expand=True)
-
-                        select_all_btn = ctk.CTkButton(
-                            subcat_header, text="Select All", width=80, height=24,
-                            fg_color="gray40", hover_color="gray50",
-                            font=ctk.CTkFont(size=10))
-                        select_all_btn.pack(side="right", padx=(5, 0))
-
-                        tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                        if filter_text:
-                            tags_container.pack(fill="x", padx=(30, 0))
-                        else:
-                            tags_container.pack(fill="x", padx=(30, 0))
-                            tags_container.pack_forget()  # INIT: скрыт при пустом поиске
-
-                        tags_to_show = matching_tags if filter_text else data['tags']
-                        for tag in sorted(tags_to_show):
+            
+            if not has_subcategories:
+                for tag, cb in tag_widgets.items():
+                    if not filter_text or filter_text in tag.lower():
+                        cb.pack(anchor="w", padx=10, pady=1)
+                    else:
+                        cb.pack_forget()
+                return
+            
+            # 1. Если поиск очищен → сбрасываем всё в исходное свёрнутое состояние
+            if not filter_text:
+                # Восстанавливаем видимость ВСЕХ чекбоксов (они были скрыты фильтром)
+                for tag, cb in tag_widgets.items():
+                    if not cb.winfo_ismapped():
+                        cb.pack(anchor="w", padx=5, pady=1)
+                
+                # Сбрасываем главные категории (показываем, но сворачиваем)
+                for mcn, mdata in maincat_widgets.items():
+                    mdata['frame'].pack(fill="x", pady=2)
+                    self._hide_container(mdata['container'])
+                    tag_count = sum(len(t) for t in mdata['subcats'].values())
+                    mdata['toggle_btn'].configure(text=f"▶ 📁 {mcn.replace('_', ' ').title()} ({tag_count})")
+                
+                # Сбрасываем подкатегории (скрываем, они внутри свёрнутых главных)
+                for sk, sdata in subcat_widgets.items():
+                    sdata['frame'].pack_forget()
+                    self._hide_container(sdata['container'])
+                    subcat_name = sk.split("::")[1]
+                    sdata['toggle_btn'].configure(text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(sdata['tags'])})")
+                return
+            
+            # 2. Фильтрация с принудительной подгрузкой совпадений
+            # Сначала скрываем все главные категории
+            for mdata in maincat_widgets.values():
+                mdata['frame'].pack_forget()
+            
+            for main_cat_name, subcats in all_items.items():
+                if not isinstance(subcats, dict):
+                    continue
+                
+                mdata = maincat_widgets.get(main_cat_name)
+                if not mdata:
+                    continue
+                
+                main_has_match = False
+                
+                for subcat_name, tags in subcats.items():
+                    subcat_key = f"{main_cat_name}::{subcat_name}"
+                    sdata = subcat_widgets.get(subcat_key)
+                    if not sdata:
+                        continue
+                    
+                    matching_tags = [t for t in tags if filter_text in t.lower()]
+                    if not matching_tags:
+                        sdata['frame'].pack_forget()
+                        continue
+                    
+                    main_has_match = True
+                    sdata['frame'].pack(fill="x", pady=1)
+                    
+                    # Принудительно загружаем теги, если ещё не загружены
+                    if not sdata['loaded']:
+                        tcont = sdata['container']
+                        for tag in sorted(tags):
                             var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
-                            cb = ctk.CTkCheckBox(
-                                tags_container, text=tag.replace('_', ' '), variable=var,
-                                command=lambda i=tag, v=var, cl=count_label:
-                                self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
+                            cb = ctk.CTkCheckBox(tcont, text=tag.replace('_', ' '),
+                                                 variable=var,
+                                                 command=lambda i=tag, v=var:
+                                                 self._on_checkbox_toggled(i, v, constraint_key, count_label, all_items))
                             cb.pack(anchor="w", padx=5, pady=1)
                             checkboxes[tag] = var
-
-                        def toggle_search_subcat(cont=tags_container, btn=subcat_toggle_btn,
-                                                 name=subcat_name, cnt=display_count):
-                            if cont.winfo_ismapped():
-                                # 👇 ФИКС: используем _hide_container вместо голого pack_forget
-                                self._hide_container(cont)
-                                btn.configure(text=f"▶ 📁 {name.replace('_', ' ').title()} ({cnt})")
+                            tag_widgets[tag] = cb
+                        sdata['loaded'] = True
+                    
+                    self._show_container(sdata['container'], padx=(30, 0))
+                    sdata['toggle_btn'].configure(text=f"▼ 📁 {subcat_name.replace('_', ' ').title()} ({len(matching_tags)})")
+                    
+                    for tag in tags:
+                        cb = tag_widgets.get(tag)
+                        if cb:
+                            if tag in matching_tags:
+                                cb.pack(anchor="w", padx=5, pady=1)
                             else:
-                                cont.pack(fill="x", padx=(30, 0))
-                                btn.configure(text=f"▼ 📁 {name.replace('_', ' ').title()} ({cnt})")
-
-                        subcat_toggle_btn.configure(command=toggle_search_subcat)
-
-                        def search_select_all(sn=subcat_name):
-                            self._toggle_select_all_subcategory(
-                                sn, data['tags'], count_label, constraint_key,
-                                all_items, select_all_btn)
-                        select_all_btn.configure(command=search_select_all)
-            else:
-                for item in sorted(all_items):
-                    if not filter_text or filter_text in item.lower():
-                        var = checkboxes.get(item, ctk.BooleanVar(value=(item in selected_items)))
-                        cb = ctk.CTkCheckBox(
-                            checkbox_scroll, text=item.replace('_', ' '), variable=var,
-                            command=lambda i=item, v=var, cl=count_label:
-                            self._on_checkbox_toggled(i, v, constraint_key, cl, all_items))
-                        cb.pack(anchor="w", padx=10, pady=1)
-                        checkboxes[item] = var
-
+                                cb.pack_forget()
+                
+                if main_has_match:
+                    mdata['frame'].pack(fill="x", pady=2)
+                    self._show_container(mdata['container'], padx=(20, 0))
+                    mdata['toggle_btn'].configure(text=f"▼ 📁 {main_cat_name.replace('_', ' ').title()}")
+        
         def on_search(event):
-            """Обработчик ввода в поле поиска с debouncing"""
             if self._search_timer is not None:
                 self.after_cancel(self._search_timer)
-            self._search_timer = self.after(250, _do_search)
-
+            self._search_timer = self.after(150, _do_search)
+        
         search_entry.bind('<KeyRelease>', on_search)
-
+        
         def toggle_visibility():
             if content_frame.winfo_ismapped():
                 self._hide_container(content_frame)
@@ -1692,9 +2332,9 @@ class MainWindow(ctk.CTk):
             else:
                 content_frame.pack(fill="x", padx=10, pady=(0, 10))
                 toggle_btn.configure(text=f"▼ {title}")
-
+        
         toggle_btn.configure(command=toggle_visibility)
-
+        
         if not hasattr(self, '_current_checkboxes'):
             self._current_checkboxes = {}
         self._current_checkboxes[constraint_key] = checkboxes
@@ -1796,7 +2436,12 @@ class MainWindow(ctk.CTk):
                     else:
                         self._remove_bidirectional_link(target_cat, item, target_field, current_rule_name)
 
-        self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+                    self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+        
+        # Обновляем бейджи во всей группе
+        group = self._get_badge_group(constraint_key)
+        if group:
+            self._update_badges_for_group(group)
 
     def _add_bidirectional_link(self, target_category: str, target_name: str,
                                  field: str, value_to_add: str):
@@ -1883,29 +2528,59 @@ class MainWindow(ctk.CTk):
         self._log(f"{'☑' if tag_var.get() else '☐'} Тег в {cat_name}\n")
 
     def _load_all_tags_from_category(self, category: str) -> dict:
-        """Загружает все теги из категории prompt-library с сохранением структуры подкатегорий
-        
+        """Загружает все теги из категории prompt-library с иерархической структурой.
+        Использует кэш для предотвращения повторного сканирования файловой системы.
         Returns:
-            dict: {subcategory_name: [list_of_tags]}
-            
-        Логика:
-            - Каждый .txt файл = одна подкатегория
-            - Имя файла (без .txt) = название подкатегории
-            - Содержимое файла = теги этой подкатегории
+            dict: {main_category: {sub_category: [list_of_tags]}}
         """
+        # Инициализируем кэш при первом вызове
+        if not hasattr(self, '_all_tags_category_cache'):
+            self._all_tags_category_cache = {}
+        
+        # Возвращаем из кэша, если уже загружено
+        if category in self._all_tags_category_cache:
+            return self._all_tags_category_cache[category]
+        
         result = {}
         cat_dir = self.project_root / "prompt-library" / category
         if not cat_dir.exists():
+            self._all_tags_category_cache[category] = result
             return result
         
         for txt_file in sorted(cat_dir.rglob("*.txt")):
-            # Имя файла = название подкатегории
-            subcat_name = txt_file.stem
+            rel_path = txt_file.relative_to(cat_dir)
+            if len(rel_path.parts) >= 2:
+                main_cat = rel_path.parts[0]
+                sub_cat = txt_file.stem
+            else:
+                main_cat = "general"
+                sub_cat = txt_file.stem
             tags = self._load_tags_from_file(txt_file)
             if tags:
-                result[subcat_name] = tags
+                if main_cat not in result:
+                    result[main_cat] = {}
+                result[main_cat][sub_cat] = tags
         
+        self._all_tags_category_cache[category] = result
         return result
+    
+    def _invalidate_category_cache(self, category: str | None = None):
+        """Инвалидирует кэш категорий. 
+        Если category=None — сбрасывает весь кэш.
+        Если category задана — сбрасывает только её (например, '02_clothing').
+        """
+        if not hasattr(self, '_all_tags_category_cache'):
+            return
+        if category is None:
+            self._all_tags_category_cache.clear()
+            self._log("🔄 Кэш всех категорий тегов очищен\n")
+        else:
+            # Поддерживаем как '02_clothing', так и 'clothing'
+            for key in list(self._all_tags_category_cache.keys()):
+                if category in key or key in category:
+                    del self._all_tags_category_cache[key]
+            self._log(f"🔄 Кэш категории '{category}' очищен\n")
+    
 
     def _reload_scene_rules(self):
         """Перезагружает все TOML-файлы"""
@@ -2250,20 +2925,35 @@ class MainWindow(ctk.CTk):
         saved_count = 0
         errors = []
 
+        # Собираем значение required_props_count из числового поля
+        props_count_value = 0
+        if hasattr(self, '_props_count_entries') and 'required_props_count' in self._props_count_entries:
+            try:
+                props_count_value = int(self._props_count_entries['required_props_count'].get())
+            except ValueError:
+                props_count_value = 0
+        
         for category, rule_name, field, new_values in changes:
             file_path = self.project_root / "scene-rules" / category / f"{rule_name}.toml"
             if not file_path.exists():
                 errors.append(f"Файл не найден: {file_path.name}")
                 continue
+            
             try:
                 with open(file_path, 'rb') as f:
                     data = tomli.load(f)
-
-                target_section = 'hard_constraints' if 'excludes' in field or 'requires' in field else 'soft_constraints'
+                
+                target_section = 'hard_constraints' if 'excludes' in field or 'required' in field or 'allowed' in field else 'soft_constraints'
+                
                 if target_section not in data:
                     data[target_section] = {}
+                
                 data[target_section][field] = new_values
-
+                
+                # Сохраняем required_props_count как отдельное поле
+                if field == 'required_props_pool':
+                    data[target_section]['required_props_count'] = props_count_value
+                
                 with open(file_path, 'wb') as f:
                     tomli_w.dump(data, f)
 
@@ -3053,6 +3743,8 @@ class MainWindow(ctk.CTk):
             cache_key = str(self.library_current_file)
             if cache_key in self._tags_cache:
                 del self._tags_cache[cache_key]
+            # 👇 НОВОЕ: Инвалидируем кэш категорий, чтобы Scene Rules подхватил изменения
+            self._invalidate_category_cache()
             self._log(f"💾 Файл сохранён: {self.library_current_file.name}\n")
         except Exception as e:
             self._log(f"❌ Ошибка сохранения: {e}\n")

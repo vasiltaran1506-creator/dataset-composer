@@ -66,15 +66,19 @@ class SceneBuilder:
             
         return merged
         
-    def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
-        """Умный выбор одежды"""
+    def _choose_smart_outfit(self, allowed_categories: list, excluded_categories: list, 
+                             avoid_categories: list | None = None, preferred_categories: list | None = None) -> dict:
+        """Умный выбор одежды с поддержкой мягких банов (avoid) и приоритетов (preferred)"""
         outfit = {"full": "", "top": "", "bottom": "", "legwear": "", "footwear": ""}
         whitelist = self._get_outfit_whitelist()
+        avoid_categories = avoid_categories or []
+        preferred_categories = preferred_categories or []
         
         if not whitelist:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
             
-        compatible_styles = []
+        valid_styles = []
+        style_weights = []
         
         for style_name, style_data in whitelist.items():
             if not isinstance(style_data, dict):
@@ -82,6 +86,7 @@ class SceneBuilder:
                 
             style_compatible = False
             
+            # 1. Жёсткие ограничения (Allowed / Excluded)
             if allowed_categories:
                 if "full_body" in style_data:
                     if any(style_name in cat for cat in allowed_categories):
@@ -105,16 +110,29 @@ class SceneBuilder:
                     if not general_excluded and not style_excluded:
                         style_compatible = True
                         
+            # Если стиль прошёл жёсткие фильтры — добавляем его и считаем вес
             if style_compatible:
-                compatible_styles.append(style_name)
+                valid_styles.append(style_name)
                 
-        if not compatible_styles:
-            compatible_styles = list(whitelist.keys())
+                # 2. Расчёт веса (Preferred / Avoid)
+                weight = 1.0
+                if any(style_name in cat for cat in preferred_categories):
+                    weight *= 5.0  # Высокий приоритет
+                if any(style_name in cat for cat in avoid_categories):
+                    weight *= 0.1  # Мягкий бан (маловероятно, но возможно)
+                    
+                style_weights.append(weight)
+                
+        # Fallback: если ничего не прошло фильтры, берём все стили с равным весом
+        if not valid_styles:
+            valid_styles = list(whitelist.keys())
+            style_weights = [1.0 for _ in valid_styles]
             
-        if not compatible_styles:
+        if not valid_styles:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
             
-        chosen_style = random.choice(compatible_styles)
+        # Выбираем стиль с учётом весов
+        chosen_style = random.choices(valid_styles, weights=style_weights, k=1)[0]
         style_data = whitelist[chosen_style]
         
         if "full_body" in style_data:
@@ -207,6 +225,58 @@ class SceneBuilder:
         # 4. Базовая проверка: у персонажа должна быть хоть какая-то одежда
         if not scene.outfit_full and not scene.outfit_top and not scene.outfit_bottom:
             return False
+        
+        # ═══════════════════════════════════════════════════
+        # 5. КРОСС-ВАЛИДАЦИЯ: проверяем совместимость сущностей
+        # ═══════════════════════════════════════════════════
+        
+        # 5a. Проверяем, не запрещено ли действие в этой локации (action → location)
+        if scene.action:
+            action_rule = self.scene_rules.get(f"actions.{scene.action}", {})
+            action_hard = action_rule.get("hard_constraints", {})
+            excluded_locations = action_hard.get("excludes_locations", [])
+            if scene.location in excluded_locations:
+                return False  # Действие запрещено в этой локации
+        
+        # 5b. Проверяем, не запрещена ли погода для этого действия (action → weather)
+        if scene.action and scene.weather:
+            action_rule = self.scene_rules.get(f"actions.{scene.action}", {})
+            action_hard = action_rule.get("hard_constraints", {})
+            excluded_weather = action_hard.get("excludes_weather", [])
+            if scene.weather in excluded_weather:
+                return False  # Погода запрещена для этого действия
+        
+        # 5c. Проверяем, не запрещено ли действие в эту погоду (weather → action)
+        if scene.weather and scene.action:
+            weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
+            weather_hard = weather_rule.get("hard_constraints", {})
+            excluded_actions = weather_hard.get("excludes_actions", [])
+            if scene.action in excluded_actions:
+                return False  # Действие запрещено в эту погоду
+        
+        # 5d. Проверяем, не запрещена ли локация для этой погоды (weather → location)
+        if scene.weather and scene.location:
+            weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
+            weather_hard = weather_rule.get("hard_constraints", {})
+            excluded_locations = weather_hard.get("excludes_locations", [])
+            if scene.location in excluded_locations:
+                return False  # Локация запрещена для этой погоды
+
+        # 5e. Проверяем, не запрещена ли камера для этой позы (camera → pose)
+        if getattr(scene, 'camera', None) and getattr(scene, 'pose', None):
+            camera_rule = self.scene_rules.get(f"camera.{getattr(scene, 'camera')}", {})
+            camera_hard = camera_rule.get("hard_constraints", {})
+            excluded_poses = camera_hard.get("excludes_poses", [])
+            if getattr(scene, 'pose', None) in excluded_poses:
+                return False  # Поза запрещена для этой камеры
+        
+        # 5f. Проверяем, не запрещена ли погода для этой локации (location → weather)
+        if scene.weather and scene.location:
+            # Это уже проверено через merged hard_constraints, но проверим ещё раз для надёжности
+            # Получаем объединённые hard_constraints для локации
+            loc_hard = self.get_hard_constraints_for_location(scene.location)
+            if scene.weather in loc_hard.get("excludes_weather", []):
+                return False
             
         return True # Сцена идеальна!
     
@@ -318,6 +388,23 @@ class SceneBuilder:
         
         # 3. ВЫБОР ДЕЙСТВИЯ (с поддержкой forced_action)
         excludes_actions = hard.get("excludes_actions", [])
+        allowed_actions = hard.get("allowed_actions", [])  # НОВОЕ: жёсткий whitelist
+        avoid_actions = soft.get("avoid_actions", [])  # НОВОЕ: мягкий бан
+        
+        # Определяем базовый пул действий
+        if allowed_actions:
+            # Если есть allowed_actions, используем ТОЛЬКО их
+            base_actions = [a for a in allowed_actions if a in self.available_actions]
+        else:
+            # Иначе берём все доступные
+            base_actions = self.available_actions
+        
+        # Фильтруем через excludes_actions (жёсткий бан)
+        valid_actions = [a for a in base_actions if a not in excludes_actions]
+        
+        # Если после фильтрации ничего не осталось, fallback на все доступные
+        if not valid_actions:
+            valid_actions = self.available_actions
         
         if forced_action and self.force_deficit_closure:
             # ⚡ AGGRESSIVE MODE: проверяем только через excludes_actions
@@ -325,29 +412,41 @@ class SceneBuilder:
                 scene.action = forced_action
             else:
                 # Fallback: если forced_action запрещён в этой локации
-                # 👇 Логирование для диагностики
                 print(f"⚠️ FALLBACK: '{forced_action}' incompatible with '{location_id}'. "
                       f"Reason: {'in excludes_actions' if forced_action in excludes_actions else 'not in available_actions'}")
-                valid_actions = [a for a in self.available_actions if a not in excludes_actions]
-                if not valid_actions:
-                    valid_actions = self.available_actions
                 scene.action = random.choice(valid_actions)
         else:
-            # 🌿 NATURAL MODE: стандартная логика через prefers_actions
-            prefers_actions = soft.get("prefers_actions", self.available_actions)
-            valid_actions = [a for a in prefers_actions if a not in excludes_actions and a in self.available_actions]
+            # 🌿 NATURAL MODE: учитываем prefers_actions и avoid_actions
             
-            if not valid_actions:
-                valid_actions = self.available_actions
-            
-            # Если передан forced_action И он в valid_actions (для Natural)
+            # Если передан forced_action И он в valid_actions
             if forced_action and forced_action in valid_actions:
                 scene.action = forced_action
             else:
-                action_weights = self.generation_weights.get('action')
-                if action_weights and valid_actions:
-                    a_list = [action_weights.get(a, 0.01) for a in valid_actions]
-                    scene.action = random.choices(valid_actions, weights=a_list, k=1)[0]
+                # Применяем prefers_actions (мягкие предпочтения)
+                prefers_actions = soft.get("prefers_actions", [])
+                if prefers_actions:
+                    # Фильтруем prefers через valid_actions
+                    preferred_valid = [a for a in prefers_actions if a in valid_actions]
+                    if preferred_valid:
+                        valid_actions = preferred_valid
+                
+                # Применяем веса и avoid_actions
+                action_weights = self.generation_weights.get('action', {})
+                
+                if action_weights or avoid_actions:
+                    # Рассчитываем веса для каждого действия
+                    weights = []
+                    for action in valid_actions:
+                        # Базовый вес из generation_weights
+                        base_weight = action_weights.get(action, 1.0)
+                        
+                        # Если действие в avoid_actions, уменьшаем вес в 10 раз
+                        if action in avoid_actions:
+                            base_weight *= 0.1
+                        
+                        weights.append(base_weight)
+                    
+                    scene.action = random.choices(valid_actions, weights=weights, k=1)[0]
                 else:
                     scene.action = random.choice(valid_actions)
             
@@ -355,16 +454,59 @@ class SceneBuilder:
         action_soft = action_rule.get("soft_constraints", {})
         action_hard = action_rule.get("hard_constraints", {})
         
-        # 4. ВЫБОР ПОГОДЫ И КАМЕРЫ с учетом весов балансировки
-        weather_weights = self.generation_weights.get('weather')
-        if weather_weights:
-            w_list = [weather_weights.get(w, 0.01) for w in self.available_weathers]
-            scene.weather = random.choices(self.available_weathers, weights=w_list, k=1)[0]
-        else:
-            scene.weather = random.choice(self.available_weathers)
+        # 4. ВЫБОР ПОГОДЫ И КАМЕРЫ с учетом весов балансировки и ограничений
+        excludes_weather = hard.get("excludes_weather", [])
+        avoid_weather = soft.get("avoid_weather", [])
+        
+        # 👇 КРОСС-ВАЛИДАЦИЯ: учитываем excludes_weather из action.toml
+        excludes_weather_from_action = action_hard.get("excludes_weather", [])
+        all_excludes_weather = list(set(excludes_weather + excludes_weather_from_action))
+        
+        # Фильтруем доступные погоды через excludes_weather (жёсткий бан)
+        valid_weathers = [w for w in self.available_weathers if w not in all_excludes_weather]
+        if not valid_weathers:
+            valid_weathers = self.available_weathers
+        
+        weather_weights = self.generation_weights.get('weather', {})
+        
+        if weather_weights or avoid_weather:
+            # Рассчитываем веса для каждой погоды
+            weights = []
+            for weather in valid_weathers:
+                # Базовый вес из generation_weights
+                base_weight = weather_weights.get(weather, 1.0)
+                
+                # Если погода в avoid_weather, уменьшаем вес в 10 раз
+                if weather in avoid_weather:
+                    base_weight *= 0.1
+                
+                weights.append(base_weight)
             
+            scene.weather = random.choices(valid_weathers, weights=weights, k=1)[0]
+        else:
+            scene.weather = random.choice(valid_weathers)
+        
+        # 👇 КРОСС-ВАЛИДАЦИЯ: проверяем, не запрещено ли действие в эту погоду
+        # Если weather.toml запрещает это действие, пытаемся выбрать другую погоду
         weather_rule = self.scene_rules.get(f"weather.{scene.weather}", {})
+        weather_hard = weather_rule.get("hard_constraints", {})
         weather_soft = weather_rule.get("soft_constraints", {})
+        
+        excluded_actions_in_weather = weather_hard.get("excludes_actions", [])
+        if scene.action in excluded_actions_in_weather:
+            # Действие запрещено в эту погоду — пытаемся найти совместимую погоду
+            for retry in range(5):
+                candidate_weather = random.choice(valid_weathers)
+                candidate_rule = self.scene_rules.get(f"weather.{candidate_weather}", {})
+                candidate_hard = candidate_rule.get("hard_constraints", {})
+                candidate_excluded_actions = candidate_hard.get("excludes_actions", [])
+                
+                if scene.action not in candidate_excluded_actions:
+                    scene.weather = candidate_weather
+                    weather_rule = candidate_rule
+                    weather_hard = candidate_hard
+                    weather_soft = candidate_rule.get("soft_constraints", {})
+                    break
         
         camera_weights = self.generation_weights.get('camera')
         if camera_weights:
@@ -375,14 +517,21 @@ class SceneBuilder:
         
         allowed_categories = hard.get("allowed_outfit_categories", [])
         excluded_categories = hard.get("excludes_outfit_categories", [])
+        avoid_categories = soft.get("avoid_outfit_categories", [])
+        preferred_categories = soft.get("preferred_outfit_categories", [])
         
-        if allowed_categories or excluded_categories:
-            outfit_parts = self._choose_smart_outfit(allowed_categories, excluded_categories)
-            scene.outfit_full = outfit_parts["full"]
-            scene.outfit_top = outfit_parts["top"]
-            scene.outfit_bottom = outfit_parts["bottom"]
-            scene.outfit_legwear = outfit_parts["legwear"]
-            scene.outfit_footwear = outfit_parts["footwear"]
+        # Одежда должна выбираться ВСЕГДА, даже если нет жестких ограничений
+        outfit_parts = self._choose_smart_outfit(
+            allowed_categories, 
+            excluded_categories,
+            avoid_categories,
+            preferred_categories
+        )
+        scene.outfit_full = outfit_parts["full"]
+        scene.outfit_top = outfit_parts["top"]
+        scene.outfit_bottom = outfit_parts["bottom"]
+        scene.outfit_legwear = outfit_parts["legwear"]
+        scene.outfit_footwear = outfit_parts["footwear"]
             
         prefers_expressions = action_soft.get("prefers_expressions", soft.get("prefers_expressions", []))
         if prefers_expressions:
@@ -390,29 +539,98 @@ class SceneBuilder:
             
         props = []
         
-        for cat in action_hard.get("requires_prop_categories", []):
-            tag = self.library.get_random_tag(cat)
-            if tag:
-                props.append(tag)
-                
+        props = []
+        
+        # 1. Required Props из Action (100% попадание)
+        required_props_action = action_hard.get("required_props", [])
+        if required_props_action:
+            props.extend(required_props_action)
+        
+        # 2. Required Props Pool из Action (случайный выбор N из пула)
+        required_props_pool_action = action_hard.get("required_props_pool", [])
+        required_props_count_action = action_hard.get("required_props_count", 0)
+        if required_props_pool_action and required_props_count_action > 0:
+            props.extend(random.sample(required_props_pool_action, 
+                                      min(required_props_count_action, len(required_props_pool_action))))
+        
+        # 3. Required Props из Location (100% попадание)
+        required_props_location = hard.get("required_props", [])
+        if required_props_location:
+            props.extend(required_props_location)
+        
+        # 4. Required Props Pool из Location (случайный выбор N из пула)
+        required_props_pool_location = hard.get("required_props_pool", [])
+        required_props_count_location = hard.get("required_props_count", 0)
+        if required_props_pool_location and required_props_count_location > 0:
+            props.extend(random.sample(required_props_pool_location,
+                                      min(required_props_count_location, len(required_props_pool_location))))
+        
+        # 5. Prefers Props из Action (70% шанс добавить один случайный)
         if action_soft.get("prefers_props") and random.random() < 0.7:
             props.append(random.choice(action_soft["prefers_props"]))
             
+        # 6. Prefers Props из Location (50% шанс добавить один случайный)
         if soft.get("prefers_props") and random.random() < 0.5:
             props.append(random.choice(soft["prefers_props"]))
-            
-        excludes_props = hard.get("excludes_props", [])
-        scene.props = [p for p in props if p not in excludes_props]
         
+        # 7. Avoid Props из Action и Location (30% шанс попасть, несмотря на avoid)
+        avoid_props_action = action_soft.get("avoid_props", [])
+        avoid_props_location = soft.get("avoid_props", [])
+        all_avoid = list(set(avoid_props_action + avoid_props_location))
+        if all_avoid and random.random() < 0.3:
+            props.append(random.choice(all_avoid))
+        
+        # 8. Фильтрация через Excludes Props (жёсткий бан — 0% попадания)
+        excludes_props = hard.get("excludes_props", [])
+        excludes_props_action = action_hard.get("excludes_props", [])
+        all_excludes = list(set(excludes_props + excludes_props_action))
+        
+        # Убираем дубликаты и применяем жёсткий бан
+        seen = set()
+        unique_props = []
+        for p in props:
+            if p not in all_excludes and p not in seen:
+                seen.add(p)
+                unique_props.append(p)
+        
+        scene.props = unique_props
+        
+        # === ВЫБОР ИСТОЧНИКА ОСВЕЩЕНИЯ ===
         lighting_sources = (
             weather_soft.get("prefers_lighting_sources", []) or
             action_soft.get("prefers_lighting_sources", []) or
             soft.get("prefers_lighting_sources", [])
         )
         excludes_lighting = hard.get("excludes_lighting_sources", [])
+        avoid_lighting = soft.get("avoid_lighting_sources", [])
+        
+        # Если нет явных предпочтений — берём все доступные источники освещения из prompt-library
+        if not lighting_sources:
+            all_lighting = []
+            lighting_dir = self.library.library_path / "07_lighting"
+            if lighting_dir.exists():
+                for txt_file in lighting_dir.rglob("*.txt"):
+                    with open(txt_file, 'r', encoding='utf-8') as f:
+                        all_lighting.extend([line.strip() for line in f if line.strip() and not line.startswith('#')])
+            lighting_sources = all_lighting
+        
+        # Фильтруем через excludes (жёсткий бан)
         valid_sources = [s for s in lighting_sources if s not in excludes_lighting]
+        
+        # Если после фильтрации ничего не осталось, fallback на все доступные
+        if not valid_sources:
+            valid_sources = lighting_sources
+        
+        # Применяем веса с учётом avoid (мягкий бан)
         if valid_sources:
-            scene.lighting_source = random.choice(valid_sources)
+            if avoid_lighting:
+                weights = []
+                for source in valid_sources:
+                    weight = 0.1 if source in avoid_lighting else 1.0
+                    weights.append(weight)
+                scene.lighting_source = random.choices(valid_sources, weights=weights, k=1)[0]
+            else:
+                scene.lighting_source = random.choice(valid_sources)
             
         lighting_quality = (
             weather_soft.get("prefers_lighting_quality", []) or

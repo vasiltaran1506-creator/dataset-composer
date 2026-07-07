@@ -57,6 +57,7 @@ def main():
         
         character_name = loader.get_character_name()
         fixed_traits = loader.get_fixed_traits()
+        character_trigger = loader.get_character_trigger()
         
         print(f"\n✅ System initialized for: {character_name}")
         print(f"   Rules loaded: {len(rules)}")
@@ -141,7 +142,7 @@ def main():
             for loc in test_locations:
                 print(f"\n📍 Location: {loc.capitalize()}")
                 scene = builder.build_scene(loc)
-                prompt = scene.to_prompt(fixed_traits)
+                prompt = scene.to_structured_prompt(fixed_traits, character_trigger)
                 print(f"📝 Prompt:\n   {prompt}")
                 print("-" * 60)
 

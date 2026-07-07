@@ -189,7 +189,8 @@ class Exporter:
                 
             # Экспортируем в промпт
             fixed_traits = self.builder.full_profile.get('fixed_traits', [])
-            prompt = scene.to_prompt(fixed_traits)
+            character_trigger = self.builder.full_profile.get('character_trigger', '')
+            prompt = scene.to_structured_prompt(fixed_traits, character_trigger)
             
             # 👇 Уникальное имя файла с timestamp (предотвращает перезапись)
             import time

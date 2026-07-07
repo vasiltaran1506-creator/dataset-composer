@@ -4,33 +4,5 @@ display_name = "Cafe"
 type = "indoor_commercial"
 
 [soft_constraints]
-prefers_actions = [
-    "drinking",
-    "drinking_tea",
-    "eating",
-    "looking_out_window",
-    "reading",
-    "studying",
-]
-prefers_lighting_sources = [
-    "window_light",
-    "warm_lamp",
-    "pendant_light",
-    "candlelight",
-]
-prefers_lighting_quality = [
-    "warm_lighting",
-    "soft_lighting",
-    "cozy_lighting",
-    "cinematic_lighting",
-]
-prefers_props = [
-    "coffee cup",
-    "teacup",
-    "latte_art",
-    "pastry",
-    "cake_slice",
-    "laptop",
-    "book",
-    "smartphone",
-]
+
+[hard_constraints]

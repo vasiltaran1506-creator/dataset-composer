@@ -1,61 +1,40 @@
 # Character Profile: Luna
-# Этот файл служит ФИЛЬТРОМ поверх универсальных scene-rules
-# Scene Builder будет брать ТОЛЬКО те теги, которые разрешены здесь
-
+# Фильтр поверх scene-rules
 character:
   name: Luna
   age: 18
-  archetype: quiet intellectual dreamer
+  archetype: custom character
+  character_trigger: "Luna"
 fixed_traits:
 - brown eyes
-- 1girl
-- solo
-- young woman
-- long straight light blue hair
-- round face
-- soft features
-- petite
-- narrow shoulders
-- slender waist
-- small breasts
-- pale skin
 outfit_whitelist:
-  casual_shirt_skirt:
+  default:
     topwear:
     - white cotton shirt
     - white shirt
+    - white oversized t-shirt
+    - white t-shirt
+    - casual t-shirt
+    - oversized t-shirt
     bottomwear:
     - black skirt
     - pleated skirt
     - black pleated skirt
+    - green shorts
+    - athletic shorts
+    - short shorts
+    - cotton shorts
     legwear:
     - white ankle socks
     - black knee-high socks
     footwear:
     - white sneakers
-  sportswear:
-    topwear:
-    - white oversized t-shirt
-    - white t-shirt
-    bottomwear:
-    - green shorts
-    - athletic shorts
-    footwear:
     - white sneakers
-  pajamas:
     full_body:
     - pink pajamas
     - silk pajamas
     - pink silk pajamas
     - cute pajamas
-  loungewear:
-    topwear:
-    - casual t-shirt
-    - oversized t-shirt
-    bottomwear:
-    - short shorts
-    - cotton shorts
-  bikini:
     swimsuit:
     - bikini
     - two-piece swimsuit

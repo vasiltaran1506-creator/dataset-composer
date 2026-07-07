@@ -6,5 +6,8 @@ display_name = "Reading"
 excludes_actions = [
     "cooking",
 ]
+prefers_locations = [
+    "bedroom",
+]
 
 [hard_constraints]

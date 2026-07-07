@@ -65,6 +65,13 @@ class ConfigLoader:
         # fixed_traits лежит на корневом уровне, не внутри character
         return self.character_profile.get('fixed_traits', [])
     
+    def get_character_trigger(self) -> str:
+        """Возвращает trigger-токен для активации LoRA персонажа"""
+        if not self.character_profile:
+            raise ValueError("Character profile not loaded")
+        # character_trigger лежит на корневом уровне
+        return self.character_profile.get('character_trigger', '')
+    
     def get_outfit_whitelist(self) -> Dict[str, Any]:
         """Возвращает разрешенные стили одежды"""
         if not self.character_profile:
