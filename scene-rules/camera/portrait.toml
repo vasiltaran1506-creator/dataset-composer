@@ -1,0 +1,19 @@
+[meta]
+id = "portrait"
+display_name = "Portrait"
+
+[soft_constraints]
+prefers_locations = [
+    "bedroom",
+    "library",
+    "cafe",
+    "park",
+    "street",
+    "beach",
+    "balcony",
+]
+prefers_actions = [
+    "thinking",
+    "smiling",
+    "reading",
+]

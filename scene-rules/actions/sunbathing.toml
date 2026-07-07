@@ -1,0 +1,38 @@
+[meta]
+id = "sunbathing"
+display_name = "Sunbathing"
+
+[hard_constraints]
+allowed_locations = [
+    "beach",
+    "balcony",
+    "rooftop",
+    "park",
+]
+excludes_locations = [
+    "kitchen",
+    "bathroom",
+    "library",
+    "cafe",
+    "gym",
+    "classroom",
+    "street",
+]
+
+[soft_constraints]
+prefers_locations = [
+    "beach",
+    "balcony",
+    "rooftop",
+]
+prefers_poses = [
+    "lying on back",
+    "reclining",
+    "lying on stomach",
+]
+prefers_props = []
+prefers_expressions = [
+    "relaxed",
+    "peaceful",
+    "sleepy",
+]

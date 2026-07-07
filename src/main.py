@@ -86,11 +86,23 @@ def main():
                 sys.exit(1)
                 
             print(f"\n🔍 Analyze Mode: Scanning folder '{analyze_folder}'...")
+            # Собираем маппинг тегов одежды -> категории
+            outfit_category_map = {}
+            clothing_dir = project_root / "prompt-library" / "02_clothing"
+            if clothing_dir.exists():
+                for txt_file in clothing_dir.rglob("*.txt"):
+                    category = txt_file.parent.name
+                    with open(txt_file, 'r', encoding='utf-8') as f:
+                        tags = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+                        for tag in tags:
+                            outfit_category_map[tag] = category
+            
             tracker = CoverageTracker(
                 available_locations=available_locs,
                 available_actions=available_acts,
                 available_weathers=available_weaths,
-                available_cameras=available_cams
+                available_cameras=available_cams,
+                outfit_category_map=outfit_category_map
             )
             matrix = tracker.scan_folder(analyze_folder)
             tracker.print_report(matrix)

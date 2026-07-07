@@ -1,0 +1,66 @@
+[meta]
+id = "beach"
+display_name = "Beach"
+type = "outdoor_nature"
+
+[hard_constraints]
+allowed_actions = [
+    "swimming",
+    "exercising",
+    "dancing",
+]
+excluded_actions = [
+    "cooking",
+    "sleeping",
+    "bathing",
+    "reading",
+    "studying",
+    "shopping",
+    "writing",
+]
+allowed_outfit_categories = [
+    "bottomwear",
+    "swimsuit",
+    "topwear",
+]
+excludes_weather = [
+    "blizzard",
+    "fog",
+    "snow",
+    "storm",
+]
+excludes_outfit_categories = [
+    "full_body",
+]
+excludes_lighting_sources = [
+    "candlelight",
+    "fluorescent light",
+    "lamplight",
+    "neon light",
+]
+excludes_props = [
+    "bed",
+    "book",
+    "frying_pan",
+    "knife",
+    "laptop",
+]
+
+[soft_constraints]
+prefers_actions = [
+    "swimming",
+    "exercising",
+]
+prefers_props = [
+    "sand",
+]
+prefers_weather = [
+    "sunny",
+    "clear sky",
+    "partly cloudy",
+]
+avoid_weather = [
+    "rain",
+    "overcast",
+    "cloudy",
+]

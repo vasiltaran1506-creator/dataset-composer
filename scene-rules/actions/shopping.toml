@@ -1,21 +1,19 @@
 [meta]
-id = "walking"
-display_name = "Walking"
+id = "shopping"
+display_name = "Shopping"
 
 [hard_constraints]
 allowed_locations = [
-    "street",
-    "park",
-    "beach",
-    "sidewalk",
-    "forest",
-    "mountain",
     "shopping mall",
+    "boutique",
+    "supermarket",
+    "street",
+    "marketplace",
 ]
 excludes_locations = [
+    "bedroom",
     "bathroom",
     "kitchen",
-    "bedroom",
     "library",
     "gym",
     "classroom",
@@ -23,20 +21,18 @@ excludes_locations = [
 
 [soft_constraints]
 prefers_locations = [
-    "street",
-    "park",
-    "beach",
+    "shopping mall",
+    "boutique",
+    "supermarket",
 ]
 prefers_poses = [
     "standing",
     "casual_stance",
 ]
-prefers_props = [
-    "backpack",
-    "smartphone",
-]
+prefers_props = []
 prefers_expressions = [
-    "thoughtful",
+    "happy",
+    "excited",
     "smile",
-    "relaxed",
+    "joyful",
 ]

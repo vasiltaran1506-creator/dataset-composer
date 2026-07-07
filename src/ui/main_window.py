@@ -5873,22 +5873,37 @@ class MainWindow(ctk.CTk):
         self._clear_analyzer_log()
         self._analyzer_log(f"🔍 Сканирование: {folder}\n")
         self._analyzer_log("=" * 70 + "\n")
+        
         try:
             loader = ConfigLoader(project_root=str(self.project_root))
             rules = loader.load_scene_rules()
+            
             available_locs = [k.split('.')[-1] for k in rules.keys() if k.startswith('locations.')]
             available_acts = [k.split('.')[-1] for k in rules.keys() if k.startswith('actions.')]
             available_weaths = [k.split('.')[-1] for k in rules.keys() if k.startswith('weather.')]
             available_cams = [k.split('.')[-1] for k in rules.keys() if k.startswith('camera.')]
-
+            
+            # Собираем маппинг тегов одежды -> категории
+            outfit_category_map = {}
+            clothing_dir = self.project_root / "prompt-library" / "02_clothing"
+            if clothing_dir.exists():
+                for txt_file in clothing_dir.rglob("*.txt"):
+                    category = txt_file.parent.name  # topwear, bottomwear, full_body и т.д.
+                    tags = self._load_tags_from_file(txt_file)
+                    for tag in tags:
+                        outfit_category_map[tag] = category
+            
             tracker = CoverageTracker(
                 available_locations=available_locs, available_actions=available_acts,
-                available_weathers=available_weaths, available_cameras=available_cams
+                available_weathers=available_weaths, available_cameras=available_cams,
+                outfit_category_map=outfit_category_map
             )
+            
             self._analyzer_log("📦 Запуск Coverage Tracker...\n")
             matrix = tracker.scan_folder(folder)
             self._format_matrix_for_gui(matrix)
             self._analyzer_log("\n✅ Анализ завершен!\n")
+        
         except Exception as e:
             self._analyzer_log(f"\n❌ Ошибка: {e}\n")
             import traceback
@@ -5907,7 +5922,8 @@ class MainWindow(ctk.CTk):
             return
 
         for dimension, display_name in {"location": "📍 ЛОКАЦИИ", "action": "🎬 ДЕЙСТВИЯ",
-                                        "weather": "🌦️ ПОГОДА", "camera": "📸 КАМЕРЫ"}.items():
+                                        "weather": "🌦️ ПОГОДА", "camera": "📸 КАМЕРЫ",
+                                        "outfit": "👗 ОДЕЖДА"}.items():
             counts = matrix["dimensions"][dimension]
             percentages = matrix["percentages"][dimension]
             if not counts:

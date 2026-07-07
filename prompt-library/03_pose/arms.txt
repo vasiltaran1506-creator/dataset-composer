@@ -35,5 +35,5 @@ arms spread
 reaching out
 reaching up
 reaching forward
-arms_on_tub_edge
-hand_on_viewer
+arms on tub edge
+hand on viewer

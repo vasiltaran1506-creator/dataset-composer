@@ -1,0 +1,34 @@
+[meta]
+id = "bathing"
+display_name = "Bathing"
+
+[hard_constraints]
+allowed_locations = [
+    "bathroom",
+]
+excludes_locations = [
+    "kitchen",
+    "bedroom",
+    "library",
+    "cafe",
+    "street",
+    "beach",
+    "gym",
+    "park",
+    "classroom",
+]
+
+[soft_constraints]
+prefers_locations = [
+    "bathroom",
+]
+prefers_poses = [
+    "sitting_in_tub",
+    "reclining_in_tub",
+    "lying_in_tub",
+]
+prefers_props = []
+prefers_expressions = [
+    "relaxed",
+    "peaceful",
+]

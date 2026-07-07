@@ -1,0 +1,42 @@
+[meta]
+id = "exercising"
+display_name = "Exercising"
+
+[hard_constraints]
+allowed_locations = [
+    "gym",
+    "park",
+    "beach",
+    "running track",
+    "sports field",
+]
+excludes_locations = [
+    "library",
+    "cafe",
+    "bedroom",
+    "bathroom",
+    "kitchen",
+    "classroom",
+]
+
+[soft_constraints]
+prefers_locations = [
+    "gym",
+    "park",
+    "beach",
+]
+prefers_poses = [
+    "standing",
+    "stretching",
+    "yoga_pose",
+    "plank_position",
+    "full_body_stretch",
+]
+prefers_props = [
+    "water_bottle",
+]
+prefers_expressions = [
+    "focused",
+    "determined",
+    "confident",
+]

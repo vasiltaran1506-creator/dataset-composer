@@ -4,9 +4,17 @@ character:
   name: Luna
   age: 18
   archetype: custom character
-  character_trigger: "Luna"
 fixed_traits:
 - brown eyes
+- loose hair
+- honey blonde hair
+- round face
+- soft features
+- petite
+- narrow shoulders
+- slender waist
+- small breasts
+- pale skin
 outfit_whitelist:
   default:
     topwear:

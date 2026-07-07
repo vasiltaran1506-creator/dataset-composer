@@ -1,57 +1,19 @@
 [meta]
 id = "pov"
-category = "camera"
-display_name = "POV / Point of View"
-
-[hard_constraints]
-camera_angle = "pov"
-camera_mode = "first_person"
+display_name = "Pov"
 
 [soft_constraints]
-prefers_actions = []
-prefers_poses = [
-    "leaning forward",
-    "sitting_across",
-    "standing_close",
-    "reaching out",
-    "hand_on_viewer",
+prefers_locations = [
+    "bedroom",
+    "bathroom",
+    "cafe",
+    "kitchen",
+    "train interior",
 ]
-prefers_expressions = [
-    "looking at viewer",
-    "smile",
-    "gentle smile",
-    "blush",
-    "shy",
-    "excited",
-    "winking",
+prefers_actions = [
+    "reading",
+    "drinking",
+    "eating",
+    "using smartphone",
+    "holding object",
 ]
-prefers_framing = [
-    "close_up",
-    "upper_body",
-    "cowboy_shot",
-]
-prefers_interaction_props = [
-    "coffee_cup",
-    "food",
-    "gift",
-    "book",
-    "hand",
-]
-
-[visibility_modifiers]
-reveals_features = [
-    "face",
-    "hands",
-    "upper_body",
-]
-conceals_features = [
-    "feet_footwear",
-    "lower_body",
-]
-
-[coverage_impact]
-face_weight = 1.0
-hands_weight = 1.0
-upper_body_weight = 0.8
-lower_body_weight = 0.2
-feet_weight = 0.0

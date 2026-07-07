@@ -1,0 +1,61 @@
+[meta]
+id = "gym"
+display_name = "Gym"
+type = "outdoor_urban"
+
+[hard_constraints]
+allowed_actions = [
+    "exercising",
+]
+excluded_actions = [
+    "sleeping",
+    "cooking",
+    "bathing",
+    "reading",
+    "studying",
+    "shopping",
+    "dancing",
+    "eating",
+    "drinking",
+]
+allowed_outfit_categories = [
+    "bottomwear",
+    "footwear",
+    "legwear",
+    "topwear",
+]
+excludes_outfit_categories = [
+    "footwear/boots",
+    "full_body",
+    "swimsuit",
+    "underwear",
+]
+excludes_weather = [
+    "fog",
+    "rain",
+    "snow",
+    "storm",
+]
+excludes_lighting_sources = [
+    "candlelight",
+    "firelight",
+    "moonlight",
+]
+excludes_props = [
+    "bed",
+    "blanket",
+    "book",
+    "frying_pan",
+    "knife",
+    "laptop",
+    "pillow",
+]
+
+[soft_constraints]
+prefers_actions = [
+    "exercising",
+]
+prefers_props = [
+    "water_bottle",
+    "towel",
+]

@@ -1,42 +1,41 @@
 [meta]
-id = "walking"
-display_name = "Walking"
+id = "dancing"
+display_name = "Dancing"
 
 [hard_constraints]
 allowed_locations = [
     "street",
-    "park",
     "beach",
-    "sidewalk",
-    "forest",
-    "mountain",
-    "shopping mall",
+    "park",
+    "nightclub",
+    "dance studio",
+    "balcony",
+    "bedroom",
 ]
 excludes_locations = [
     "bathroom",
     "kitchen",
-    "bedroom",
     "library",
-    "gym",
+    "cafe",
     "classroom",
+    "gym",
 ]
 
 [soft_constraints]
 prefers_locations = [
     "street",
-    "park",
     "beach",
+    "park",
 ]
 prefers_poses = [
-    "standing",
-    "casual_stance",
+    "arms up",
+    "arms spread",
 ]
-prefers_props = [
-    "backpack",
-    "smartphone",
-]
+prefers_props = []
 prefers_expressions = [
-    "thoughtful",
+    "happy",
+    "joyful",
+    "excited",
+    "ecstatic",
     "smile",
-    "relaxed",
 ]

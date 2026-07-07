@@ -4,28 +4,34 @@ display_name = "Outdoor Urban"
 
 [hard_constraints]
 excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt",
+    "full_body",
+    "swimsuit",
+    "underwear",
 ]
 excludes_actions = [
     "sleeping",
     "cooking",
-    "taking_bath",
+    "bathing",
 ]
 excludes_props = [
     "frying_pan",
-    "bathtub",
-    "blackboard",
-    "torii_gate",
-    "beach_ball",
     "bed",
 ]
 excludes_lighting_sources = [
     "candlelight",
-    "fairy_lights",
-    "mirror_light",
-    "desk_lamp",
-    "fireplace",
+]
+
+[soft_constraints]
+prefers_weather = [
+    "clear sky",
+    "sunny",
+    "cloudy",
+    "overcast",
+    "light rain",
+]
+avoid_weather = [
+    "heavy rain",
+    "storm",
+    "blizzard",
+    "dense fog",
 ]

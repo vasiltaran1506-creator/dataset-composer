@@ -1,0 +1,40 @@
+[meta]
+id = "swimming"
+display_name = "Swimming"
+
+[hard_constraints]
+allowed_locations = [
+    "beach",
+    "indoor pool",
+    "lake",
+    "river",
+]
+excludes_locations = [
+    "bedroom",
+    "kitchen",
+    "bathroom",
+    "library",
+    "cafe",
+    "gym",
+    "street",
+    "park",
+    "classroom",
+]
+
+[soft_constraints]
+prefers_locations = [
+    "beach",
+    "indoor pool",
+    "lake",
+]
+prefers_poses = [
+    "arms up",
+    "arms spread",
+]
+prefers_props = []
+prefers_expressions = [
+    "happy",
+    "excited",
+    "smile",
+    "joyful",
+]

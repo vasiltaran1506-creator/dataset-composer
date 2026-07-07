@@ -1,16 +1,15 @@
 [meta]
-id = "reading"
-display_name = "Reading"
+id = "writing"
+display_name = "Writing"
 
 [hard_constraints]
 allowed_locations = [
     "library",
     "cafe",
     "bedroom",
-    "living room",
-    "office",
-    "train interior",
     "classroom",
+    "office",
+    "balcony",
 ]
 excludes_locations = [
     "kitchen",
@@ -29,24 +28,18 @@ prefers_locations = [
 ]
 prefers_poses = [
     "sitting",
-    "sitting on chair",
-    "sitting on floor",
-    "lying on back",
+    "sitting_at_desk",
     "leaning forward",
 ]
 prefers_props = [
-    "book",
-    "novel",
-    "manga",
-    "magazine",
-    "newspaper",
-    "textbook",
+    "pen",
+    "pencil",
+    "fountain_pen",
     "notebook",
-    "journal",
+    "diary",
 ]
 prefers_expressions = [
     "focused",
     "thoughtful",
-    "gentle smile",
-    "looking down",
+    "determined",
 ]

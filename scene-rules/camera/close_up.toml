@@ -1,20 +1,21 @@
 [meta]
 id = "close_up"
-category = "camera"
-display_name = "Close-up / Portrait"
-
-[hard_constraints]
-conceals_features = ["lower_body", "feet_footwear", "full_outfit", "hands"]
-reveals_features = ["face", "hair_front", "upper_chest", "eyes"]
+display_name = "Close Up"
 
 [soft_constraints]
-prefers_expressions = ["detailed_eyes", "subtle_blush", "lip_focus", "micro_expressions"]
-prefers_lighting_quality = ["soft_lighting", "rim_light", "studio_lighting", "cinematic_lighting"]
-avoids_actions = ["running", "jumping", "full_body_stretch", "dancing"]
-
-[coverage_impact]
-face_weight = 1.0
-hair_front_weight = 1.0
-upper_body_weight = 0.3
-lower_body_weight = 0.0
-feet_weight = 0.0
+prefers_locations = [
+    "bedroom",
+    "library",
+    "cafe",
+    "classroom",
+    "office",
+    "kitchen",
+]
+prefers_actions = [
+    "reading",
+    "studying",
+    "thinking",
+    "writing",
+    "drinking",
+    "eating",
+]

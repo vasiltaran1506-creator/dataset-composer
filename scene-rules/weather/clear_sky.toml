@@ -1,22 +1,21 @@
 [meta]
-id = "sunny"
-display_name = "Sunny"
+id = "clear_sky"
+display_name = "Clear Sky"
 
 [soft_constraints]
 prefers_locations = [
-    "beach",
     "park",
     "street",
+    "beach",
+    "mountain",
     "balcony",
     "rooftop",
-    "garden",
 ]
 prefers_actions = [
-    "swimming",
     "exercising",
 ]
 prefers_lighting_sources = [
     "sunlight",
     "natural lighting",
-    "golden hour",
+    "blue hour",
 ]

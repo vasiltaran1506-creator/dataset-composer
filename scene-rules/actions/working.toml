@@ -1,19 +1,19 @@
 [meta]
-id = "drinking"
-display_name = "Drinking"
+id = "working"
+display_name = "Working"
 
 [hard_constraints]
 allowed_locations = [
+    "office",
     "cafe",
-    "kitchen",
-    "bar",
-    "balcony",
+    "library",
     "bedroom",
-    "restaurant",
+    "classroom",
 ]
 excludes_locations = [
     "bathroom",
-    "library",
+    "kitchen",
+    "beach",
     "gym",
     "street",
     "park",
@@ -21,24 +21,22 @@ excludes_locations = [
 
 [soft_constraints]
 prefers_locations = [
+    "office",
     "cafe",
-    "kitchen",
-    "bar",
+    "library",
 ]
 prefers_poses = [
     "sitting",
-    "standing",
-    "sitting_at_table",
+    "sitting_at_desk",
 ]
 prefers_props = [
+    "laptop",
+    "desktop computer",
+    "notebook",
     "coffee cup",
-    "teacup",
-    "mug",
-    "glass",
-    "wine glass",
 ]
 prefers_expressions = [
-    "relaxed",
-    "smile",
+    "focused",
     "thoughtful",
+    "determined",
 ]

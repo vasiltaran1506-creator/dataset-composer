@@ -76,80 +76,134 @@ class SceneBuilder:
         
         if not whitelist:
             return self._choose_random_outfit(allowed_categories, excluded_categories)
-            
-        valid_styles = []
-        style_weights = []
+        
+        # Собираем все доступные варианты одежды из всех стилей
+        all_outfit_options = []  # Список словарей: {"type": "full_body"|"topwear"|..., "tags": [...], "style": "..."}
         
         for style_name, style_data in whitelist.items():
             if not isinstance(style_data, dict):
                 continue
-                
-            style_compatible = False
             
-            # 1. Жёсткие ограничения (Allowed / Excluded)
-            if allowed_categories:
-                if "full_body" in style_data:
-                    if any(style_name in cat for cat in allowed_categories):
-                        style_compatible = True
-                elif "swimsuit" in style_data:
-                    if any("swimsuits" in cat for cat in allowed_categories):
-                        style_compatible = True
-                else:
-                    if any("topwear" in cat for cat in allowed_categories) and any("bottomwear" in cat for cat in allowed_categories):
-                        style_compatible = True
-            else:
-                if "full_body" in style_data:
-                    if not any(style_name in cat for cat in excluded_categories):
-                        style_compatible = True
-                elif "swimsuit" in style_data:
-                    if not any("swimsuits" in cat for cat in excluded_categories):
-                        style_compatible = True
-                else:
-                    general_excluded = any(any(exc in cat for exc in ["coats", "jackets"]) for cat in excluded_categories)
-                    style_excluded = any(style_name in cat for cat in excluded_categories)
-                    if not general_excluded and not style_excluded:
-                        style_compatible = True
-                        
-            # Если стиль прошёл жёсткие фильтры — добавляем его и считаем вес
-            if style_compatible:
-                valid_styles.append(style_name)
-                
-                # 2. Расчёт веса (Preferred / Avoid)
-                weight = 1.0
-                if any(style_name in cat for cat in preferred_categories):
-                    weight *= 5.0  # Высокий приоритет
-                if any(style_name in cat for cat in avoid_categories):
-                    weight *= 0.1  # Мягкий бан (маловероятно, но возможно)
-                    
-                style_weights.append(weight)
-                
-        # Fallback: если ничего не прошло фильтры, берём все стили с равным весом
-        if not valid_styles:
-            valid_styles = list(whitelist.keys())
-            style_weights = [1.0 for _ in valid_styles]
+            # Проверяем каждый тип одежды внутри стиля
+            if "full_body" in style_data and isinstance(style_data["full_body"], list):
+                all_outfit_options.append({
+                    "type": "full_body",
+                    "tags": style_data["full_body"],
+                    "style": style_name
+                })
             
-        if not valid_styles:
-            return self._choose_random_outfit(allowed_categories, excluded_categories)
+            if "swimsuit" in style_data and isinstance(style_data["swimsuit"], list):
+                all_outfit_options.append({
+                    "type": "swimsuit",
+                    "tags": style_data["swimsuit"],
+                    "style": style_name
+                })
             
-        # Выбираем стиль с учётом весов
-        chosen_style = random.choices(valid_styles, weights=style_weights, k=1)[0]
-        style_data = whitelist[chosen_style]
+            # Topwear + Bottomwear идут вместе
+            has_top = "topwear" in style_data and isinstance(style_data["topwear"], list)
+            has_bottom = "bottomwear" in style_data and isinstance(style_data["bottomwear"], list)
+            if has_top and has_bottom:
+                all_outfit_options.append({
+                    "type": "topwear_bottomwear",
+                    "top_tags": style_data["topwear"],
+                    "bottom_tags": style_data["bottomwear"],
+                    "style": style_name
+                })
         
-        if "full_body" in style_data:
-            outfit["full"] = random.choice(style_data["full_body"])
-        elif "swimsuit" in style_data:
-            outfit["full"] = random.choice(style_data["swimsuit"])
-        else:
-            if "topwear" in style_data:
-                outfit["top"] = random.choice(style_data["topwear"])
-            if "bottomwear" in style_data:
-                outfit["bottom"] = random.choice(style_data["bottomwear"])
+        # Фильтруем через allowed_categories
+        valid_options = []
+        option_weights = []
+        
+        for option in all_outfit_options:
+            option_type = option["type"]
+            
+            # Проверяем, подходит ли этот тип под allowed_categories
+            is_allowed = False
+            
+            if allowed_categories:
+                if option_type == "full_body":
+                    is_allowed = any("full_body" in cat for cat in allowed_categories)
+                elif option_type == "swimsuit":
+                    is_allowed = any("swimsuit" in cat or "swimsuits" in cat for cat in allowed_categories)
+                elif option_type == "topwear_bottomwear":
+                    is_allowed = (any("topwear" in cat for cat in allowed_categories) and 
+                                 any("bottomwear" in cat for cat in allowed_categories))
+            else:
+                # Если allowed_categories пустой — всё разрешено (кроме excluded)
+                is_allowed = True
                 
-        if "legwear" in style_data and random.random() < 0.7:
-            outfit["legwear"] = random.choice(style_data["legwear"])
-        if "footwear" in style_data and random.random() < 0.5:
-            outfit["footwear"] = random.choice(style_data["footwear"])
-                
+                # Проверяем excludes
+                if option_type == "full_body":
+                    if any("full_body" in cat for cat in excluded_categories):
+                        is_allowed = False
+                elif option_type == "swimsuit":
+                    if any("swimsuit" in cat or "swimsuits" in cat for cat in excluded_categories):
+                        is_allowed = False
+                elif option_type == "topwear_bottomwear":
+                    if (any("topwear" in cat for cat in excluded_categories) or 
+                        any("bottomwear" in cat for cat in excluded_categories)):
+                        is_allowed = False
+            
+            if not is_allowed:
+                continue
+            
+            # Рассчитываем вес
+            weight = 1.0
+            
+            # Preferred увеличивает вес
+            if option_type == "full_body" and any("full_body" in cat for cat in preferred_categories):
+                weight *= 5.0
+            elif option_type == "swimsuit" and any("swimsuit" in cat or "swimsuits" in cat for cat in preferred_categories):
+                weight *= 5.0
+            elif option_type == "topwear_bottomwear":
+                if any("topwear" in cat for cat in preferred_categories):
+                    weight *= 3.0
+                if any("bottomwear" in cat for cat in preferred_categories):
+                    weight *= 3.0
+            
+            # Avoid уменьшает вес
+            if option_type == "full_body" and any("full_body" in cat for cat in avoid_categories):
+                weight *= 0.1
+            elif option_type == "swimsuit" and any("swimsuit" in cat or "swimsuits" in cat for cat in avoid_categories):
+                weight *= 0.1
+            elif option_type == "topwear_bottomwear":
+                if any("topwear" in cat for cat in avoid_categories):
+                    weight *= 0.3
+                if any("bottomwear" in cat for cat in avoid_categories):
+                    weight *= 0.3
+            
+            valid_options.append(option)
+            option_weights.append(weight)
+        
+        # Fallback: если ничего не подошло, берём все варианты
+        if not valid_options:
+            valid_options = all_outfit_options
+            option_weights = [1.0 for _ in valid_options]
+        
+        if not valid_options:
+            return self._choose_random_outfit(allowed_categories, excluded_categories)
+        
+        # Выбираем вариант с учётом весов
+        chosen_option = random.choices(valid_options, weights=option_weights, k=1)[0]
+        
+        # Заполняем outfit
+        if chosen_option["type"] == "full_body":
+            outfit["full"] = random.choice(chosen_option["tags"])
+        elif chosen_option["type"] == "swimsuit":
+            outfit["full"] = random.choice(chosen_option["tags"])
+        elif chosen_option["type"] == "topwear_bottomwear":
+            outfit["top"] = random.choice(chosen_option["top_tags"])
+            outfit["bottom"] = random.choice(chosen_option["bottom_tags"])
+            
+            # Legwear (70% шанс, если есть)
+            style_data = whitelist[chosen_option["style"]]
+            if "legwear" in style_data and isinstance(style_data["legwear"], list) and random.random() < 0.7:
+                outfit["legwear"] = random.choice(style_data["legwear"])
+            
+            # Footwear (50% шанс, если есть)
+            if "footwear" in style_data and isinstance(style_data["footwear"], list) and random.random() < 0.5:
+                outfit["footwear"] = random.choice(style_data["footwear"])
+        
         return outfit
         
     def _choose_random_outfit(self, allowed_categories: list, excluded_categories: list) -> dict:
@@ -194,22 +248,41 @@ class SceneBuilder:
         prompt = scene.to_prompt(self.full_profile.get('fixed_traits', []))
         prompt_tags = [tag.strip() for tag in prompt.split(',')]
         
-        # 1. Проверяем, не попала ли запрещенная одежда (например, loungewear в Cafe)
+        # 1. Проверяем, не попала ли запрещенная одежда
         excluded_cats = hard_constraints.get("excludes_outfit_categories", [])
         whitelist = self._get_outfit_whitelist()
         
+        # Собираем все теги запрещённых типов одежды
+        excluded_tags = set()
+        
         for style_name, style_data in whitelist.items():
-            is_style_excluded = any(style_name in cat for cat in excluded_cats)
+            if not isinstance(style_data, dict):
+                continue
             
-            if is_style_excluded:
-                all_style_tags = []
-                for category_tags in style_data.values():
-                    if isinstance(category_tags, list):
-                        all_style_tags.extend(category_tags)
-                        
-                for tag in all_style_tags:
-                    if tag in prompt_tags:
-                        return False # Найден запрещенный тег!
+            # Проверяем full_body
+            if any("full_body" in cat for cat in excluded_cats):
+                if "full_body" in style_data and isinstance(style_data["full_body"], list):
+                    excluded_tags.update(style_data["full_body"])
+            
+            # Проверяем swimsuit
+            if any("swimsuit" in cat or "swimsuits" in cat for cat in excluded_cats):
+                if "swimsuit" in style_data and isinstance(style_data["swimsuit"], list):
+                    excluded_tags.update(style_data["swimsuit"])
+            
+            # Проверяем topwear
+            if any("topwear" in cat for cat in excluded_cats):
+                if "topwear" in style_data and isinstance(style_data["topwear"], list):
+                    excluded_tags.update(style_data["topwear"])
+            
+            # Проверяем bottomwear
+            if any("bottomwear" in cat for cat in excluded_cats):
+                if "bottomwear" in style_data and isinstance(style_data["bottomwear"], list):
+                    excluded_tags.update(style_data["bottomwear"])
+        
+        # Проверяем, не попал ли запрещённый тег в промпт
+        for tag in excluded_tags:
+            if tag in prompt_tags:
+                return False  # Найден запрещенный тег!!
                         
         # 2. Проверяем, не попало ли запрещенное действие
         excluded_actions = hard_constraints.get("excludes_actions", [])

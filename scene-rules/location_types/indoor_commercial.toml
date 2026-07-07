@@ -4,30 +4,36 @@ display_name = "Indoor Commercial"
 
 [hard_constraints]
 excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/pajamas.txt",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt",
-    "02_clothing/topwear/coats.txt",
+    "full_body",
+    "swimsuit",
+    "underwear",
 ]
 excludes_actions = [
     "sleeping",
     "exercising",
     "cooking",
-    "taking_bath",
+    "bathing",
 ]
 excludes_props = [
-    "steering wheel",
     "frying_pan",
-    "bathtub",
-    "blackboard",
-    "torii_gate",
-    "beach_ball",
-    "flat screen tv",
+    "laptop",
 ]
 excludes_lighting_sources = [
-    "streetlight",
+    "bright sunlight",
+    "moonlight",
     "neon_light",
+    "stage lights",
+    "starlight",
+    "streetlight",
     "sunlight",
-    "stage_lights",
+]
+excludes_weather = [
+    "rain",
+    "snow",
+    "fog",
+    "storm",
+    "sunny",
+    "clear sky",
+    "overcast",
+    "cloudy",
 ]

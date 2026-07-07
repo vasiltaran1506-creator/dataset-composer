@@ -2,14 +2,51 @@
 id = "studying"
 display_name = "Studying"
 
-[soft_constraints]
-excludes_actions = [
-    "cooking",
-]
-prefers_locations = []
-prefers_poses = []
-prefers_expressions = []
-
 [hard_constraints]
-excludes_actions = []
-requires_props = []
+allowed_locations = [
+    "library",
+    "cafe",
+    "classroom",
+    "bedroom",
+    "office",
+]
+excludes_locations = [
+    "kitchen",
+    "bathroom",
+    "beach",
+    "gym",
+    "street",
+    "park",
+]
+
+[soft_constraints]
+prefers_locations = [
+    "library",
+    "cafe",
+    "classroom",
+]
+prefers_poses = [
+    "sitting",
+    "sitting_at_desk",
+    "leaning forward",
+    "hunched_over",
+]
+prefers_props = [
+    "pen",
+    "pencil",
+    "mechanical_pencil",
+    "fountain_pen",
+    "ballpoint_pen",
+    "gel_pen",
+    "marker",
+    "highlighter",
+    "book",
+    "novel",
+    "manga",
+    "magazine",
+]
+prefers_expressions = [
+    "focused",
+    "thoughtful",
+    "determined",
+]

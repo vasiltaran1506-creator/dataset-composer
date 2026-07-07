@@ -3,22 +3,35 @@ id = "indoor_private"
 display_name = "Indoor Private Space"
 
 [hard_constraints]
-excludes_outfit_categories = [
-    "02_clothing/full_body/uniforms.txt",
-    "02_clothing/footwear/boots.txt",
-]
+excludes_outfit_categories = []
 excludes_actions = []
 excludes_props = [
-    "traffic_light",
-    "crosswalk",
-    "bus_stop",
-    "vending machine",
-    "steering wheel",
-    "torii_gate",
+    "laptop",
 ]
 excludes_lighting_sources = [
+    "bright sunlight",
+    "moonlight",
     "neon_light",
-    "shop_lights",
+    "stage lights",
+    "starlight",
     "streetlight",
-    "stage_lights",
+    "sunlight",
+]
+excludes_weather = [
+    "rain",
+    "snow",
+    "fog",
+    "storm",
+    "sunny",
+    "clear sky",
+    "overcast",
+    "cloudy",
+]
+allowed_outfit_categories = [
+    "full_body",
+    "topwear",
+    "bottomwear",
+    "legwear",
+    "footwear",
+    "underwear",
 ]

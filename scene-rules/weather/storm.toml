@@ -1,12 +1,12 @@
 [meta]
-id = "rain"
-display_name = "Rain"
+id = "storm"
+display_name = "Storm"
 
 [soft_constraints]
 prefers_locations = [
+    "bedroom",
     "cafe",
     "library",
-    "bedroom",
     "office",
     "classroom",
     "train interior",
@@ -14,12 +14,11 @@ prefers_locations = [
 prefers_actions = [
     "reading",
     "studying",
-    "drinking",
+    "sleeping",
 ]
 prefers_lighting_sources = [
-    "overcast lighting",
-    "soft lighting",
-    "diffused lighting",
+    "dramatic lighting",
+    "moody lighting",
+    "dim lighting",
     "gloomy lighting",
 ]
-prefers_props = []

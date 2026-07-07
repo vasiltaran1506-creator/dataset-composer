@@ -12,15 +12,21 @@ class CoverageTracker:
     Сканирует папку с промптами, строит матрицу покрытия и рассчитывает веса для балансировки.
     """
     
-    def __init__(self, available_locations: List[str], available_actions: List[str], 
-                 available_weathers: List[str], available_cameras: List[str]):
+    def __init__(self, available_locations: List[str], available_actions: List[str],
+                 available_weathers: List[str], available_cameras: List[str],
+                 outfit_category_map: Optional[Dict[str, str]] = None):
         """
         Инициализация с списками известных тегов для классификации.
+
+        Args:
+            outfit_category_map: Словарь {tag: category} для одежды.
+                Пример: {"white shirt": "topwear", "black jeans": "bottomwear"}
         """
         self.location_set = set(available_locations)
         self.action_set = set(available_actions)
         self.weather_set = set(available_weathers)
         self.camera_set = set(available_cameras)
+        self.outfit_category_map = outfit_category_map or {}
         
     def scan_folder(self, folder_path: str) -> Dict:
         """
@@ -45,7 +51,8 @@ class CoverageTracker:
                 "location": {},
                 "action": {},
                 "weather": {},
-                "camera": {}
+                "camera": {},
+                "outfit": {}
             },
             "unmatched_tags_count": 0,
             "malformed_files": [],
@@ -78,6 +85,7 @@ class CoverageTracker:
                 found_action = None
                 found_weather = None
                 found_camera = None
+                found_outfit_category = None
                 
                 for tag in tags:
                     if tag in self.location_set and not found_location:
@@ -88,21 +96,30 @@ class CoverageTracker:
                         found_weather = tag
                     elif tag in self.camera_set and not found_camera:
                         found_camera = tag
+                    elif tag in self.outfit_category_map and not found_outfit_category:
+                        found_outfit_category = self.outfit_category_map[tag]
                         
                 # Обновление матрицы
                 if found_location:
                     matrix["dimensions"]["location"][found_location] = \
                         matrix["dimensions"]["location"].get(found_location, 0) + 1
+                
                 if found_action:
                     matrix["dimensions"]["action"][found_action] = \
                         matrix["dimensions"]["action"].get(found_action, 0) + 1
+                
                 if found_weather:
                     matrix["dimensions"]["weather"][found_weather] = \
                         matrix["dimensions"]["weather"].get(found_weather, 0) + 1
+                
                 if found_camera:
                     matrix["dimensions"]["camera"][found_camera] = \
                         matrix["dimensions"]["camera"].get(found_camera, 0) + 1
-                        
+                
+                if found_outfit_category:
+                    matrix["dimensions"]["outfit"][found_outfit_category] = \
+                        matrix["dimensions"]["outfit"].get(found_outfit_category, 0) + 1
+                
                 matrix["total_scenes"] += 1
                 
             except Exception as e:
@@ -163,7 +180,8 @@ class CoverageTracker:
             "location": "📍 ЛОКАЦИИ",
             "action": "🎬 ДЕЙСТВИЯ",
             "weather": "🌦️ ПОГОДА",
-            "camera": "📸 КАМЕРЫ"
+            "camera": "📸 КАМЕРЫ",
+            "outfit": "👕 ОДЕЖДА"
         }
         
         for dimension, display_name in dimension_names.items():

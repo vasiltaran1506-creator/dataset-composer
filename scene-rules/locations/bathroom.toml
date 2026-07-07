@@ -1,0 +1,61 @@
+[meta]
+id = "bathroom"
+display_name = "Bathroom"
+type = "indoor_private"
+
+[hard_constraints]
+allowed_actions = [
+    "bathing",
+]
+excluded_actions = [
+    "cooking",
+    "sleeping",
+    "reading",
+    "studying",
+    "eating",
+    "drinking",
+    "exercising",
+    "swimming",
+    "shopping",
+    "dancing",
+    "writing",
+]
+allowed_outfit_categories = [
+    "swimsuit",
+    "underwear",
+]
+excludes_weather = [
+    "clear sky",
+    "clear_sky",
+    "fog",
+    "rain",
+    "snow",
+    "storm",
+    "sunny",
+]
+excludes_outfit_categories = [
+    "bottomwear",
+    "footwear",
+    "full_body",
+    "topwear",
+]
+excludes_lighting_sources = [
+    "bright sunlight",
+    "sunlight",
+]
+excludes_props = [
+    "bed",
+    "book",
+    "frying_pan",
+    "knife",
+    "laptop",
+]
+
+[soft_constraints]
+prefers_actions = [
+    "bathing",
+]
+prefers_props = [
+    "mirror",
+    "towel",
+]

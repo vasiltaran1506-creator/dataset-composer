@@ -1,13 +1,11 @@
 [meta]
-id = "cafe"
-display_name = "Cafe"
+id = "library"
+display_name = "Library"
 type = "indoor_public"
 
 [hard_constraints]
 allowed_actions = [
     "reading",
-    "eating",
-    "drinking",
     "studying",
     "writing",
 ]
@@ -17,6 +15,8 @@ excluded_actions = [
     "bathing",
     "swimming",
     "exercising",
+    "eating",
+    "drinking",
     "shopping",
     "dancing",
 ]
@@ -41,18 +41,19 @@ excludes_weather = [
 ]
 excludes_lighting_sources = [
     "bright sunlight",
-    "moonlight",
+    "neon light",
     "sunlight",
 ]
 excludes_props = [
+    "bathtub",
+    "beach_ball",
     "bed",
-    "blanket",
     "bunk bed",
     "canopy bed",
     "double bed",
     "frying_pan",
     "knife",
-    "pillow",
+    "shower",
     "single bed",
     "surfboard",
 ]
@@ -60,28 +61,36 @@ excludes_props = [
 [soft_constraints]
 prefers_actions = [
     "reading",
-    "eating",
-    "drinking",
     "studying",
+    "writing",
 ]
 prefers_props = [
-    "coffee cup",
-    "teacup",
-    "mug",
-    "glass",
-    "wine glass",
-    "beer mug",
-    "soda can",
-    "water bottle",
-    "bento",
-    "sandwich",
+    "book",
+    "novel",
+    "manga",
+    "magazine",
+    "newspaper",
+    "textbook",
+    "notebook",
+    "journal",
+    "diary",
+    "comic_book",
+    "art_book",
+    "cookbook",
+    "encyclopedia",
+    "dictionary",
+    "paperback",
     "bed",
     "single bed",
     "double bed",
     "bunk bed",
     "canopy bed",
-    "coffee cup",
-    "teacup",
-    "laptop",
-    "book",
+    "mattress",
+    "pillow",
+    "blanket",
+    "pen",
+    "pencil",
+    "mechanical_pencil",
+    "fountain_pen",
+    "ballpoint_pen",
 ]

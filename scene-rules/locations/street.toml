@@ -1,0 +1,57 @@
+[meta]
+id = "street"
+display_name = "Street"
+type = "outdoor_urban"
+
+[hard_constraints]
+allowed_actions = [
+    "shopping",
+    "dancing",
+]
+excluded_actions = [
+    "sleeping",
+    "cooking",
+    "bathing",
+    "studying",
+    "reading",
+    "exercising",
+    "writing",
+    "swimming",
+]
+excludes_outfit_categories = [
+    "full_body",
+    "swimsuit",
+    "underwear",
+]
+allowed_outfit_categories = [
+    "bottomwear",
+    "footwear",
+    "legwear",
+    "topwear",
+]
+excludes_weather = [
+    "blizzard",
+    "heavy rain",
+    "storm",
+]
+excludes_lighting_sources = [
+    "candlelight",
+    "firelight",
+]
+excludes_props = [
+    "bathtub",
+    "bed",
+    "blanket",
+    "frying_pan",
+    "pillow",
+]
+
+[soft_constraints]
+prefers_actions = [
+    "shopping",
+    "dancing",
+]
+prefers_props = [
+    "smartphone",
+    "backpack",
+]

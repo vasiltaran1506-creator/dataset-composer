@@ -1,19 +1,20 @@
 [meta]
-id = "snow"
-display_name = "Snow"
+id = "cloudy"
+display_name = "Cloudy"
 
 [soft_constraints]
 prefers_locations = [
     "street",
     "park",
-    "mountain",
-    "forest",
+    "cafe",
     "beach",
+    "mountain",
 ]
-prefers_actions = []
+prefers_actions = [
+    "reading",
+]
 prefers_lighting_sources = [
     "soft lighting",
     "diffused lighting",
     "overcast lighting",
 ]
-prefers_props = []

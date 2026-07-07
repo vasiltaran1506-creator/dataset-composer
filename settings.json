@@ -4,12 +4,12 @@
     "profiles_path": ""
   },
   "generation_defaults": {
-    "num_scenes": 50,
+    "num_scenes": 100,
     "force_deficit_closure": false,
-    "balance_locations": false,
+    "balance_locations": true,
     "balance_actions": true,
-    "balance_weather": false,
-    "balance_cameras": false
+    "balance_weather": true,
+    "balance_cameras": true
   },
   "behavior": {
     "confirm_delete": true

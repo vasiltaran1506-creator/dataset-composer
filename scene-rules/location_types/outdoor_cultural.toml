@@ -4,24 +4,18 @@ display_name = "Outdoor Cultural / Sacred"
 
 [hard_constraints]
 excludes_outfit_categories = [
-    "02_clothing/underwear/",
-    "02_clothing/full_body/swimsuits.txt",
-    "02_clothing/full_body/loungewear.txt",
-    "02_clothing/full_body/pajamas.txt",
+    "underwear",
+    "swimsuit",
+    "full_body",
 ]
 excludes_actions = [
     "eating",
     "cooking",
-    "taking_bath",
+    "bathing",
     "sleeping",
 ]
 excludes_props = [
-    "steering wheel",
     "frying_pan",
-    "bathtub",
-    "blackboard",
-    "beach_ball",
-    "surfboard",
     "laptop",
     "smartphone",
 ]

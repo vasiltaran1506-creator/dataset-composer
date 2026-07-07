@@ -1,0 +1,76 @@
+[meta]
+id = "park"
+display_name = "Park"
+type = "outdoor_nature"
+
+[hard_constraints]
+allowed_actions = [
+    "exercising",
+    "reading",
+    "dancing",
+]
+excluded_actions = [
+    "cooking",
+    "sleeping",
+    "bathing",
+    "shopping",
+    "swimming",
+]
+excludes_outfit_categories = [
+    "full_body",
+    "swimsuit",
+    "underwear",
+]
+allowed_outfit_categories = [
+    "bottomwear",
+    "footwear",
+    "legwear",
+    "topwear",
+]
+excludes_weather = [
+    "blizzard",
+    "heavy rain",
+    "storm",
+]
+excludes_lighting_sources = [
+    "fluorescent light",
+    "lamplight",
+    "neon light",
+]
+excludes_props = [
+    "bed",
+    "bunk bed",
+    "double bed",
+    "frying_pan",
+    "knife",
+    "laptop",
+    "single bed",
+]
+
+[soft_constraints]
+prefers_actions = [
+    "exercising",
+    "reading",
+    "dancing",
+]
+prefers_props = [
+    "tree",
+    "pine tree",
+    "cherry blossom tree",
+    "maple tree",
+    "willow tree",
+    "bush",
+    "flower",
+    "rose",
+    "sunflower",
+    "lily",
+    "bed",
+    "single bed",
+    "double bed",
+    "tree",
+]
+prefers_weather = [
+    "sunny",
+    "clear sky",
+    "partly cloudy",
+]

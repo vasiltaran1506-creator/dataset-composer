@@ -1,44 +1,41 @@
 [meta]
-id = "drinking"
-display_name = "Drinking"
+id = "playing_music"
+display_name = "Playing Music"
 
 [hard_constraints]
 allowed_locations = [
-    "cafe",
-    "kitchen",
-    "bar",
-    "balcony",
     "bedroom",
-    "restaurant",
+    "street",
+    "park",
+    "cafe",
+    "balcony",
+    "concert hall",
+    "recording studio",
 ]
 excludes_locations = [
     "bathroom",
+    "kitchen",
     "library",
     "gym",
-    "street",
-    "park",
+    "classroom",
 ]
 
 [soft_constraints]
 prefers_locations = [
-    "cafe",
-    "kitchen",
-    "bar",
+    "bedroom",
+    "street",
+    "park",
 ]
 prefers_poses = [
     "sitting",
     "standing",
-    "sitting_at_table",
 ]
 prefers_props = [
-    "coffee cup",
-    "teacup",
-    "mug",
-    "glass",
-    "wine glass",
+    "microphone",
 ]
 prefers_expressions = [
+    "focused",
+    "peaceful",
     "relaxed",
     "smile",
-    "thoughtful",
 ]

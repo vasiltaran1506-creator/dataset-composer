@@ -1,16 +1,16 @@
 [meta]
-id = "walking"
-display_name = "Walking"
+id = "photography"
+display_name = "Photography"
 
 [hard_constraints]
 allowed_locations = [
     "street",
     "park",
     "beach",
-    "sidewalk",
-    "forest",
     "mountain",
-    "shopping mall",
+    "forest",
+    "rooftop",
+    "balcony",
 ]
 excludes_locations = [
     "bathroom",
@@ -29,14 +29,13 @@ prefers_locations = [
 ]
 prefers_poses = [
     "standing",
-    "casual_stance",
 ]
 prefers_props = [
-    "backpack",
-    "smartphone",
+    "camera",
+    "dslr",
+    "tripod",
 ]
 prefers_expressions = [
-    "thoughtful",
-    "smile",
-    "relaxed",
+    "focused",
+    "determined",
 ]

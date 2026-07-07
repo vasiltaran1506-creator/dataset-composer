@@ -2,9 +2,44 @@
 id = "sleeping"
 display_name = "Sleeping"
 
-[soft_constraints]
-excludes_actions = [
-    "cooking",
+[hard_constraints]
+allowed_locations = [
+    "bedroom",
+    "train interior",
+    "hotel room",
+    "living room",
+]
+excludes_locations = [
+    "kitchen",
+    "bathroom",
+    "library",
+    "cafe",
+    "beach",
+    "gym",
+    "street",
+    "park",
+    "classroom",
 ]
 
-[hard_constraints]
+[soft_constraints]
+prefers_locations = [
+    "bedroom",
+    "train interior",
+    "hotel room",
+]
+prefers_poses = [
+    "lying on back",
+    "lying on side",
+    "fetal position",
+]
+prefers_props = [
+    "bed",
+    "pillow",
+    "blanket",
+    "stuffed animal",
+]
+prefers_expressions = [
+    "peaceful",
+    "relaxed",
+    "sleepy",
+]

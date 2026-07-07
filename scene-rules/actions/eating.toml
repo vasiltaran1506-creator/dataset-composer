@@ -2,6 +2,48 @@
 id = "eating"
 display_name = "Eating"
 
-[soft_constraints]
-
 [hard_constraints]
+allowed_locations = [
+    "kitchen",
+    "cafe",
+    "restaurant",
+    "dining room",
+    "bedroom",
+]
+excludes_locations = [
+    "bathroom",
+    "library",
+    "gym",
+    "street",
+    "park",
+]
+
+[soft_constraints]
+prefers_locations = [
+    "kitchen",
+    "cafe",
+    "restaurant",
+]
+prefers_poses = [
+    "sitting",
+    "sitting_at_table",
+    "sitting on chair",
+]
+prefers_props = [
+    "coffee cup",
+    "teacup",
+    "mug",
+    "glass",
+    "wine glass",
+    "beer mug",
+    "soda can",
+    "water bottle",
+    "fork",
+    "spoon",
+    "chopsticks",
+]
+prefers_expressions = [
+    "happy",
+    "smile",
+    "joyful",
+]
