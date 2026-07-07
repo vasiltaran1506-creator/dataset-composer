@@ -3961,10 +3961,22 @@ class MainWindow(ctk.CTk):
         for w in self.dna_tree_frame.winfo_children():
             w.destroy()
         self.dna_tag_ui_elements = {}
+        # 🧬 DNA: 8 категорий персонажа, сгруппированных логически
         for cat_name, cat_file in [
-            ("Hair Style", "01_character/hair/style.txt"),
-            ("Hair Color", "01_character/hair/color.txt"),
-            ("Eye Color", "01_character/eyes/color.txt"),
+            # 🧬 Body (Тело и его особенности)
+            ("🧬 Body Type", "01_character/body/type.txt"),
+            ("🎭 Body Features", "01_character/body/features.txt"),
+            # 👁️ Eyes (Глаза)
+            ("👁️ Eye Color", "01_character/eyes/color.txt"),
+            ("👁️ Eye Shape", "01_character/eyes/shape.txt"),
+            # 🎭 Face (Лицо)
+            ("🎭 Face Features", "01_character/face/features.txt"),
+            # 💇 Hair (Волосы)
+            ("💇 Hair Style", "01_character/hair/style.txt"),
+            ("💇 Hair Color", "01_character/hair/color.txt"),
+            ("💇 Hair Length", "01_character/hair/length.txt"),
+            # 🧴 Skin (Кожа)
+            ("🧴 Skin Tone", "01_character/skin/tone.txt"),
         ]:
             self._create_dna_category(cat_name, cat_file)
 

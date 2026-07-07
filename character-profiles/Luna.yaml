@@ -7,14 +7,22 @@ character:
 fixed_traits:
 - brown eyes
 - loose hair
-- honey blonde hair
 - round face
 - soft features
 - petite
-- narrow shoulders
-- slender waist
-- small breasts
 - pale skin
+- slender
+- curvy
+- soft figure
+- fit
+- small nose
+- round eyes
+- light blue hair
+- long hair
+- fair skin
+- small breasts
+- narrow shoulders
+- narrow waist
 outfit_whitelist:
   default:
     topwear:
