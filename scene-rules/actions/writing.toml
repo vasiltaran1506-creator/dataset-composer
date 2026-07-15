@@ -43,3 +43,11 @@ prefers_expressions = [
     "thoughtful",
     "determined",
 ]
+excludes_actions = [
+    "bathing",
+    "cooking",
+    "dancing",
+    "eating",
+    "exercising",
+    "reading",
+]

@@ -3,9 +3,7 @@ id = "cooking"
 display_name = "Cooking"
 
 [hard_constraints]
-allowed_locations = [
-    "kitchen",
-]
+allowed_locations = []
 excludes_locations = [
     "bedroom",
     "bathroom",
@@ -16,31 +14,82 @@ excludes_locations = [
     "street",
     "park",
 ]
+required_props = []
+required_props_pool = [
+    "apple",
+    "banana",
+    "beer mug",
+    "bento",
+    "bread",
+    "bubble tea",
+    "burger",
+    "candy",
+    "chips",
+    "chocolate",
+    "chopsticks",
+    "cocktail",
+    "coffee cup",
+    "cookie",
+    "crepe",
+    "croissant",
+    "dango",
+    "donut",
+    "fork",
+    "fruit",
+    "glass",
+    "ice cream",
+    "jelly",
+    "juice box",
+    "knife",
+    "lollipop",
+    "lunchbox",
+    "macaron",
+    "melonpan",
+    "milkshake",
+    "mug",
+    "onigiri",
+    "pancake",
+    "parfait",
+    "pastry",
+    "picnic basket",
+    "pizza",
+    "pocky",
+    "popsicle",
+    "pudding",
+    "ramen",
+    "sake cup",
+    "salad",
+    "sandwich",
+    "slice of cake",
+    "soda can",
+    "soup",
+    "spoon",
+    "straw",
+    "strawberry",
+    "sundae",
+    "sushi",
+    "taiyaki",
+    "takoyaki",
+    "teacup",
+    "teapot",
+    "thermos",
+    "waffle",
+    "water bottle",
+    "wine glass",
+]
+required_props_count = 0
+excludes_props = []
+excludes_actions = []
 
 [soft_constraints]
-prefers_locations = [
-    "kitchen",
+prefers_locations = []
+prefers_poses = []
+prefers_props = []
+prefers_expressions = []
+excludes_actions = [
+    "reading",
 ]
-prefers_poses = [
-    "standing",
-    "bending forward",
-    "reaching forward",
-]
-prefers_props = [
-    "frying_pan",
-    "pot",
-    "saucepan",
-    "wok",
-    "cutting_board",
-    "knife",
-    "chef_knife",
-    "bread_knife",
-    "spatula",
-    "ladle",
-]
-prefers_expressions = [
-    "focused",
-    "smile",
-    "determined",
-    "happy",
-]
+excluded_locations = []
+avoid_locations = []
+avoid_props = []
+avoid_actions = []

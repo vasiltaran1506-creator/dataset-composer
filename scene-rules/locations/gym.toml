@@ -57,6 +57,7 @@ excludes_props = [
 
 [soft_constraints]
 prefers_actions = [
+    "drinking",
     "exercising",
 ]
 prefers_props = [

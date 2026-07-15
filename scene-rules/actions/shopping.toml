@@ -36,3 +36,11 @@ prefers_expressions = [
     "smile",
     "joyful",
 ]
+excludes_actions = [
+    "bathing",
+    "cooking",
+    "dancing",
+    "eating",
+    "exercising",
+    "reading",
+]

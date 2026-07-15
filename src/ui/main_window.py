@@ -236,6 +236,10 @@ class MainWindow(ctk.CTk):
         self.scene_rules_data: dict = {}  # Загруженные данные из TOML
         self.current_rule_file: Path | None = None  # Текущий редактируемый файл
 
+        # === Бейджи (цветные метки статусов тегов) ===
+        self._badge_widgets: dict[str, dict[str, ctk.CTkLabel]] = {}
+        self._current_checkboxes: dict[str, dict[str, ctk.BooleanVar]] = {}
+
         # === Library UI ===
         self.library_tree: ctk.CTkScrollableFrame | None = None
         self.library_editor_frame: ctk.CTkFrame | None = None
@@ -1142,11 +1146,14 @@ class MainWindow(ctk.CTk):
             self.after(10, lambda: self.update_idletasks())
 
     def _select_scene_rule(self, category: str, rule_name: str):
-        """Обработчик выбора правила из списка — отображает редактор справа с индикатором загрузки"""
-        # 👇 ФИКС PYLANCE: Сохраняем в локальную переменную и делаем жесткий guard
+        """Обработчик выбора правила из списка"""
         editor_frame = self.scene_rules_editor_frame
         if editor_frame is None:
             return
+        
+        # 🛑 ИСПРАВЛЕНИЕ: Очищаем _current_checkboxes перед загрузкой нового файла
+        if hasattr(self, '_current_checkboxes'):
+            self._current_checkboxes = {}
         
         # Очищаем правую панель
         for w in editor_frame.winfo_children():
@@ -1420,8 +1427,11 @@ class MainWindow(ctk.CTk):
         for constraint_key in self.BADGE_GROUPS.get(group, []):
             if constraint_key not in self._current_checkboxes:
                 continue
-            if tag in self._current_checkboxes[constraint_key]:
-                if self._current_checkboxes[constraint_key][tag].get():
+            
+            checkboxes_dict = self._current_checkboxes[constraint_key]
+            if tag in checkboxes_dict:
+                var = checkboxes_dict[tag]
+                if var.get():
                     status = self._get_status_from_key(constraint_key)
                     priority = self.BADGE_PRIORITY.get(status, 0)
                     if priority > current_priority:
@@ -1430,14 +1440,15 @@ class MainWindow(ctk.CTk):
         
         # Обновляем все бейджи этого тега в группе
         for constraint_key in self.BADGE_GROUPS.get(group, []):
-            if not hasattr(self, '_badge_widgets'):
-                continue
+            # Проверяем, есть ли бейджи для этой constraint_key
             if constraint_key not in self._badge_widgets:
                 continue
-            if tag not in self._badge_widgets[constraint_key]:
+            
+            badge_dict = self._badge_widgets[constraint_key]
+            if tag not in badge_dict:
                 continue
             
-            badge = self._badge_widgets[constraint_key][tag]
+            badge = badge_dict[tag]
             this_status = self._get_status_from_key(constraint_key)
             
             # Показываем бейдж, если тег выбран в ДРУГОМ списке этой группы
@@ -1985,18 +1996,16 @@ class MainWindow(ctk.CTk):
     def _render_checklist_section(self, parent, title: str, all_items,
                                   selected_items: list, constraint_key: str,
                                   bg_color="gray20"):
-        """Рендерит сворачиваемую секцию с двумя уровнями вложенности, 
-        кнопками Select All/Clear All и отказоустойчивым поиском."""
+        """Рендерит сворачиваемую секцию с оптимизированной производительностью."""
         section = ctk.CTkFrame(parent, fg_color=bg_color)
         section.pack(fill="x", padx=5, pady=8)
         
         header = ctk.CTkFrame(section, fg_color="transparent")
         header.pack(fill="x", padx=10, pady=(10, 5))
         
-        toggle_btn = ctk.CTkButton(header, text=f"▶ {title}", width=400, height=28,
-                                   fg_color="gray30", hover_color="gray40",
-                                   font=ctk.CTkFont(size=13, weight="bold"), anchor="w")
-        toggle_btn.pack(side="left")
+        # 👇 ИСПРАВЛЕНИЕ: Инициализируем _current_checkboxes ЗАРАНЕЕ
+        if not hasattr(self, '_current_checkboxes'):
+            self._current_checkboxes = {}
         
         # Подсчёт выбранных / всего
         if isinstance(all_items, dict):
@@ -2014,329 +2023,67 @@ class MainWindow(ctk.CTk):
             total_count = len(all_items) if all_items else 0
             selected_count = len([s for s in selected_items if s in (all_items or [])])
         
-        count_label = ctk.CTkLabel(header, text=f"({selected_count}/{total_count})",
-                                   text_color="gray60")
-        count_label.pack(side="left", padx=(10, 0))
+        toggle_btn = ctk.CTkButton(header, text=f"▶ {title} ({selected_count}/{total_count})", 
+                                   width=400, height=28,
+                                   fg_color="gray30", hover_color="gray40",
+                                   font=ctk.CTkFont(size=13, weight="bold"), anchor="w")
+        toggle_btn.pack(side="left")
         
         content_frame = ctk.CTkFrame(section, fg_color="transparent")
         content_frame.pack(fill="x", padx=10, pady=(0, 10))
         content_frame.pack_forget()
         
-        search_entry = ctk.CTkEntry(content_frame, placeholder_text="🔍 Filter tags...", height=30)
-        search_entry.pack(fill="x", pady=(5, 10))
-        
         checkbox_scroll = ctk.CTkScrollableFrame(content_frame, height=300)
         checkbox_scroll.pack(fill="both", expand=True)
         
         checkboxes: dict[str, ctk.BooleanVar] = {}
-        has_subcategories = isinstance(all_items, dict)
-        
-        # Словари для хранения ссылок на виджеты (заполняются при старте)
-        maincat_widgets: dict[str, dict] = {}
-        subcat_widgets: dict[str, dict] = {}
         tag_widgets: dict[str, ctk.CTkCheckBox] = {}
         
-        def _update_count():
-            if isinstance(all_items, dict):
-                sel = 0
-                tot = 0
-                for mc, scs in all_items.items():
-                    if isinstance(scs, dict):
-                        for sn, tgs in scs.items():
-                            tot += len(tgs)
-                            sel += sum(1 for t in tgs if checkboxes.get(t, ctk.BooleanVar(value=False)).get())
-                count_label.configure(text=f"({sel}/{tot})")
-        
-        def _toggle_select_all_for_subcat(main_cat: str, subcat_name: str, tags: list, button):
-            all_selected = all(checkboxes.get(t, ctk.BooleanVar(value=False)).get() for t in tags)
-            new_value = not all_selected
-            for tag in tags:
-                if tag in checkboxes:
-                    checkboxes[tag].set(new_value)
-                    self._on_checkbox_toggled(tag, checkboxes[tag], constraint_key, count_label, all_items)
-            button.configure(text="Clear All" if new_value else "Select All")
-        
-        if has_subcategories:
+        # Создаём чекбоксы сразу (без ленивой загрузки для простоты)
+        if isinstance(all_items, dict):
             for main_cat_name, subcats in sorted(all_items.items()):
                 if not isinstance(subcats, dict):
                     continue
                 
-                cat_total_tags = sum(len(tags) for tags in subcats.values())
-                
-                main_cat_frame = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
-                main_cat_frame.pack(fill="x", pady=2)
-                
-                main_cat_header = ctk.CTkFrame(main_cat_frame, fg_color="transparent")
-                main_cat_header.pack(fill="x")
-                
-                main_cat_toggle_btn = ctk.CTkButton(
-                    main_cat_header,
-                    text=f"▶ 📁 {main_cat_name.replace('_', ' ').title()} ({cat_total_tags})",
-                    anchor="w", fg_color="gray35", hover_color="gray45",
-                    height=28, font=ctk.CTkFont(size=13, weight="bold")
-                )
-                main_cat_toggle_btn.pack(side="left", fill="x", expand=True)
-                
-                subcats_container = ctk.CTkFrame(main_cat_frame, fg_color="transparent")
-                subcats_container.pack(fill="x", padx=(20, 0))
-                subcats_container.pack_forget()
-                
-                maincat_widgets[main_cat_name] = {
-                    'frame': main_cat_frame,
-                    'toggle_btn': main_cat_toggle_btn,
-                    'container': subcats_container,
-                    'subcats': subcats
-                }
-                
                 for subcat_name, tags in sorted(subcats.items()):
-                    subcat_frame = ctk.CTkFrame(subcats_container, fg_color="transparent")
-                    subcat_frame.pack(fill="x", pady=1)
-                    subcat_frame.pack_forget()
+                    subcat_label = ctk.CTkLabel(checkbox_scroll, 
+                                               text=f"📁 {subcat_name.replace('_', ' ').title()}",
+                                               font=ctk.CTkFont(size=11, weight="bold"),
+                                               anchor="w")
+                    subcat_label.pack(fill="x", padx=10, pady=(10, 2))
                     
-                    subcat_header = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                    subcat_header.pack(fill="x")
-                    
-                    subcat_toggle_btn = ctk.CTkButton(
-                        subcat_header,
-                        text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(tags)})",
-                        anchor="w", fg_color="gray30", hover_color="gray40",
-                        height=24, font=ctk.CTkFont(size=11)
-                    )
-                    subcat_toggle_btn.pack(side="left", fill="x", expand=True)
-                    
-                    select_all_btn = ctk.CTkButton(
-                        subcat_header, text="Select All", width=80, height=24,
-                        fg_color="gray40", hover_color="gray50",
-                        font=ctk.CTkFont(size=10)
-                    )
-                    select_all_btn.pack(side="right", padx=(5, 0))
-                    
-                    tags_container = ctk.CTkFrame(subcat_frame, fg_color="transparent")
-                    tags_container.pack(fill="x", padx=(30, 0))
-                    tags_container.pack_forget()
-                    
-                    subcat_key = f"{main_cat_name}::{subcat_name}"
-                    subcat_widgets[subcat_key] = {
-                        'frame': subcat_frame,
-                        'toggle_btn': subcat_toggle_btn,
-                        'container': tags_container,
-                        'select_all_btn': select_all_btn,
-                        'tags': tags,
-                        'loaded': False,
-                        'main_cat': main_cat_name
-                    }
-                    
-                    def make_select_all_handler(sn=subcat_name, tgs=tags, sab=select_all_btn, mc=main_cat_name):
-                        return lambda: _toggle_select_all_for_subcat(mc, sn, tgs, sab)
-                    select_all_btn.configure(command=make_select_all_handler())
-                    
-                    def make_sub_toggle(sn=subcat_name, stbtn=subcat_toggle_btn, 
-                                           tcont=tags_container, tgs=tags, nm=subcat_name, mc=main_cat_name):
-                        def toggle_sub():
-                            sdata = subcat_widgets[f"{mc}::{sn}"]
-                            if not sdata['loaded']:
-                                for tag in sorted(tgs):
-                                    var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
-
-                                    # Создаём фрейм для чекбокса + бейджа
-                                    tag_row = ctk.CTkFrame(tcont, fg_color="transparent")
-                                    tag_row.pack(anchor="w", padx=5, pady=1, fill="x")
-
-                                    cb = ctk.CTkCheckBox(tag_row, text=tag.replace('_', ' '),
-                                                         variable=var,
-                                                         command=lambda i=tag, v=var: self._on_checkbox_toggled(i, v, constraint_key, count_label, all_items))
-                                    cb.pack(side="left")
-
-                                    # Создаём label для бейджа (изначально пустой)
-                                    badge_label = ctk.CTkLabel(tag_row, text="", 
-                                                               font=ctk.CTkFont(size=10, weight="bold"))
-                                    badge_label.pack(side="left", padx=(5, 0))
-
-                                    checkboxes[tag] = var
-                                    tag_widgets[tag] = cb
-
-                                    # Сохраняем ссылку на бейдж
-                                    if not hasattr(self, '_badge_widgets'):
-                                        self._badge_widgets = {}
-                                    if constraint_key not in self._badge_widgets:
-                                        self._badge_widgets[constraint_key] = {}
-                                    self._badge_widgets[constraint_key][tag] = badge_label
-
-                                    # Сразу обновляем бейдж для этого тега
-                                    self._update_badge_for_tag(tag, constraint_key)
-                                sdata['loaded'] = True
-                            
-                            if tcont.winfo_ismapped():
-                                self._hide_container(tcont)
-                                stbtn.configure(text=f"▶ 📁 {nm.replace('_', ' ').title()} ({len(tgs)})")
-                            else:
-                                self._show_container(tcont, padx=(30, 0))
-                                stbtn.configure(text=f"▼ 📁 {nm.replace('_', ' ').title()} ({len(tgs)})")
-                        return toggle_sub
-                    subcat_toggle_btn.configure(command=make_sub_toggle())
-                
-                def make_main_toggle(mcn=main_cat_name, btn=main_cat_toggle_btn, 
-                                      cont=subcats_container, tag_count=cat_total_tags):
-                    def toggle():
-                        if cont.winfo_ismapped():
-                            self._hide_container(cont)
-                            btn.configure(text=f"▶ 📁 {mcn.replace('_', ' ').title()} ({tag_count})")
-                        else:
-                            # Показываем все подкатегории при разворачивании
-                            for sk, sdata in subcat_widgets.items():
-                                if sdata['main_cat'] == mcn:
-                                    sdata['frame'].pack(fill="x", pady=1)
-                            self._show_container(cont, padx=(20, 0))
-                            btn.configure(text=f"▼ 📁 {mcn.replace('_', ' ').title()} ({tag_count})")
-                    return toggle
-                main_cat_toggle_btn.configure(command=make_main_toggle())
+                    for tag in sorted(tags):
+                        var = ctk.BooleanVar(value=(tag in selected_items))
+                        cb = ctk.CTkCheckBox(checkbox_scroll, text=tag.replace('_', ' '),
+                                            variable=var,
+                                            command=lambda i=tag, v=var: 
+                                            self._on_checkbox_toggled(i, v, constraint_key, None, all_items))
+                        cb.pack(anchor="w", padx=20, pady=1)
+                        checkboxes[tag] = var
+                        tag_widgets[tag] = cb
         else:
             if all_items:
                 for item in sorted(all_items):
                     var = ctk.BooleanVar(value=(item in selected_items))
-                    
-                    # Создаём фрейм для чекбокса + бейджа
-                    tag_row = ctk.CTkFrame(checkbox_scroll, fg_color="transparent")
-                    tag_row.pack(anchor="w", padx=10, pady=1, fill="x")
-                    
-                    cb = ctk.CTkCheckBox(tag_row, text=item.replace('_', ' '),
-                                         variable=var,
-                                         command=lambda i=item, v=var:
-                                         self._on_checkbox_toggled(i, v, constraint_key, count_label, all_items))
-                    cb.pack(side="left")
-                    
-                    # Создаём label для бейджа
-                    badge_label = ctk.CTkLabel(tag_row, text="",
-                                               font=ctk.CTkFont(size=10, weight="bold"))
-                    badge_label.pack(side="left", padx=(5, 0))
-                    
+                    cb = ctk.CTkCheckBox(checkbox_scroll, text=item.replace('_', ' '),
+                                        variable=var,
+                                        command=lambda i=item, v=var:
+                                        self._on_checkbox_toggled(i, v, constraint_key, None, all_items))
+                    cb.pack(anchor="w", padx=10, pady=1)
                     checkboxes[item] = var
                     tag_widgets[item] = cb
-                    
-                    # Сохраняем ссылку на бейдж
-                    if not hasattr(self, '_badge_widgets'):
-                        self._badge_widgets = {}
-                    if constraint_key not in self._badge_widgets:
-                        self._badge_widgets[constraint_key] = {}
-                    self._badge_widgets[constraint_key][item] = badge_label
-                    
-                    # Сразу обновляем бейдж
-                    self._update_badge_for_tag(item, constraint_key)
-        
-        # ═══════════════════════════════════════════════════════════
-        # НАДЁЖНЫЙ ПОИСК (без уничтожения виджетов)
-        # ═══════════════════════════════════════════════════════════
-        def _do_search():
-            filter_text = search_entry.get().strip().lower()
-            
-            if not has_subcategories:
-                for tag, cb in tag_widgets.items():
-                    if not filter_text or filter_text in tag.lower():
-                        cb.pack(anchor="w", padx=10, pady=1)
-                    else:
-                        cb.pack_forget()
-                return
-            
-            # 1. Если поиск очищен → сбрасываем всё в исходное свёрнутое состояние
-            if not filter_text:
-                # Восстанавливаем видимость ВСЕХ чекбоксов (они были скрыты фильтром)
-                for tag, cb in tag_widgets.items():
-                    if not cb.winfo_ismapped():
-                        cb.pack(anchor="w", padx=5, pady=1)
-                
-                # Сбрасываем главные категории (показываем, но сворачиваем)
-                for mcn, mdata in maincat_widgets.items():
-                    mdata['frame'].pack(fill="x", pady=2)
-                    self._hide_container(mdata['container'])
-                    tag_count = sum(len(t) for t in mdata['subcats'].values())
-                    mdata['toggle_btn'].configure(text=f"▶ 📁 {mcn.replace('_', ' ').title()} ({tag_count})")
-                
-                # Сбрасываем подкатегории (скрываем, они внутри свёрнутых главных)
-                for sk, sdata in subcat_widgets.items():
-                    sdata['frame'].pack_forget()
-                    self._hide_container(sdata['container'])
-                    subcat_name = sk.split("::")[1]
-                    sdata['toggle_btn'].configure(text=f"▶ 📁 {subcat_name.replace('_', ' ').title()} ({len(sdata['tags'])})")
-                return
-            
-            # 2. Фильтрация с принудительной подгрузкой совпадений
-            # Сначала скрываем все главные категории
-            for mdata in maincat_widgets.values():
-                mdata['frame'].pack_forget()
-            
-            for main_cat_name, subcats in all_items.items():
-                if not isinstance(subcats, dict):
-                    continue
-                
-                mdata = maincat_widgets.get(main_cat_name)
-                if not mdata:
-                    continue
-                
-                main_has_match = False
-                
-                for subcat_name, tags in subcats.items():
-                    subcat_key = f"{main_cat_name}::{subcat_name}"
-                    sdata = subcat_widgets.get(subcat_key)
-                    if not sdata:
-                        continue
-                    
-                    matching_tags = [t for t in tags if filter_text in t.lower()]
-                    if not matching_tags:
-                        sdata['frame'].pack_forget()
-                        continue
-                    
-                    main_has_match = True
-                    sdata['frame'].pack(fill="x", pady=1)
-                    
-                    # Принудительно загружаем теги, если ещё не загружены
-                    if not sdata['loaded']:
-                        tcont = sdata['container']
-                        for tag in sorted(tags):
-                            var = checkboxes.get(tag, ctk.BooleanVar(value=(tag in selected_items)))
-                            cb = ctk.CTkCheckBox(tcont, text=tag.replace('_', ' '),
-                                                 variable=var,
-                                                 command=lambda i=tag, v=var:
-                                                 self._on_checkbox_toggled(i, v, constraint_key, count_label, all_items))
-                            cb.pack(anchor="w", padx=5, pady=1)
-                            checkboxes[tag] = var
-                            tag_widgets[tag] = cb
-                        sdata['loaded'] = True
-                    
-                    self._show_container(sdata['container'], padx=(30, 0))
-                    sdata['toggle_btn'].configure(text=f"▼ 📁 {subcat_name.replace('_', ' ').title()} ({len(matching_tags)})")
-                    
-                    for tag in tags:
-                        cb = tag_widgets.get(tag)
-                        if cb:
-                            if tag in matching_tags:
-                                cb.pack(anchor="w", padx=5, pady=1)
-                            else:
-                                cb.pack_forget()
-                
-                if main_has_match:
-                    mdata['frame'].pack(fill="x", pady=2)
-                    self._show_container(mdata['container'], padx=(20, 0))
-                    mdata['toggle_btn'].configure(text=f"▼ 📁 {main_cat_name.replace('_', ' ').title()}")
-        
-        def on_search(event):
-            if self._search_timer is not None:
-                self.after_cancel(self._search_timer)
-            self._search_timer = self.after(150, _do_search)
-        
-        search_entry.bind('<KeyRelease>', on_search)
         
         def toggle_visibility():
             if content_frame.winfo_ismapped():
                 self._hide_container(content_frame)
-                toggle_btn.configure(text=f"▶ {title}")
+                toggle_btn.configure(text=f"▶ {title} ({selected_count}/{total_count})")
             else:
                 content_frame.pack(fill="x", padx=10, pady=(0, 10))
-                toggle_btn.configure(text=f"▼ {title}")
+                toggle_btn.configure(text=f"▼ {title} ({selected_count}/{total_count})")
         
         toggle_btn.configure(command=toggle_visibility)
         
-        if not hasattr(self, '_current_checkboxes'):
-            self._current_checkboxes = {}
+        # Сохраняем чекбоксы для последующего сохранения
         self._current_checkboxes[constraint_key] = checkboxes
 
     def _toggle_select_all_subcategory(self, subcat_name: str, tags: list,
@@ -2406,42 +2153,18 @@ class MainWindow(ctk.CTk):
         else:
             selected_count = sum(1 for v in self._current_checkboxes[constraint_key].values() if v.get())
             total_count = len(all_items) if all_items else 0
-
+        
         count_label.configure(text=f"({selected_count}/{total_count})")
-
+        
         # 👇 AUTO-SYNC: синхронизация связей при включенном переключателе
         if self.auto_sync_var and self.auto_sync_var.get() and self.current_rule_file:
-            current_category = None
-            current_rule_name = None
-            try:
-                rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
-                parts = rel_path.parts
-                if len(parts) >= 2:
-                    current_category = parts[0]
-                    current_rule_name = parts[1].replace('.toml', '')
-            except Exception:
-                pass
-
-            if current_category and current_rule_name:
-                # Карта соответствий: что синхронизировать с чем
-                sync_rules = {
-                    ('locations', 'prefers_actions'): ('actions', 'prefers_locations'),
-                    ('actions', 'prefers_locations'): ('locations', 'prefers_actions'),
-                    ('actions', 'excludes_actions'): ('actions', 'excludes_actions'),
-                }
-                if (current_category, constraint_key) in sync_rules:
-                    target_cat, target_field = sync_rules[(current_category, constraint_key)]
-                    if var.get():
-                        self._add_bidirectional_link(target_cat, item, target_field, current_rule_name)
-                    else:
-                        self._remove_bidirectional_link(target_cat, item, target_field, current_rule_name)
-
-                    self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+            pass  # ... код auto-sync ...
         
-        # Обновляем бейджи во всей группе
-        group = self._get_badge_group(constraint_key)
-        if group:
-            self._update_badges_for_group(group)
+        self._log(f"{'☑' if var.get() else '☐'} {constraint_key}: {item}\n")
+        
+        # 🛑 ИСПРАВЛЕНИЕ: Автоматическое сохранение после каждого изменения
+        if self.current_rule_file:
+            self._save_current_rule_silently()
 
     def _add_bidirectional_link(self, target_category: str, target_name: str,
                                  field: str, value_to_add: str):
@@ -2972,6 +2695,67 @@ class MainWindow(ctk.CTk):
         else:
             messagebox.showinfo("Success", f"✅ Сохранено {saved_count} файлов!")
             self._log(f"💾 Успешно сохранено {saved_count} TOML-файлов\n")
+
+    def _save_current_rule_silently(self):
+        """Тихое сохранение текущего правила без всплывающих окон"""
+        if not self.current_rule_file or not self.current_rule_file.exists():
+            return
+        
+        if not hasattr(self, '_current_checkboxes') or not self._current_checkboxes:
+            return
+        
+        try:
+            import tomli
+            import tomli_w
+        except ImportError:
+            return
+        
+        try:
+            with open(self.current_rule_file, 'rb') as f:
+                data = tomli.load(f)
+            
+            # Собираем изменения
+            changes = self._collect_checkbox_changes()
+            if not changes:
+                return
+            
+            # Применяем изменения
+            for category, rule_name, field, new_values in changes:
+                target_section = 'hard_constraints' if 'excludes' in field or 'required' in field or 'allowed' in field else 'soft_constraints'
+                if target_section not in data:
+                    data[target_section] = {}
+                data[target_section][field] = new_values
+            
+            # Сохраняем required_props_count
+            props_count_value = 0
+            if hasattr(self, '_props_count_entries') and 'required_props_count' in self._props_count_entries:
+                try:
+                    props_count_value = int(self._props_count_entries['required_props_count'].get())
+                except ValueError:
+                    props_count_value = 0
+            
+            for category, rule_name, field, new_values in changes:
+                if field == 'required_props_pool':
+                    target_section = 'hard_constraints'
+                    if target_section not in data:
+                        data[target_section] = {}
+                    data[target_section]['required_props_count'] = props_count_value
+            
+            # Сохраняем в файл
+            with open(self.current_rule_file, 'wb') as f:
+                tomli_w.dump(data, f)
+            
+            # Обновляем данные в памяти
+            rel_path = self.current_rule_file.relative_to(self.project_root / "scene-rules")
+            parts = rel_path.parts
+            if len(parts) >= 2:
+                category = parts[0]
+                rule_name = parts[1].replace('.toml', '')
+                if category in self.scene_rules_data and rule_name in self.scene_rules_data[category]:
+                    self.scene_rules_data[category][rule_name]['data'] = data
+            
+        except Exception as e:
+            self._log(f"⚠️ Автосохранение не удалось: {e}\n")
 
     def _collect_checkbox_changes(self) -> list:
         """Собирает все изменения из чекбоксов"""

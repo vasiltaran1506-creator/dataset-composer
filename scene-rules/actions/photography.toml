@@ -3,15 +3,7 @@ id = "photography"
 display_name = "Photography"
 
 [hard_constraints]
-allowed_locations = [
-    "street",
-    "park",
-    "beach",
-    "mountain",
-    "forest",
-    "rooftop",
-    "balcony",
-]
+allowed_locations = []
 excludes_locations = [
     "bathroom",
     "kitchen",
@@ -20,22 +12,21 @@ excludes_locations = [
     "gym",
     "classroom",
 ]
+required_props = []
+required_props_pool = []
+required_props_count = 0
+excludes_props = []
+excludes_actions = []
 
 [soft_constraints]
-prefers_locations = [
-    "street",
-    "park",
-    "beach",
-]
-prefers_poses = [
-    "standing",
-]
+prefers_locations = []
+prefers_poses = []
 prefers_props = [
     "camera",
-    "dslr",
-    "tripod",
+    "instant camera",
 ]
-prefers_expressions = [
-    "focused",
-    "determined",
-]
+prefers_expressions = []
+excluded_locations = []
+avoid_locations = []
+avoid_props = []
+avoid_actions = []

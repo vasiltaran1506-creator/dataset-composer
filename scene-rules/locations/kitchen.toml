@@ -54,11 +54,7 @@ excludes_props = [
 ]
 
 [soft_constraints]
-prefers_actions = [
-    "cooking",
-    "eating",
-    "drinking",
-]
+prefers_actions = []
 prefers_props = [
     "frying_pan",
     "pot",

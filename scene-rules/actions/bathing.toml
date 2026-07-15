@@ -3,9 +3,7 @@ id = "bathing"
 display_name = "Bathing"
 
 [hard_constraints]
-allowed_locations = [
-    "bathroom",
-]
+allowed_locations = []
 excludes_locations = [
     "kitchen",
     "bedroom",
@@ -17,18 +15,124 @@ excludes_locations = [
     "park",
     "classroom",
 ]
+required_props = []
+required_props_pool = []
+required_props_count = 0
+excludes_props = []
+excludes_actions = [
+    "baking",
+    "browsing",
+    "carrying bag",
+    "carrying box",
+    "catching",
+    "chatting",
+    "cleaning",
+    "climbing",
+    "cooking",
+    "coughing",
+    "crawling",
+    "crying",
+    "dancing",
+    "diving",
+    "dodging",
+    "doing yoga",
+    "drawing",
+    "drinking",
+    "dusting",
+    "eating",
+    "embracing",
+    "exercising",
+    "falling",
+    "fighting",
+    "floating",
+    "gardening",
+    "getting dressed",
+    "holding book",
+    "holding cup",
+    "holding phone",
+    "holding umbrella",
+    "holding weapon",
+    "ice skating",
+    "ironing",
+    "jogging",
+    "jumping",
+    "kicking",
+    "knitting",
+    "leaping",
+    "listening to music",
+    "looking at screen",
+    "martial arts pose",
+    "mopping",
+    "painting",
+    "playing basketball",
+    "playing guitar",
+    "playing instrument",
+    "playing piano",
+    "playing soccer",
+    "playing sports",
+    "playing tennis",
+    "playing violin",
+    "pointing at object",
+    "praying",
+    "punching",
+    "putting on jacket",
+    "reading",
+    "resting",
+    "riding a bicycle",
+    "roller skating",
+    "running",
+    "sewing",
+    "shopping",
+    "shouting",
+    "singing",
+    "skateboarding",
+    "skiing",
+    "skipping",
+    "sleeping",
+    "sneezing",
+    "snowboarding",
+    "spinning",
+    "sprinting",
+    "stirring pot",
+    "studying",
+    "surfing",
+    "sweeping",
+    "swimming",
+    "taking off jacket",
+    "throwing",
+    "tripping",
+    "tying ribbon",
+    "tying shoes",
+    "typing",
+    "typing on keyboard",
+    "using computer",
+    "using smartphone",
+    "waiting",
+    "waking up",
+    "watching tv",
+    "watering plants",
+    "whispering",
+    "writing",
+    "writing with pen",
+    "yawning",
+    "zipping up",
+]
 
 [soft_constraints]
-prefers_locations = [
-    "bathroom",
-]
-prefers_poses = [
-    "sitting_in_tub",
-    "reclining_in_tub",
-    "lying_in_tub",
-]
+prefers_locations = []
+prefers_poses = []
 prefers_props = []
-prefers_expressions = [
-    "relaxed",
-    "peaceful",
+prefers_expressions = []
+excluded_locations = []
+avoid_locations = []
+avoid_props = []
+avoid_actions = [
+    "doing laundry",
+]
+excludes_actions = [
+    "cooking",
+    "dancing",
+    "eating",
+    "exercising",
+    "reading",
 ]
