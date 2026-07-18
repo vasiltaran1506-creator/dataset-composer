@@ -1,0 +1,76 @@
+# Character Profile: 1111test
+# Фильтр поверх scene-rules
+character:
+  name: 1111test
+  age: 18
+  archetype: custom character
+fixed_traits:
+- slender
+- small breasts
+- blue eyes
+- round eyes
+- round face
+- ponytail
+- blonde hair
+- very short hair
+- pale skin
+outfit_whitelist:
+  default:
+    dresses:
+    - white dress
+    loungewear:
+    - loungewear
+    pajamas:
+    - pajamas
+    swimsuits:
+    - one-piece swimsuit
+    uniforms:
+    - school uniform
+    blouses:
+    - white blouse
+    coats:
+    - trench coat
+    jackets:
+    - denim jacket
+    shirts:
+    - white shirt
+    sweaters:
+    - oversized sweater
+    pants:
+    - blue denim jeans
+    shorts:
+    - denim shorts
+    skirts:
+    - pleated skirt
+    pantyhose:
+    - black pantyhose
+    socks:
+    - white ankle socks
+    thighhighs:
+    - black thighhighs
+    boots:
+    - ankle boots
+    shoes:
+    - white sneakers
+    bras:
+    - white bra
+    panties:
+    - white panties
+    handwear:
+    - gloves
+    headwear:
+    - beret
+underwear_whitelist: {}
+signature_props: []
+hair_rules:
+  default: hair down
+  conditional: []
+expression_filter:
+  prefer: []
+  avoid: []
+pose_filter:
+  prefer: []
+  avoid: []
+atmosphere_preferences:
+  lighting: []
+  weather: []
