@@ -441,14 +441,18 @@ class SettingsTab(ctk.CTkFrame):
             valid_value = self.settings_manager.get('generation_defaults', 'num_scenes')
             self.settings_scenes_var.set(str(valid_value))
     
-    def _save_balance_default(self, key: str, var: ctk.BooleanVar):
+    def _save_balance_default(self, key: str, var: Optional[ctk.BooleanVar]):
         """Сохраняет настройку балансировки."""
+        if var is None:
+            return
         value = var.get()
         self.settings_manager.set('generation_defaults', key, value)
         self.on_settings_changed('generation_defaults', key, value)
     
-    def _save_behavior(self, key: str, var: ctk.BooleanVar):
+    def _save_behavior(self, key: str, var: Optional[ctk.BooleanVar]):
         """Сохраняет настройку поведения."""
+        if var is None:
+            return
         value = var.get()
         self.settings_manager.set('behavior', key, value)
         self.on_settings_changed('behavior', key, value)
