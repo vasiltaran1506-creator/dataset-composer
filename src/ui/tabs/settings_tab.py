@@ -63,15 +63,15 @@ class SettingsTab(ctk.CTkFrame):
         self.grid_rowconfigure(0, weight=1)
         
         # UI переменные
-        self.settings_output_dir_var: ctk.StringVar | None = None
-        self.settings_profiles_dir_var: ctk.StringVar | None = None
-        self.settings_scenes_var: ctk.StringVar | None = None
-        self.settings_balance_locs: ctk.BooleanVar | None = None
-        self.settings_balance_acts: ctk.BooleanVar | None = None
-        self.settings_balance_weath: ctk.BooleanVar | None = None
-        self.settings_balance_cams: ctk.BooleanVar | None = None
-        self.settings_force_closure: ctk.BooleanVar | None = None
-        self.settings_confirm_delete: ctk.BooleanVar | None = None
+        self.settings_output_dir_var: ctk.StringVar = ctk.StringVar()
+        self.settings_profiles_dir_var: ctk.StringVar = ctk.StringVar()
+        self.settings_scenes_var: ctk.StringVar = ctk.StringVar()
+        self.settings_balance_locs: ctk.BooleanVar = ctk.BooleanVar()
+        self.settings_balance_acts: ctk.BooleanVar = ctk.BooleanVar()
+        self.settings_balance_weath: ctk.BooleanVar = ctk.BooleanVar()
+        self.settings_balance_cams: ctk.BooleanVar = ctk.BooleanVar()
+        self.settings_force_closure: ctk.BooleanVar = ctk.BooleanVar()
+        self.settings_confirm_delete: ctk.BooleanVar = ctk.BooleanVar()
         
         # Строим UI
         self._build_ui()
@@ -441,7 +441,7 @@ class SettingsTab(ctk.CTkFrame):
             valid_value = self.settings_manager.get('generation_defaults', 'num_scenes')
             self.settings_scenes_var.set(str(valid_value))
     
-    def _save_balance_default(self, key: str, var: Optional[ctk.BooleanVar]):
+    def _save_balance_default(self, key: str, var: ctk.BooleanVar | None):
         """Сохраняет настройку балансировки."""
         if var is None:
             return
@@ -449,7 +449,7 @@ class SettingsTab(ctk.CTkFrame):
         self.settings_manager.set('generation_defaults', key, value)
         self.on_settings_changed('generation_defaults', key, value)
     
-    def _save_behavior(self, key: str, var: Optional[ctk.BooleanVar]):
+    def _save_behavior(self, key: str, var: ctk.BooleanVar | None):
         """Сохраняет настройку поведения."""
         if var is None:
             return
