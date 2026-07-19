@@ -61,10 +61,17 @@ outfit_whitelist:
     headwear:
     - beret
 underwear_whitelist: {}
-signature_props: []
+signature_props:
+- name: 111TestName
+  tags:
+  - magazine
+  - new_tag
 hair_rules:
   default: hair down
-  conditional: []
+  conditional:
+  - if_action: []
+    style: twintails
+    probability: 0.81
 expression_filter:
   prefer: []
   avoid: []
