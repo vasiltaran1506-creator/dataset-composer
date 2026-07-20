@@ -869,6 +869,7 @@ class LibraryTab(QWidget):
     def _auto_fix_tag_format(self):
         """Автоматически исправляет формат тегов (заглушка для следующего шага)"""
         QMessageBox.information(self, "Info", "Auto-fix functionality coming in next step...")
+
     def _load_scene_rules(self):
         """Загружает все TOML-файлы из папки scene-rules"""
         self.scene_rules_data = {}
