@@ -14,6 +14,9 @@ fixed_traits:
 - blonde hair
 - very short hair
 - pale skin
+- '12345'
+- test
+- test2
 outfit_whitelist:
   default:
     dresses:
@@ -61,10 +64,17 @@ outfit_whitelist:
     headwear:
     - beret
 underwear_whitelist: {}
-signature_props: []
+signature_props:
+- name: 111TestName
+  tags:
+  - magazine
+  - new_tag
 hair_rules:
   default: hair down
-  conditional: []
+  conditional:
+  - if_action: []
+    style: twintails
+    probability: 0.81
 expression_filter:
   prefer: []
   avoid: []
@@ -72,5 +82,9 @@ pose_filter:
   prefer: []
   avoid: []
 atmosphere_preferences:
-  lighting: []
-  weather: []
+  lighting:
+  - front lighting
+  - rim light
+  weather:
+  - clear sky
+  - sunbeam

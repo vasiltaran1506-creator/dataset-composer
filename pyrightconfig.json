@@ -1,0 +1,10 @@
+{
+  "include": ["src"],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "**/.git"
+  ],
+  "reportAttributeAccessIssue": "none",
+  "reportOptionalMemberAccess": "none"
+}

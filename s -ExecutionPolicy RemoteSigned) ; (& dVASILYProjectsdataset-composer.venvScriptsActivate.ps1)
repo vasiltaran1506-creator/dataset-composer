@@ -1,0 +1,96 @@
+* [33ma463813[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/qt-migration[m[33m, [m[1;31morigin/feature/refactor-architecture[m[33m, [m[1;31morigin/feature/qt-migration[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mfeature/refactor-architecture[m[33m, [m[1;32mdevelop[m[33m)[m fixed main_window.py issues
+* [33m196de0a[m settings_tab.py issue fixes
+* [33mf1ef426[m Update settings_tab.py
+* [33mfca5a74[m Refactored library, profiles and settings tabs
+* [33mf187243[m refracted analyzer, generate and settings tabs
+* [33m81f4475[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m 123
+* [33m6813ae3[m Delete all_tags.json
+* [33m6572ef6[m 123
+* [33m053ec2d[m 123
+* [33m26d53a3[m fixed some bugs and added normal generation validation
+* [33m7e6e2b0[m BUGS BUGS BUGS and some new features
+* [33mdee557c[m New features in scene rules and cross-validation
+* [33m42937fc[m Tag lib editing
+* [33mdb9aa2a[m Validation for tag library
+* [33ma1d0da4[m Major fixes
+* [33me90f971[m Some fixes
+* [33m6a875c9[m Added Settings tab v0.5
+* [33m0ac8b9f[m UI Fixes
+* [33m5cdfb79[m 123
+* [33m6e17271[m Bugs in UI
+* [33m3f04554[m Added full-functiomal Library tab with sync param
+* [33made29f4[m Library tab with some bugs
+* [33m38a9b19[m Performance maintaince and new tab Library v0.5
+* [33m66eb976[m UI Polishing V1,5
+* [33mc9091e4[m UI Polishing v1
+* [33mc148310[m Full UI before Polishing
+* [33m0893376[m Atmosphere added in UI
+* [33m98bf5da[m Added Signature Finally!!!
+* [33m34db825[m Expression aded
+* [33me5d4766[m DNA Outfits and custom
+* [33m4645ad2[m 123
+* [33md95d2f6[m Coverage engine release and bug fix with file counter
+* [33mbf5a450[m With  generation bug
+* [33m564ea9d[m Added analyzer in ui (1/2)
+* [33m97b6ed1[m 123
+* [33mfa0e376[m UI start
+* [33md0337b6[m Syntaxis errors
+* [33ma6ac541[m added analyzer
+* [33mf1b0785[m Added Coverage Engine.md file
+* [33m32d9d74[m Release v1.0: Rule Inheritance, Smart Validator & Architecture Polish
+* [33ma7baea7[m 123
+* [33mec315d3[m adjustments in rules
+* [33md86deb2[m 123
+* [33m7131cea[m 123
+* [33m13559ac[m Fix location/action logic and prop requirements
+* [33m870bc6b[m 123
+* [33meea9e52[m 123
+* [33m85b3c90[m more prompts
+* [33m3078671[m more rules
+* [33mb3de3bb[m mvp end
+* [33mcc82cca[m Restore universal location rules
+* [33m571b313[m new rules
+* [33mb2a253e[m new scene rules and more
+* [33m8b22536[m 123
+* [33m907d37e[m fix toml styles mapping
+* [33m6ec1ff6[m code
+* [33m5a9683a[m mvp 3.0
+* [33m0889b4b[m New code
+* [33m47b7ec0[m Code
+* [33m1dd15ea[m Some fixing
+* [33m4fd74df[m Code
+* [33mf62ab72[m Added some location rules
+* [33me61b3ab[m Added some location rules and principles for scene nspecification
+* [33m5df6896[m Added file with Luna's prefers
+* [33m13a5884[m Add atomized prompt library structure
+* [33m73f25e3[m Update legwear.txt
+* [33mcd464a0[m Create legwear.txt
+* [33md478c68[m Create bottoms.txt
+* [33m239e1be[m Create tops.txt
+* [33m189beb3[m Rename ColorTemperature.txt to ColorTemperature.txt
+* [33m4f4bb31[m Rename ColorTemperature.txt to ColorTemperature.txt
+* [33m766f28b[m Add files via upload
+* [33m2b74425[m Update reading.toml
+* [33mead4b64[m Update beach.toml
+* [33m76fbb33[m Create close_up.toml
+* [33mf11d1c4[m Create sleeping.toml
+* [33m06b1645[m Create swimsuit.toml
+* [33m82753f3[m Create reading.toml
+* [33m16681c5[m Create library.toml
+* [33mbc5128e[m Create bedroom.toml
+* [33mb4318e6[m Create beach.toml
+* [33m404d8db[m Rename Scene Specification v1.1.md to Scene Specification v1.0.md
+* [33m6af805e[m Rename Scene Model v1.0.md to Scene Model.md
+* [33m3e48a8d[m Update Scene Model v1.0.md
+* [33m2eb507e[m Delete docs/Scene Model.md
+* [33m3229e99[m Revise Scene Model v1.0 documentation
+* [33m504793f[m Rename Scene Specification v1.0.md to Scene Model v1.0.md
+* [33m74dca62[m Rename Prompt Library Specification.md to Scene Specification v1.1.md
+* [33m8308311[m Create Scene Model.md
+* [33m58edc29[m Create .gitkeep
+* [33mca1943e[m Create .gitkeep
+* [33med99be8[m Create .gitkeep
+* [33madf3259[m Rename Scene Model v1.0.md to Scene Specification v1.0.md
+* [33m3384a8b[m Update Scene Model v1.0.md
+* [33me271eb5[m Add files via upload
+* [33m28e312c[m Initial commit
