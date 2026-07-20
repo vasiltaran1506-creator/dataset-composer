@@ -30,7 +30,7 @@ class LibraryTab(QWidget):
 
         # Состояние Scene Rules
         self.scene_rules_data = {}
-        self.current_rule_file: Path | None = None
+        self.current_rule_file: str | None = None
         self._current_checkboxes = {}
 
         self._setup_ui()

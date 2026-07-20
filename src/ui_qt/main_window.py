@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QWidget, 
-                               QVBoxLayout, QLabel, QStatusBar)
+                               QVBoxLayout, QLabel, QStatusBar, QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QPalette, QColor
 
