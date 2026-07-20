@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                                QLabel, QLineEdit, QPushButton, QTextEdit,
-                               QTabWidget, QTreeWidget, QTreeWidgetItem,
-                               QScrollArea, QFrame, QGroupBox, QMessageBox,
-                               QComboBox, QFileDialog, QInputDialog,
-                               QSplitter, QApplication)
+                               QPlainTextEdit, QTabWidget, QTreeWidget,
+                               QTreeWidgetItem, QScrollArea, QFrame,
+                               QGroupBox, QMessageBox, QComboBox,
+                               QFileDialog, QInputDialog, QSplitter,
+                               QApplication)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 from pathlib import Path
@@ -58,6 +59,9 @@ class ProfilesTab(QWidget):
         self.lighting_tag_ui_elements: dict[str, dict] = {}
         self.weather_tag_ui_elements: dict[str, dict] = {}
         
+        # Custom
+        self.other_traits_text = None
+
         # Кэш
         self._tags_cache = {}
         
@@ -217,15 +221,18 @@ class ProfilesTab(QWidget):
         self._setup_atmosphere_tab(atmosphere_widget)
         self.editor_tabview.addTab(atmosphere_widget, "🌍 Atmosphere")
         
+        # Custom
         custom_widget = QWidget()
-        custom_layout = QVBoxLayout(custom_widget)
-        custom_layout.addWidget(QLabel("✍️ Custom — coming soon..."))
+        self._setup_custom_tab(custom_widget)
         self.editor_tabview.addTab(custom_widget, "✍️ Custom")
         
-        preview_widget = QWidget()
-        preview_layout = QVBoxLayout(preview_widget)
-        preview_layout.addWidget(QLabel("📄 Preview — coming soon..."))
-        self.editor_tabview.addTab(preview_widget, "📄 Preview")
+        # Preview
+        self.preview_widget = QWidget()
+        self._setup_preview_tab(self.preview_widget)
+        self.editor_tabview.addTab(self.preview_widget, "📄 Preview")
+        
+        # Автообновление Preview при переключении вкладок
+        self.editor_tabview.currentChanged.connect(self._on_editor_tab_changed)
         
         right_layout.addWidget(self.editor_tabview)
         
@@ -1563,15 +1570,23 @@ class ProfilesTab(QWidget):
         with open(profile_path, 'r', encoding='utf-8') as f:
             profile = yaml.safe_load(f)
         
-        # Загружаем DNA
+        # Загружаем DNA + Custom
         self.selected_dna_tags = []
         fixed_traits = profile.get('fixed_traits', [])
         all_dna_tags = {ui['tag']: ui['category'] for ui in self.dna_tag_ui_elements.values()}
+        other_traits = []
         
         for trait in fixed_traits:
             if trait in all_dna_tags:
                 self.selected_dna_tags.append({'tag': trait, 'category': all_dna_tags[trait]})
+            else:
+                other_traits.append(trait)
         
+        # Загружаем Custom теги
+        if hasattr(self, 'other_traits_text') and self.other_traits_text:
+            self.other_traits_text.clear()
+            if other_traits:
+                self.other_traits_text.setPlainText(", ".join(other_traits))        
         self._sync_dna_tag_ui_states()
         self._refresh_selected_dna_tags_display()
         
@@ -1629,6 +1644,9 @@ class ProfilesTab(QWidget):
         self._sync_weather_ui_states()
         self._refresh_selected_lighting_display()
         self._refresh_selected_weather_display()
+
+        # Автообновление YAML-превью
+        self._refresh_yaml_preview()
 
     def _sync_dna_tag_ui_states(self):
         """Синхронизирует UI DNA с текущими выбранными тегами"""
@@ -1757,6 +1775,10 @@ class ProfilesTab(QWidget):
             self.selected_dna_tags = []
             self._sync_dna_tag_ui_states()
             self._refresh_selected_dna_tags_display()
+
+            # Очищаем Custom
+            if hasattr(self, 'other_traits_text') and self.other_traits_text:
+                self.other_traits_text.clear()
             
             # Очищаем Outfits
             self.selected_wardrobe_tags = []
@@ -1859,8 +1881,11 @@ class ProfilesTab(QWidget):
         
         profile['character'] = self.profile_character_data.copy()
         
-        # DNA
+        # DNA + Custom
         selected_traits = [entry['tag'] for entry in self.selected_dna_tags]
+        other_text = self.other_traits_text.toPlainText().strip() if hasattr(self, 'other_traits_text') and self.other_traits_text else ""
+        if other_text:
+            selected_traits.extend([t.strip() for t in other_text.split(',') if t.strip()])
         profile['fixed_traits'] = selected_traits
 
         # Одежда
@@ -3192,3 +3217,320 @@ class ProfilesTab(QWidget):
                         background-color: #16a34a;
                     }
                 """)
+
+    # ═══════════════════════════════════════════════
+    # CUSTOM (Произвольные теги)
+    # ═══════════════════════════════════════════════
+    def _setup_custom_tab(self, widget: QWidget):
+        """Настраивает субвкладку Custom"""
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(5, 5, 5, 5)
+
+        # Заголовок
+        title = QLabel("✍️ Custom Traits (Advanced)")
+        title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        layout.addWidget(title)
+
+        # Описание
+        description_frame = QFrame()
+        description_frame.setStyleSheet("""
+            QFrame {
+                background-color: #2a2a2a;
+                border-radius: 10px;
+            }
+        """)
+        description_layout = QVBoxLayout(description_frame)
+        description_layout.setContentsMargins(15, 15, 15, 15)
+
+        description_label = QLabel(
+            "⚙️ Для продвинутых пользователей\n\n"
+            "Эта вкладка позволяет добавить произвольные теги.\n\n"
+            "💡 Примеры:\n"
+            "• Составные описания: 'long straight light blue hair'\n"
+            "• Редкие теги: 'freckles', 'beauty mark'\n"
+            "• Модификаторы: 'cinematic lighting'"
+        )
+        description_label.setStyleSheet("color: #cccccc;")
+        description_label.setWordWrap(True)
+        description_layout.addWidget(description_label)
+
+        layout.addWidget(description_frame)
+
+        # Подсказка
+        hint_label = QLabel("   Введите теги через запятую:")
+        hint_label.setStyleSheet("color: gray;")
+        layout.addWidget(hint_label)
+
+        # Текстовое поле для произвольных тегов
+        self.other_traits_text = QPlainTextEdit()
+        self.other_traits_text.setMaximumHeight(150)
+        self.other_traits_text.setPlaceholderText("freckles, beauty mark, cinematic lighting, ...")
+        self.other_traits_text.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #444;
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        layout.addWidget(self.other_traits_text)
+
+        layout.addStretch()
+
+    # ═══════════════════════════════════════════════
+    # PREVIEW (YAML превью)
+    # ═══════════════════════════════════════════════
+    def _setup_preview_tab(self, widget: QWidget):
+        """Настраивает субвкладку Preview"""
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(5, 5, 5, 5)
+
+        # Заголовок
+        title = QLabel("📄 YAML Preview (Live)")
+        title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        layout.addWidget(title)
+
+        # Кнопки
+        buttons_frame = QWidget()
+        buttons_layout = QHBoxLayout(buttons_frame)
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
+
+        refresh_btn = QPushButton("🔄 Refresh from Editor")
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                font-weight: bold;
+                padding: 5px 15px;
+            }
+            QPushButton:hover {
+                background-color: #2563eb;
+            }
+        """)
+        refresh_btn.clicked.connect(self._refresh_yaml_preview)
+        buttons_layout.addWidget(refresh_btn)
+
+        apply_btn = QPushButton("✅ Apply Changes to Editor")
+        apply_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #22c55e;
+                color: white;
+                font-weight: bold;
+                padding: 5px 15px;
+            }
+            QPushButton:hover {
+                background-color: #16a34a;
+            }
+        """)
+        apply_btn.clicked.connect(self._apply_yaml_to_editor)
+        buttons_layout.addWidget(apply_btn)
+
+        copy_btn = QPushButton("📋 Copy YAML")
+        copy_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #404040;
+                color: white;
+                padding: 5px 15px;
+            }
+            QPushButton:hover {
+                background-color: #505050;
+            }
+        """)
+        copy_btn.clicked.connect(self._copy_yaml_to_clipboard)
+        buttons_layout.addWidget(copy_btn)
+
+        buttons_layout.addStretch()
+        layout.addWidget(buttons_frame)
+
+        # YAML текстовое поле
+        self.yaml_textbox = QPlainTextEdit()
+        self.yaml_textbox.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #444;
+                border-radius: 5px;
+                padding: 5px;
+                font-family: Consolas, 'Courier New', monospace;
+                font-size: 12px;
+            }
+        """)
+        layout.addWidget(self.yaml_textbox, 1)
+
+        self._refresh_yaml_preview()
+
+    def _on_editor_tab_changed(self, index: int):
+        """Автоматически обновляет YAML-превью при переключении на вкладку Preview"""
+        if not hasattr(self, 'preview_widget') or not hasattr(self, 'yaml_textbox'):
+            return
+        if self.yaml_textbox is None:
+            return
+        # Если пользователь переключился именно на вкладку Preview — обновляем
+        if self.editor_tabview.widget(index) is self.preview_widget:
+            self._refresh_yaml_preview()
+
+    def _refresh_yaml_preview(self):
+        """Обновляет текстовое превью YAML во вкладке Preview"""
+        if not hasattr(self, 'yaml_textbox') or self.yaml_textbox is None:
+            return
+        if not self.current_profile_name:
+            self.yaml_textbox.setPlainText("# No profile selected")
+            return
+
+        profile = self._get_default_profile_structure(self.current_profile_name)
+        profile['character'] = self.profile_character_data.copy() if self.profile_character_data else {
+            'name': self.current_profile_name, 'age': 18, 'archetype': 'custom character'
+        }
+
+        # DNA + Custom
+        selected_traits = [entry['tag'] for entry in self.selected_dna_tags]
+        other_text = self.other_traits_text.toPlainText().strip() if self.other_traits_text else ""
+        if other_text:
+            selected_traits.extend([t.strip() for t in other_text.split(',') if t.strip()])
+        profile['fixed_traits'] = selected_traits
+
+        # Outfits
+        wardrobe_by_subcat = {}
+        for entry in self.selected_wardrobe_tags:
+            wardrobe_by_subcat.setdefault(entry['subcategory'], []).append(entry['tag'])
+        profile['outfit_whitelist'] = {'default': wardrobe_by_subcat}
+
+        # Personality
+        profile['expression_filter'] = {
+            'prefer': [t['tag'] for t in self.preferred_personality_tags if t.get('category') == 'Expressions'],
+            'avoid': [t['tag'] for t in self.avoided_personality_tags if t.get('category') == 'Expressions']
+        }
+        profile['pose_filter'] = {
+            'prefer': [t['tag'] for t in self.preferred_personality_tags if t.get('category') == 'Poses'],
+            'avoid': [t['tag'] for t in self.avoided_personality_tags if t.get('category') == 'Poses']
+        }
+
+        # Signature
+        profile['signature_props'] = self.signature_props
+        profile['hair_rules'] = {
+            'default': self.hair_rules_data.get('default', 'hair down'),
+            'conditional': self.hair_rules_data.get('conditional', [])
+        }
+
+        # Atmosphere
+        profile['atmosphere_preferences'] = {
+            'lighting': self.selected_lighting_tags,
+            'weather': self.selected_weather_tags
+        }
+
+        yaml_str = yaml.dump(profile, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        header = f"# Character Profile: {self.current_profile_name}\n# Фильтр поверх scene-rules\n"
+        self.yaml_textbox.setPlainText(header + yaml_str)
+
+    def _apply_yaml_to_editor(self):
+        """Применяет изменения из текстового YAML-превью обратно в UI"""
+        if not hasattr(self, 'yaml_textbox') or self.yaml_textbox is None:
+            return
+
+        try:
+            profile = yaml.safe_load(self.yaml_textbox.toPlainText().strip())
+            if not profile:
+                QMessageBox.warning(self, "Warning", "YAML пустой")
+                return
+
+            # Character
+            character = profile.get('character', {})
+            if character:
+                self.profile_character_data = character.copy()
+
+            # Обработка переименования
+            new_name = character.get('name', self.current_profile_name)
+            if new_name != self.current_profile_name:
+                old_path = self.profiles_directory / f"{self.current_profile_name}.yaml"
+                if not old_path.exists():
+                    old_path = self.project_root / "character-profile.yaml"
+                new_path = self.profiles_directory / f"{new_name}.yaml"
+                if old_path.exists() and not new_path.exists():
+                    shutil.move(str(old_path), str(new_path))
+                self.current_profile_name = new_name
+                self.editor_title.setText(f"👤 Editing: {new_name}")
+                self._refresh_profiles_list()
+
+            # DNA + Custom
+            self.selected_dna_tags = []
+            fixed_traits = profile.get('fixed_traits', [])
+            all_dna_tags = {ui['tag']: ui['category'] for ui in self.dna_tag_ui_elements.values()}
+            other_traits = []
+            for trait in fixed_traits:
+                if trait in all_dna_tags:
+                    self.selected_dna_tags.append({'tag': trait, 'category': all_dna_tags[trait]})
+                else:
+                    other_traits.append(trait)
+
+            self._sync_dna_tag_ui_states()
+            self._refresh_selected_dna_tags_display()
+
+            if self.other_traits_text:
+                self.other_traits_text.clear()
+                if other_traits:
+                    self.other_traits_text.setPlainText(", ".join(other_traits))
+
+            # Outfits
+            self.selected_wardrobe_tags = []
+            for outfit_name, subcats in profile.get('outfit_whitelist', {}).items():
+                if isinstance(subcats, dict):
+                    for subcategory, tags in subcats.items():
+                        if isinstance(tags, list):
+                            for tag in tags:
+                                self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': subcategory})
+            self._sync_tag_ui_states()
+            self._refresh_selected_tags_display()
+
+            # Personality
+            self.preferred_personality_tags = []
+            self.avoided_personality_tags = []
+            for t in profile.get('expression_filter', {}).get('prefer', []):
+                self.preferred_personality_tags.append({'tag': t, 'category': 'Expressions'})
+            for t in profile.get('expression_filter', {}).get('avoid', []):
+                self.avoided_personality_tags.append({'tag': t, 'category': 'Expressions'})
+            for t in profile.get('pose_filter', {}).get('prefer', []):
+                self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
+            for t in profile.get('pose_filter', {}).get('avoid', []):
+                self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
+            self._sync_personality_ui_states()
+            self._refresh_personality_tags_display()
+
+            # Signature
+            self.signature_props = profile.get('signature_props', [])
+            hair_rules = profile.get('hair_rules', {})
+            self.hair_rules_data = {
+                'default': hair_rules.get('default', 'hair down'),
+                'conditional': hair_rules.get('conditional', [])
+            }
+            self._refresh_signature_props_display()
+            self._refresh_hair_rules_display()
+
+            # Atmosphere
+            atmosphere = profile.get('atmosphere_preferences', {})
+            self.selected_lighting_tags = atmosphere.get('lighting', [])
+            self.selected_weather_tags = atmosphere.get('weather', [])
+            self._sync_lighting_ui_states()
+            self._sync_weather_ui_states()
+            self._refresh_selected_lighting_display()
+            self._refresh_selected_weather_display()
+
+            QMessageBox.information(self, "Success", "YAML применён!")
+
+        except yaml.YAMLError as e:
+            QMessageBox.critical(self, "YAML Error", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
+    def _copy_yaml_to_clipboard(self):
+        """Копирует YAML в буфер обмена"""
+        if not hasattr(self, 'yaml_textbox') or self.yaml_textbox is None:
+            return
+
+        content = self.yaml_textbox.toPlainText()
+        if not content.strip():
+            QMessageBox.information(self, "Info", "YAML пуст")
+            return
+
+        QApplication.clipboard().setText(content)
+        QMessageBox.information(self, "Copied", "✅ YAML скопирован!")
