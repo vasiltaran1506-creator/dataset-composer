@@ -51,6 +51,12 @@ class ProfilesTab(QWidget):
         self.hair_rules_data: dict = {'default': 'hair down', 'conditional': []}
         self._popup_selected_tags: set[str] = set()
         self._popup_selected_actions: set[str] = set()
+
+        # Atmosphere
+        self.selected_lighting_tags: list[str] = []
+        self.selected_weather_tags: list[str] = []
+        self.lighting_tag_ui_elements: dict[str, dict] = {}
+        self.weather_tag_ui_elements: dict[str, dict] = {}
         
         # Кэш
         self._tags_cache = {}
@@ -206,9 +212,9 @@ class ProfilesTab(QWidget):
         self._setup_signature_tab(signature_widget)
         self.editor_tabview.addTab(signature_widget, "✨ Signature")
         
+        # Atmosphere
         atmosphere_widget = QWidget()
-        atmosphere_layout = QVBoxLayout(atmosphere_widget)
-        atmosphere_layout.addWidget(QLabel("🌍 Atmosphere — coming soon..."))
+        self._setup_atmosphere_tab(atmosphere_widget)
         self.editor_tabview.addTab(atmosphere_widget, "🌍 Atmosphere")
         
         custom_widget = QWidget()
@@ -1613,6 +1619,17 @@ class ProfilesTab(QWidget):
         self._refresh_signature_props_display()
         self._refresh_hair_rules_display()
 
+        # === БЫСТРАЯ ЗАГРУЗКА: Atmosphere ===
+        atmosphere = profile.get('atmosphere_preferences', {})
+        self.selected_lighting_tags = atmosphere.get('lighting', [])
+        self.selected_weather_tags = atmosphere.get('weather', [])
+        
+        # ОБНОВЛЯЕМ UI после загрузки данных
+        self._sync_lighting_ui_states()
+        self._sync_weather_ui_states()
+        self._refresh_selected_lighting_display()
+        self._refresh_selected_weather_display()
+
     def _sync_dna_tag_ui_states(self):
         """Синхронизирует UI DNA с текущими выбранными тегами"""
         if not self.dna_tag_ui_elements:
@@ -1757,6 +1774,14 @@ class ProfilesTab(QWidget):
             self.hair_rules_data = {'default': 'hair down', 'conditional': []}
             self._refresh_signature_props_display()
             self._refresh_hair_rules_display()
+
+            # Очищаем Atmosphere
+            self.selected_lighting_tags = []
+            self.selected_weather_tags = []
+            self._sync_lighting_ui_states()
+            self._sync_weather_ui_states()
+            self._refresh_selected_lighting_display()
+            self._refresh_selected_weather_display()
             
             self._refresh_profiles_list()
             QMessageBox.information(self, "Success", "Profile deleted!")
@@ -1861,10 +1886,12 @@ class ProfilesTab(QWidget):
             'conditional': self.hair_rules_data.get('conditional', [])
         }
         
-        # Atmosphere (пока пустые, добавим в следующем шаге)
-        if 'atmosphere_preferences' not in profile:
-            profile['atmosphere_preferences'] = {'lighting': [], 'weather': []}
-        
+        # Atmosphere (Lighting + Weather)
+        profile['atmosphere_preferences'] = {
+            'lighting': self.selected_lighting_tags,
+            'weather': self.selected_weather_tags
+        }
+
         with open(profile_path, 'w', encoding='utf-8') as f:
             f.write(f"# Character Profile: {self.current_profile_name}\n")
             f.write("# Фильтр поверх scene-rules\n")
@@ -2542,3 +2569,626 @@ class ProfilesTab(QWidget):
                 slider_widget.setValue(int(value * 100))
         except ValueError:
             pass
+
+    # ═══════════════════════════════════════════════
+    # ATMOSPHERE (Lighting + Weather)
+    # ═══════════════════════════════════════════════
+    def _setup_atmosphere_tab(self, widget: QWidget):
+        """Настраивает субвкладку Atmosphere"""
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(5, 5, 5, 5)
+
+        # Заголовок
+        layout.addWidget(QLabel("🌍 Atmosphere Preferences"))
+
+        # Скроллируемая область для обеих секций
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setSpacing(10)
+
+        # === LIGHTING SECTION ===
+        lighting_group = QGroupBox("💡 Lighting Preferences")
+        lighting_layout = QVBoxLayout(lighting_group)
+
+        self.lighting_tree_frame = QWidget()
+        self.lighting_tree_layout = QVBoxLayout(self.lighting_tree_frame)
+        self.lighting_tree_layout.setContentsMargins(0, 0, 0, 0)
+        self.lighting_tree_layout.setSpacing(2)
+        self._build_lighting_tree()
+        lighting_layout.addWidget(self.lighting_tree_frame)
+
+        # Выбранные lighting теги
+        selected_lighting_frame = QGroupBox("✅ Selected Lighting")
+        selected_lighting_layout = QVBoxLayout(selected_lighting_frame)
+
+        self.selected_lighting_container = QScrollArea()
+        self.selected_lighting_container.setWidgetResizable(True)
+        self.selected_lighting_container.setMaximumHeight(120)
+        self.selected_lighting_container.setFrameShape(QFrame.NoFrame)
+
+        selected_lighting_widget = QWidget()
+        self.selected_lighting_layout = QHBoxLayout(selected_lighting_widget)
+        self.selected_lighting_layout.setSpacing(5)
+        self.selected_lighting_layout.addStretch()
+
+        self.selected_lighting_container.setWidget(selected_lighting_widget)
+        selected_lighting_layout.addWidget(self.selected_lighting_container)
+
+        lighting_layout.addWidget(selected_lighting_frame)
+        scroll_layout.addWidget(lighting_group)
+
+        # === WEATHER SECTION ===
+        weather_group = QGroupBox("🌦️ Weather Preferences")
+        weather_layout = QVBoxLayout(weather_group)
+
+        self.weather_tree_frame = QWidget()
+        self.weather_tree_layout = QVBoxLayout(self.weather_tree_frame)
+        self.weather_tree_layout.setContentsMargins(0, 0, 0, 0)
+        self.weather_tree_layout.setSpacing(2)
+        self._build_weather_tree()
+        weather_layout.addWidget(self.weather_tree_frame)
+
+        # Выбранные weather теги
+        selected_weather_frame = QGroupBox("✅ Selected Weather")
+        selected_weather_layout = QVBoxLayout(selected_weather_frame)
+
+        self.selected_weather_container = QScrollArea()
+        self.selected_weather_container.setWidgetResizable(True)
+        self.selected_weather_container.setMaximumHeight(120)
+        self.selected_weather_container.setFrameShape(QFrame.NoFrame)
+
+        selected_weather_widget = QWidget()
+        self.selected_weather_layout = QHBoxLayout(selected_weather_widget)
+        self.selected_weather_layout.setSpacing(5)
+        self.selected_weather_layout.addStretch()
+
+        self.selected_weather_container.setWidget(selected_weather_widget)
+        selected_weather_layout.addWidget(self.selected_weather_container)
+
+        weather_layout.addWidget(selected_weather_frame)
+        scroll_layout.addWidget(weather_group)
+
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll, 1)
+
+        self._refresh_selected_lighting_display()
+        self._refresh_selected_weather_display()
+
+    # --- LIGHTING ---
+    def _build_lighting_tree(self):
+        """Строит дерево lighting из prompt-library/07_lighting"""
+        # Очищаем
+        while self.lighting_tree_layout.count():
+            item = self.lighting_tree_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        self.lighting_tag_ui_elements = {}
+
+        lighting_dir = self.project_root / "prompt-library" / "07_lighting"
+        if not lighting_dir.exists():
+            return
+
+        subcats = {}
+        for txt_file in sorted(lighting_dir.rglob("*.txt")):
+            parts = txt_file.relative_to(lighting_dir).parts
+            if len(parts) == 1:
+                sub_cat = parts[0].replace('.txt', '')
+            elif len(parts) >= 2:
+                sub_cat = parts[0]
+            else:
+                continue
+            subcats[sub_cat] = txt_file
+
+        for sub_cat, file_path in sorted(subcats.items()):
+            self._create_lighting_subcategory(sub_cat, file_path)
+
+        self.lighting_tree_layout.addStretch()
+
+    def _create_lighting_subcategory(self, sub_cat: str, file_path: Path):
+        """Создаёт подкатегорию lighting"""
+        sub_frame = QWidget()
+        sub_layout = QVBoxLayout(sub_frame)
+        sub_layout.setContentsMargins(0, 1, 0, 1)
+        sub_layout.setSpacing(0)
+
+        # Кнопка-заголовок подкатегории
+        toggle_btn = QPushButton(f"➤ {sub_cat.replace('_', ' ').title()}")
+        toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #404040;
+                color: white;
+                font-weight: bold;
+                padding: 6px;
+                text-align: left;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #505050;
+            }
+        """)
+        sub_layout.addWidget(toggle_btn)
+
+        # Контейнер для тегов (изначально скрыт)
+        tags_frame = QWidget()
+        tags_frame.setVisible(False)
+        tags_layout = QVBoxLayout(tags_frame)
+        tags_layout.setContentsMargins(20, 5, 0, 5)
+        tags_layout.setSpacing(1)
+
+        # Загружаем теги
+        tags = self._load_tags_from_file(file_path)
+        for tag in tags:
+            tag_key = f"lighting::{tag}"
+            tag_row = QWidget()
+            tag_row_layout = QHBoxLayout(tag_row)
+            tag_row_layout.setContentsMargins(0, 1, 0, 1)
+            tag_row_layout.setSpacing(5)
+
+            tag_label = QLabel(f"  • {tag.replace('_', ' ')}")
+            tag_row_layout.addWidget(tag_label, 1)
+
+            action_btn = QPushButton("+")
+            action_btn.setFixedSize(30, 25)
+            action_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #16a34a;
+                }
+            """)
+            action_btn.clicked.connect(
+                lambda checked, t=tag, tk=tag_key: self._toggle_lighting_tag(t, tk)
+            )
+            tag_row_layout.addWidget(action_btn)
+
+            tags_layout.addWidget(tag_row)
+
+            self.lighting_tag_ui_elements[tag_key] = {
+                'label': tag_label, 'button': action_btn, 'tag': tag
+            }
+
+        tags_layout.addStretch()
+        sub_layout.addWidget(tags_frame)
+
+        # Обработчик сворачивания
+        def toggle_visibility():
+            is_visible = tags_frame.isVisible()
+            tags_frame.setVisible(not is_visible)
+            if is_visible:
+                toggle_btn.setText(f"➤ {sub_cat.replace('_', ' ').title()}")
+            else:
+                toggle_btn.setText(f"▼ {sub_cat.replace('_', ' ').title()}")
+
+        toggle_btn.clicked.connect(toggle_visibility)
+
+        self.lighting_tree_layout.addWidget(sub_frame)
+
+    def _toggle_lighting_tag(self, tag: str, tag_key: str):
+        """Добавляет/убирает lighting-тег из выбранных"""
+        if tag_key not in self.lighting_tag_ui_elements:
+            return
+
+        ui = self.lighting_tag_ui_elements[tag_key]
+
+        if tag in self.selected_lighting_tags:
+            self.selected_lighting_tags.remove(tag)
+            ui['label'].setStyleSheet("color: #e0e0e0;")
+            ui['button'].setText("+")
+            ui['button'].setStyleSheet("""
+                QPushButton {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #16a34a;
+                }
+            """)
+        else:
+            self.selected_lighting_tags.append(tag)
+            ui['label'].setStyleSheet("color: #22c55e;")
+            ui['button'].setText("-")
+            ui['button'].setStyleSheet("""
+                QPushButton {
+                    background-color: #dc2626;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #991b1b;
+                }
+            """)
+
+        self._refresh_selected_lighting_display()
+
+    def _refresh_selected_lighting_display(self):
+        """Отрисовывает chips с выбранными lighting-тегами"""
+        if not hasattr(self, 'selected_lighting_layout'):
+            return
+
+        # Очищаем
+        while self.selected_lighting_layout.count() > 1:
+            item = self.selected_lighting_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not self.selected_lighting_tags:
+            label = QLabel("(No lighting selected)")
+            label.setStyleSheet("color: gray;")
+            self.selected_lighting_layout.insertWidget(0, label)
+            return
+
+        for tag in self.selected_lighting_tags:
+            chip = QWidget()
+            chip.setStyleSheet("""
+                QWidget {
+                    background-color: #404040;
+                    border-radius: 15px;
+                }
+            """)
+            chip_layout = QHBoxLayout(chip)
+            chip_layout.setContentsMargins(8, 4, 5, 4)
+            chip_layout.setSpacing(5)
+
+            chip_label = QLabel(f"  {tag.replace('_', ' ')}  ")
+            chip_label.setStyleSheet("font-size: 11px;")
+            chip_layout.addWidget(chip_label)
+
+            remove_btn = QPushButton("×")
+            remove_btn.setFixedSize(22, 22)
+            remove_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 11px;
+                }
+                QPushButton:hover {
+                    background-color: #dc2626;
+                }
+            """)
+            remove_btn.clicked.connect(lambda checked, t=tag: self._remove_lighting_tag(t))
+            chip_layout.addWidget(remove_btn)
+
+            self.selected_lighting_layout.insertWidget(
+                self.selected_lighting_layout.count() - 1, chip
+            )
+
+    def _remove_lighting_tag(self, tag: str):
+        """Удаляет lighting-тег через крестик в chip"""
+        if tag in self.selected_lighting_tags:
+            self.selected_lighting_tags.remove(tag)
+
+        tag_key = f"lighting::{tag}"
+        if tag_key in self.lighting_tag_ui_elements:
+            ui = self.lighting_tag_ui_elements[tag_key]
+            ui['label'].setStyleSheet("color: #e0e0e0;")
+            ui['button'].setText("+")
+            ui['button'].setStyleSheet("""
+                QPushButton {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #16a34a;
+                }
+            """)
+
+        self._refresh_selected_lighting_display()
+
+    def _sync_lighting_ui_states(self):
+        """Синхронизирует UI Lighting с выбранными тегами"""
+        if not self.lighting_tag_ui_elements:
+            return
+
+        for tag_key, ui in self.lighting_tag_ui_elements.items():
+            tag = ui['tag']
+            if tag in self.selected_lighting_tags:
+                ui['label'].setStyleSheet("color: #22c55e;")
+                ui['button'].setText("-")
+                ui['button'].setStyleSheet("""
+                    QPushButton {
+                        background-color: #dc2626;
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 3px;
+                    }
+                    QPushButton:hover {
+                        background-color: #991b1b;
+                    }
+                """)
+            else:
+                ui['label'].setStyleSheet("color: #e0e0e0;")
+                ui['button'].setText("+")
+                ui['button'].setStyleSheet("""
+                    QPushButton {
+                        background-color: #22c55e;
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 3px;
+                    }
+                    QPushButton:hover {
+                        background-color: #16a34a;
+                    }
+                """)
+
+    # --- WEATHER ---
+    def _build_weather_tree(self):
+        """Строит дерево weather из prompt-library/10_weather"""
+        # Очищаем
+        while self.weather_tree_layout.count():
+            item = self.weather_tree_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        self.weather_tag_ui_elements = {}
+
+        weather_dir = self.project_root / "prompt-library" / "10_weather"
+        if not weather_dir.exists():
+            return
+
+        subcats = {}
+        for txt_file in sorted(weather_dir.rglob("*.txt")):
+            parts = txt_file.relative_to(weather_dir).parts
+            if len(parts) == 1:
+                sub_cat = parts[0].replace('.txt', '')
+            elif len(parts) >= 2:
+                sub_cat = parts[0]
+            else:
+                continue
+            subcats[sub_cat] = txt_file
+
+        for sub_cat, file_path in sorted(subcats.items()):
+            self._create_weather_subcategory(sub_cat, file_path)
+
+        self.weather_tree_layout.addStretch()
+
+    def _create_weather_subcategory(self, sub_cat: str, file_path: Path):
+        """Создаёт подкатегорию weather"""
+        sub_frame = QWidget()
+        sub_layout = QVBoxLayout(sub_frame)
+        sub_layout.setContentsMargins(0, 1, 0, 1)
+        sub_layout.setSpacing(0)
+
+        # Кнопка-заголовок подкатегории
+        toggle_btn = QPushButton(f"➤ {sub_cat.replace('_', ' ').title()}")
+        toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #404040;
+                color: white;
+                font-weight: bold;
+                padding: 6px;
+                text-align: left;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #505050;
+            }
+        """)
+        sub_layout.addWidget(toggle_btn)
+
+        # Контейнер для тегов (изначально скрыт)
+        tags_frame = QWidget()
+        tags_frame.setVisible(False)
+        tags_layout = QVBoxLayout(tags_frame)
+        tags_layout.setContentsMargins(20, 5, 0, 5)
+        tags_layout.setSpacing(1)
+
+        # Загружаем теги
+        tags = self._load_tags_from_file(file_path)
+        for tag in tags:
+            tag_key = f"weather::{tag}"
+            tag_row = QWidget()
+            tag_row_layout = QHBoxLayout(tag_row)
+            tag_row_layout.setContentsMargins(0, 1, 0, 1)
+            tag_row_layout.setSpacing(5)
+
+            tag_label = QLabel(f"  • {tag.replace('_', ' ')}")
+            tag_row_layout.addWidget(tag_label, 1)
+
+            action_btn = QPushButton("+")
+            action_btn.setFixedSize(30, 25)
+            action_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #16a34a;
+                }
+            """)
+            action_btn.clicked.connect(
+                lambda checked, t=tag, tk=tag_key: self._toggle_weather_tag(t, tk)
+            )
+            tag_row_layout.addWidget(action_btn)
+
+            tags_layout.addWidget(tag_row)
+
+            self.weather_tag_ui_elements[tag_key] = {
+                'label': tag_label, 'button': action_btn, 'tag': tag
+            }
+
+        tags_layout.addStretch()
+        sub_layout.addWidget(tags_frame)
+
+        # Обработчик сворачивания
+        def toggle_visibility():
+            is_visible = tags_frame.isVisible()
+            tags_frame.setVisible(not is_visible)
+            if is_visible:
+                toggle_btn.setText(f"➤ {sub_cat.replace('_', ' ').title()}")
+            else:
+                toggle_btn.setText(f"▼ {sub_cat.replace('_', ' ').title()}")
+
+        toggle_btn.clicked.connect(toggle_visibility)
+
+        self.weather_tree_layout.addWidget(sub_frame)
+
+    def _toggle_weather_tag(self, tag: str, tag_key: str):
+        """Добавляет/убирает weather-тег из выбранных"""
+        if tag_key not in self.weather_tag_ui_elements:
+            return
+
+        ui = self.weather_tag_ui_elements[tag_key]
+
+        if tag in self.selected_weather_tags:
+            self.selected_weather_tags.remove(tag)
+            ui['label'].setStyleSheet("color: #e0e0e0;")
+            ui['button'].setText("+")
+            ui['button'].setStyleSheet("""
+                QPushButton {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #16a34a;
+                }
+            """)
+        else:
+            self.selected_weather_tags.append(tag)
+            ui['label'].setStyleSheet("color: #22c55e;")
+            ui['button'].setText("-")
+            ui['button'].setStyleSheet("""
+                QPushButton {
+                    background-color: #dc2626;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #991b1b;
+                }
+            """)
+
+        self._refresh_selected_weather_display()
+
+    def _refresh_selected_weather_display(self):
+        """Отрисовывает chips с выбранными weather-тегами"""
+        if not hasattr(self, 'selected_weather_layout'):
+            return
+
+        # Очищаем
+        while self.selected_weather_layout.count() > 1:
+            item = self.selected_weather_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not self.selected_weather_tags:
+            label = QLabel("(No weather selected)")
+            label.setStyleSheet("color: gray;")
+            self.selected_weather_layout.insertWidget(0, label)
+            return
+
+        for tag in self.selected_weather_tags:
+            chip = QWidget()
+            chip.setStyleSheet("""
+                QWidget {
+                    background-color: #404040;
+                    border-radius: 15px;
+                }
+            """)
+            chip_layout = QHBoxLayout(chip)
+            chip_layout.setContentsMargins(8, 4, 5, 4)
+            chip_layout.setSpacing(5)
+
+            chip_label = QLabel(f"  {tag.replace('_', ' ')}  ")
+            chip_label.setStyleSheet("font-size: 11px;")
+            chip_layout.addWidget(chip_label)
+
+            remove_btn = QPushButton("×")
+            remove_btn.setFixedSize(22, 22)
+            remove_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 11px;
+                }
+                QPushButton:hover {
+                    background-color: #dc2626;
+                }
+            """)
+            remove_btn.clicked.connect(lambda checked, t=tag: self._remove_weather_tag(t))
+            chip_layout.addWidget(remove_btn)
+
+            self.selected_weather_layout.insertWidget(
+                self.selected_weather_layout.count() - 1, chip
+            )
+
+    def _remove_weather_tag(self, tag: str):
+        """Удаляет weather-тег через крестик в chip"""
+        if tag in self.selected_weather_tags:
+            self.selected_weather_tags.remove(tag)
+
+        tag_key = f"weather::{tag}"
+        if tag_key in self.weather_tag_ui_elements:
+            ui = self.weather_tag_ui_elements[tag_key]
+            ui['label'].setStyleSheet("color: #e0e0e0;")
+            ui['button'].setText("+")
+            ui['button'].setStyleSheet("""
+                QPushButton {
+                    background-color: #22c55e;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 3px;
+                }
+                QPushButton:hover {
+                    background-color: #16a34a;
+                }
+            """)
+
+        self._refresh_selected_weather_display()
+
+    def _sync_weather_ui_states(self):
+        """Синхронизирует UI Weather с выбранными тегами"""
+        if not self.weather_tag_ui_elements:
+            return
+
+        for tag_key, ui in self.weather_tag_ui_elements.items():
+            tag = ui['tag']
+            if tag in self.selected_weather_tags:
+                ui['label'].setStyleSheet("color: #22c55e;")
+                ui['button'].setText("-")
+                ui['button'].setStyleSheet("""
+                    QPushButton {
+                        background-color: #dc2626;
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 3px;
+                    }
+                    QPushButton:hover {
+                        background-color: #991b1b;
+                    }
+                """)
+            else:
+                ui['label'].setStyleSheet("color: #e0e0e0;")
+                ui['button'].setText("+")
+                ui['button'].setStyleSheet("""
+                    QPushButton {
+                        background-color: #22c55e;
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 3px;
+                    }
+                    QPushButton:hover {
+                        background-color: #16a34a;
+                    }
+                """)

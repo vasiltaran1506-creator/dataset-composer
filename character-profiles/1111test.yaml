@@ -79,5 +79,9 @@ pose_filter:
   prefer: []
   avoid: []
 atmosphere_preferences:
-  lighting: []
-  weather: []
+  lighting:
+  - front lighting
+  - rim light
+  weather:
+  - clear sky
+  - sunbeam
