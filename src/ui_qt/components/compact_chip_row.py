@@ -1,29 +1,81 @@
-"""CompactChipRow — однострочный ряд чипов с переполнением (§6.5 + §8.25 Compact)."""
+"""CompactChipRow — однострочный ряд чипов с переполнением (§6.5 + §8.25 Compact).
+Чипы рисуются вручную через QPainterPath, поэтому форма гарантированно
+скруглённая (капсула) и не зависит от border-radius в QSS.
+"""
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QLabel,
-                               QPushButton, QScrollArea, QFrame, QSizePolicy,
-                               QStyle, QStyleOption)
-from PySide6.QtCore import Qt, Signal, QPoint, QTimer
-from PySide6.QtGui import QPainter
+                               QPushButton, QScrollArea, QFrame, QSizePolicy)
+from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRectF
+from PySide6.QtGui import QPainter, QPainterPath, QColor, QPen
 from ui_qt.icon_manager import IconManager
 
 
+# ── Маппинг variant → цвет (для ручной отрисовки фона) ──
+_VARIANT_COLOR = {
+    "chip-category-face": "#a78bfa",
+    "chip-category-hair": "#34d399",
+    "chip-category-eyes": "#fbbf24",
+    "chip-category-body": "#f472b6",
+    "chip-category-skin": "#fb923c",
+    "chip-success": "#3dd68c",
+    "chip-danger": "#f5475b",
+    "chip-warning": "#f5a623",
+    "chip": "#4f6df5",
+}
+
+
 class ChipWidget(QFrame):
-    """Чип-пилюля. paintEvent обязателен: без него Qt не применяет
-    border-radius/фон из QSS к кастомному виджету (рисует прямоугольник)."""
+    """Чип-пилюля. Фон, рамка и левая полоска рисуются вручную в paintEvent
+    через QPainterPath => форма-капсула гарантирована, QSS border-radius не нужен."""
+    
+    def __init__(self, color: str, parent=None):
+        super().__init__(parent)
+        self._color = color or "#4f6df5"
+    
     def paintEvent(self, event):
-        opt = QStyleOption()
-        opt.initFrom(self)
-        painter = QPainter(self)
-        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, painter, self)
+        p = QPainter(self)
+        try:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        except Exception:
+            pass
+        
+        w, h = float(self.width()), float(self.height())
+        r = h / 2.0  # fully rounded => капсула
+        
+        # Скруглённый контур всей пилюли
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(0, 0, w, h), r, r)
+        
+        # Фон — tint категории (15% opacity)
+        bg = QColor(self._color)
+        bg.setAlphaF(0.15)
+        p.fillPath(path, bg)
+        
+        # Тонкая рамка — цвет категории (30% opacity)
+        border = QColor(self._color)
+        border.setAlphaF(0.30)
+        pen = QPen(border)
+        pen.setWidthF(1.0)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+        
+        # Левая цветная полоска (полный цвет), обрезанная по капсуле
+        p.save()
+        p.setClipPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.fillRect(QRectF(0, 0, 3.0, h), QColor(self._color))
+        p.restore()
+        
+        p.end()
 
 
 class CompactChipRow(QWidget):
     """Однострочный compact-ряд чипов с overflow-индикатором и popup."""
     remove_requested = Signal(object)
-
+    
     _CHIP_H = 22
     _ROW_H = 30
-
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedHeight(self._ROW_H)
@@ -31,15 +83,15 @@ class CompactChipRow(QWidget):
         self._chip_widgets = []
         self._popup = None
         self._popup_list_layout = None
-
+        
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(6)
-
+        
         self._empty = QLabel("—")
         self._empty.setObjectName("Subtitle")
         self._layout.addWidget(self._empty, 0, Qt.AlignVCenter)
-
+        
         self._indicator = QPushButton("")
         self._indicator.setProperty("variant", "chip-overflow")
         self._indicator.setCursor(Qt.PointingHandCursor)
@@ -47,12 +99,12 @@ class CompactChipRow(QWidget):
         self._indicator.hide()
         self._indicator.clicked.connect(self._show_popup)
         self._layout.addWidget(self._indicator, 0, Qt.AlignVCenter)
-
+        
         self._layout.addStretch(1)
-
+    
     def set_empty_text(self, text: str):
         self._empty.setText(text)
-
+    
     def set_chips(self, descriptors: list):
         for w in self._chip_widgets:
             self._layout.removeWidget(w)
@@ -67,26 +119,34 @@ class CompactChipRow(QWidget):
         if self._popup is not None and self._popup.isVisible():
             self._populate_popup()
         QTimer.singleShot(0, self._relayout)
-
+    
     def _build_chip_widget(self, descriptor: dict) -> QWidget:
-        chip = ChipWidget()
-        chip.setProperty("variant", descriptor.get("variant", "chip"))
+        variant = descriptor.get("variant", "chip")
+        color = _VARIANT_COLOR.get(variant, "#4f6df5")
+        
+        chip = ChipWidget(color)
         chip.setFixedHeight(self._CHIP_H)
         chip.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        
         lay = QHBoxLayout(chip)
-        lay.setContentsMargins(8, 0, 4, 0)
+        lay.setContentsMargins(10, 0, 4, 0)  # слева отступ под полоску
         lay.setSpacing(4)
+        
         label = QLabel(descriptor.get("text", ""))
         lay.addWidget(label)
+        
         close = QPushButton(IconManager.get('close'))
         close.setProperty("variant", "chip-remove")
         close.setFixedSize(14, 14)
         close.setCursor(Qt.PointingHandCursor)
         payload = descriptor.get("payload")
-        close.clicked.connect(lambda checked=False, p=payload: self.remove_requested.emit(p))
+        close.clicked.connect(
+            lambda checked=False, p=payload: self.remove_requested.emit(p)
+        )
         lay.addWidget(close)
+        
         return chip
-
+    
     def _relayout(self):
         self._empty.setVisible(not self._chips)
         if not self._chip_widgets:
@@ -130,12 +190,12 @@ class CompactChipRow(QWidget):
         self._indicator.setText(f"+{hidden}")
         self._indicator.adjustSize()
         self._indicator.show()
-
+    
     def _measure_indicator(self, text: str) -> int:
         self._indicator.setText(text)
         self._indicator.adjustSize()
         return self._indicator.sizeHint().width()
-
+    
     def _show_popup(self):
         if self._popup is not None and self._popup.isVisible():
             self._populate_popup()
@@ -166,7 +226,7 @@ class CompactChipRow(QWidget):
         gp = self.mapToGlobal(QPoint(0, self.height() + 4))
         self._popup.move(gp)
         self._popup.show()
-
+    
     def _populate_popup(self):
         if self._popup_list_layout is None:
             return
@@ -180,11 +240,11 @@ class CompactChipRow(QWidget):
         self._popup_list_layout.addStretch(1)
         if self._popup is not None:
             self._popup.adjustSize()
-
+    
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._relayout()
-
+    
     def showEvent(self, event):
         super().showEvent(event)
         self._relayout()

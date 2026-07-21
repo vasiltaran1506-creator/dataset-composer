@@ -1,21 +1,22 @@
 """CategoryCard — accordion-карточка категории DNA (§6.4 + §8.24)
 с вложенным grid кликабельных плиток (§6.7 grid-cell + §8.26).
-
 Цвета категории — через _CAT_FULL / _rgba (robust, без жёсткой зависимости от theme.py).
 Статический вид карточки — через variant + theme.qss.
+Счётчик 'N selected' — _PillLabel (капсула рисуется вручную в paintEvent).
 """
 from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QPushButton, QSizePolicy)
 # QGraphicsOpacityEffect в PySide6 (Qt6) живёт в QtWidgets, НЕ в QtGui.
-# Обёртка в try/except делает код устойчивым: если эффект недоступен —
-# программа запустится без fade, но height-анимация останется.
 try:
     from PySide6.QtWidgets import QGraphicsOpacityEffect
 except ImportError:
     QGraphicsOpacityEffect = None
-from PySide6.QtCore import (Qt, Signal, QPropertyAnimation, QEasingCurve,
-                            QParallelAnimationGroup, QSequentialAnimationGroup,
-                            QPauseAnimation)
+# QRectF / QSize в Qt6 живут в QtCore (НЕ в QtGui!).
+from PySide6.QtCore import (Qt, Signal, QSize, QRectF, QPropertyAnimation,
+                            QEasingCurve, QParallelAnimationGroup,
+                            QSequentialAnimationGroup, QPauseAnimation)
+# QPainter / QPainterPath / QColor / QFont / QFontMetrics — в QtGui.
+from PySide6.QtGui import QPainter, QPainterPath, QColor, QFont, QFontMetrics
 from ui_qt.components.flow_layout import FlowLayout
 from ui_qt.icon_manager import IconManager
 
@@ -40,6 +41,7 @@ _CAT_FULL = {
     "Hair Length":   _g("HAIR", "#34d399"),
     "Skin Tone":     _g("SKIN", "#fb923c"),
 }
+
 _CAT_KEY = {
     "Body Type": "body", "Body Features": "body",
     "Eye Color": "eyes", "Eye Shape": "eyes",
@@ -62,6 +64,55 @@ def category_full(name: str) -> str:
 
 def category_chip_variant(name: str) -> str:
     return f"chip-category-{_CAT_KEY.get(name, 'face')}"
+
+
+# ═══════════════════════════════════════════════
+# PILL BADGE — счётчик-пилюля 'N selected' (§8.24 counter)
+# ═══════════════════════════════════════════════
+class _PillLabel(QFrame):
+    """Счётчик в виде овальной капсулы. Фон рисуем вручную через QPainterPath,
+    потому что кастомный tint-фон надёжнее отрисовать самим, чем полагаться на QSS."""
+    def __init__(self, color: str, parent=None):
+        super().__init__(parent)
+        self._color = color
+        self._text = ""
+        f = self.font()
+        f.setPixelSize(11)
+        f.setWeight(QFont.Weight.DemiBold)
+        self.setFont(f)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+    def setText(self, text: str):
+        self._text = text
+        self.updateGeometry()
+        self.update()
+
+    def text(self) -> str:
+        return self._text
+
+    def sizeHint(self):
+        fm = QFontMetrics(self.font())
+        w = fm.horizontalAdvance(self._text) + 20
+        h = fm.height() + 6
+        return QSize(max(w, 12), h)
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        try:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        except Exception:
+            pass
+        rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        radius = rect.height() / 2.0  # половина высоты => капсула
+        path = QPainterPath()
+        path.addRoundedRect(rect, radius, radius)
+        bg = QColor(self._color)
+        bg.setAlphaF(0.15)
+        p.fillPath(path, bg)
+        p.setPen(QColor(self._color))
+        p.setFont(self.font())
+        p.drawText(self.rect(), Qt.AlignCenter, self._text)
+        p.end()
 
 
 # ═══════════════════════════════════════════════
@@ -116,7 +167,7 @@ class CheckCell(QFrame):
                 QFrame#CheckCell {{
                     background-color: {_rgba(self._color, 0.15)};
                     border: 1px solid {_rgba(self._color, 0.50)};
-                    border-radius: 8px;
+                    border-radius: 9999px;
                 }}
                 QFrame#CheckCell:hover {{
                     background-color: {_rgba(self._color, 0.22)};
@@ -130,7 +181,7 @@ class CheckCell(QFrame):
                 QFrame#CheckCell {
                     background-color: #1f2738;
                     border: 1px solid #313a4d;
-                    border-radius: 8px;
+                    border-radius: 9999px;
                 }
                 QFrame#CheckCell:hover {
                     background-color: #283145;
@@ -191,6 +242,7 @@ class CategoryCard(QFrame):
         header.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         header.setCursor(Qt.PointingHandCursor)
         header.setStyleSheet("background: transparent;")
+
         hlay = QHBoxLayout(header)
         hlay.setContentsMargins(16, 12, 16, 12)
         hlay.setSpacing(12)
@@ -213,15 +265,9 @@ class CategoryCard(QFrame):
         titles.addWidget(d)
         hlay.addLayout(titles, 1)
 
-        self._counter = QLabel("0 selected")
-        self._counter.setStyleSheet(f"""
-            background-color: {_rgba(self._color, 0.15)};
-            color: {self._color};
-            border-radius: 9999px;
-            padding: 2px 10px;
-            font-size: 11px;
-            font-weight: 600;
-        """)
+        # Счётчик — овальная пилюля, рисуемая вручную
+        self._counter = _PillLabel(self._color)
+        self._counter.setText("0 selected")
         hlay.addWidget(self._counter)
 
         self._chevron = QLabel(IconManager.get('chevron-right'))
@@ -234,8 +280,8 @@ class CategoryCard(QFrame):
         self._content = QWidget()
         self._content.setMaximumHeight(0)
         self._content.hide()
-        self._grid = FlowLayout(self._content, margin=16, h_spacing=8, v_spacing=8)
 
+        self._grid = FlowLayout(self._content, margin=16, h_spacing=8, v_spacing=8)
         for tag in self._tags:
             cell = CheckCell(tag, self._color)
             cell.clicked.connect(lambda sel, tg=tag: self._on_cell(tg, sel))
@@ -356,8 +402,8 @@ class CategoryCard(QFrame):
                 self._opacity.setOpacity(0.0)
             return
         self._stop_anim()
-        cur = self._content.height()
 
+        cur = self._content.height()
         h_anim = QPropertyAnimation(self._content, b"maximumHeight")
         h_anim.setDuration(200)
         h_anim.setStartValue(cur)
