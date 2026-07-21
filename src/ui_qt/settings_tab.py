@@ -85,6 +85,9 @@ class SettingsTab(QWidget):
         self.confirm_delete_check = QCheckBox("Ask for confirmation before deleting profiles/tags")
         self.confirm_delete_check.stateChanged.connect(self._save_confirm_delete)
         behavior_layout.addWidget(self.confirm_delete_check)
+        self.single_open_check = QCheckBox("Single-open shelves (only one accordion expanded at a time)")
+        self.single_open_check.stateChanged.connect(self._save_single_open)
+        behavior_layout.addWidget(self.single_open_check)
         scroll_layout.addWidget(behavior_group)
 
         # --- About ---
@@ -123,6 +126,8 @@ class SettingsTab(QWidget):
         self.balance_weath_check.setChecked(self.settings_manager.get('generation_defaults', 'balance_weather'))
         self.balance_cams_check.setChecked(self.settings_manager.get('generation_defaults', 'balance_cameras'))
         self.confirm_delete_check.setChecked(self.settings_manager.get('behavior', 'confirm_delete'))
+        _single = self.settings_manager.get('behavior', 'single_open_shelves')
+        self.single_open_check.setChecked(_single if _single is not None else True)
 
     def _browse_output_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select output folder")
@@ -175,6 +180,11 @@ class SettingsTab(QWidget):
         value = self.confirm_delete_check.isChecked()
         self.settings_manager.set('behavior', 'confirm_delete', value)
         self._log(f"Confirm delete: {'ON' if value else 'OFF'}\n")
+
+    def _save_single_open(self):
+        value = self.single_open_check.isChecked()
+        self.settings_manager.set('behavior', 'single_open_shelves', value)
+        self._log(f"Single-open shelves: {'ON' if value else 'OFF'}\n")
 
     def _reset_to_defaults(self):
         reply = QMessageBox.question(

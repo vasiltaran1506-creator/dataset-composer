@@ -249,6 +249,37 @@ class SummaryPanel(QWidget):
             self._groups_layout.addWidget(self._build_group(group_name, color, tags))
         self._groups_layout.addStretch(1)
 
+    def update_atmosphere_summary(self, lighting_tags: list, weather_tags: list):
+        """Atmosphere-сводка: группы Lighting / Weather с конкретными тегами."""
+        self.section_label.setText("ATMOSPHERE SUMMARY")
+        total = len(lighting_tags) + len(weather_tags)
+        self.total_badge.setText(f"{total} selected" if total else "0 selected")
+        # очистка layout (самодостаточно)
+        while self._groups_layout.count():
+            it = self._groups_layout.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+        groups = []
+        if lighting_tags:
+            groups.append(("Lighting", "#f59e0b",
+                           [t.replace('_', ' ') for t in lighting_tags]))
+        if weather_tags:
+            groups.append(("Weather", "#60a5fa",
+                           [t.replace('_', ' ') for t in weather_tags]))
+        if not groups:
+            empty = QLabel("No atmosphere tags selected yet")
+            empty.setStyleSheet(
+                "color: #5a6378; font-size: 12px; font-style: italic; "
+                "background: transparent;"
+            )
+            empty.setAlignment(Qt.AlignCenter)
+            self._groups_layout.addWidget(empty)
+        else:
+            for name, color, tags in groups:
+                self._groups_layout.addWidget(self._build_group(name, color, tags))
+        self._groups_layout.addStretch(1)
+
+
     def _build_group(self, group_name: str, color: str, tags: list) -> QWidget:
         wrap = QWidget()
         wrap.setStyleSheet("background: transparent;")

@@ -33,5 +33,6 @@ pose_filter:
   prefer: []
   avoid: []
 atmosphere_preferences:
-  lighting: []
+  lighting:
+  - soft lighting
   weather: []

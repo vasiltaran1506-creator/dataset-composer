@@ -44,6 +44,12 @@ PERSONALITY_CATEGORIES = [
 WARDROBE_ORDER = ['full_body', 'topwear', 'bottomwear', 'legwear',
                   'footwear', 'underwear', 'accessories']
 
+# Цвета групп Atmosphere (§11.6 расшир.): освещение / погода
+ATMOSPHERE_COLORS = {
+    'lighting': '#f59e0b',   # amber
+    'weather':  '#60a5fa',   # sky blue
+}
+
 
 class ProfilesTab(QWidget):
     """Вкладка редактирования профилей персонажей (Qt версия, v2 — редизайн)"""
@@ -349,6 +355,7 @@ class ProfilesTab(QWidget):
             tags = self._load_tags_from_library(cat_file)
             card = CategoryCard(cat_name, cat_desc, tags, selected_set)
             card.toggled.connect(self._on_dna_toggled)
+            card.expand_toggled.connect(self._single_open_dna)
             self._dna_cards.append(card)
             self._dna_cards_layout.insertWidget(
                 self._dna_cards_layout.count() - 1, card
@@ -370,6 +377,24 @@ class ProfilesTab(QWidget):
             self.selected_dna_tags.remove(entry)
         self._refresh_dna_chips()
         self._update_summary_panel()
+
+    # ── Одиночная полка-аккордеон (single-open) ───────────────────
+    def _apply_single_open(self, source, cards):
+        """Свернуть все полки кроме source. Уважает настройку single_open_shelves."""
+        enabled = self.settings_manager.get('behavior', 'single_open_shelves')
+        if enabled is None:        # ключа ещё нет в settings.json
+            enabled = True
+        if not enabled:
+            return
+        for card in cards:
+            if card is not source:
+                card.set_expanded(False, animate=True)   # by_user=False => без сигнала
+
+    def _single_open_dna(self, source):
+        self._apply_single_open(source, self._dna_cards)
+
+    def _single_open_outfits(self, source):
+        self._apply_single_open(source, self._outfit_cards)
 
     def _refresh_dna_chips(self):
         descriptors = [
@@ -398,6 +423,10 @@ class ProfilesTab(QWidget):
         if active is getattr(self, 'outfits_widget', None):
             self.summary_panel.update_wardrobe_summary(
                 self.selected_wardrobe_tags, self._wardrobe_summary_spec()
+            )
+        elif active is getattr(self, 'atmosphere_widget', None):
+            self.summary_panel.update_atmosphere_summary(
+                self.selected_lighting_tags, self.selected_weather_tags
             )
         else:
             self.summary_panel.update_summary(self.selected_dna_tags)
@@ -597,6 +626,7 @@ class ProfilesTab(QWidget):
                 subcat.replace('_', ' ').title(), "", tags, selected_set, color=color
             )
             card.toggled.connect(self._on_outfit_toggled)
+            card.expand_toggled.connect(self._single_open_outfits)
             self._outfit_cards.append(card)
             self._outfit_cards_layout.insertWidget(
                 self._outfit_cards_layout.count() - 1, card
@@ -844,19 +874,21 @@ class ProfilesTab(QWidget):
         # Удаляем из списков
         self.preferred_personality_tags = [t for t in self.preferred_personality_tags if t['tag'] != tag]
         self.avoided_personality_tags = [t for t in self.avoided_personality_tags if t['tag'] != tag]
-        # Сбрасываем чекбокс в дереве
-        for i in range(self.personality_tree.topLevelItemCount()):
-            cat_item = self.personality_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                sub_item = cat_item.child(j)
-                for k in range(sub_item.childCount()):
-                    tag_item = sub_item.child(k)
-                    tag_data = tag_item.data(0, Qt.UserRole) or {}
-                    if tag_data.get('tag') == tag:
-                        tag_item.blockSignals(True)
-                        tag_item.setCheckState(0, Qt.Unchecked)
-                        tag_item.blockSignals(False)
-                        break
+        # Сбрасываем чекбокс в дереве (сигнал блокируем на ДЕРЕВЕ, не на элементе)
+        self.personality_tree.blockSignals(True)
+        try:
+            for i in range(self.personality_tree.topLevelItemCount()):
+                cat_item = self.personality_tree.topLevelItem(i)
+                for j in range(cat_item.childCount()):
+                    sub_item = cat_item.child(j)
+                    for k in range(sub_item.childCount()):
+                        tag_item = sub_item.child(k)
+                        tag_data = tag_item.data(0, Qt.UserRole) or {}
+                        if tag_data.get('tag') == tag:
+                            tag_item.setCheckState(0, Qt.Unchecked)
+                            break
+        finally:
+            self.personality_tree.blockSignals(False)
         self._refresh_personality_chips()
 
     # ═══════════════════════════════════════════════
@@ -1362,260 +1394,175 @@ class ProfilesTab(QWidget):
             pass
 
     # ═══════════════════════════════════════════════
-    # ATMOSPHERE TAB (Lighting + Weather)
+    # ATMOSPHERE TAB  (две секции Lighting/Weather, accordion-полки, single-open)
     # ═══════════════════════════════════════════════
+    def _build_atmosphere_index(self):
+        """Строит индекс полок из prompt-library/07_lighting и 10_weather."""
+        self._atmosphere_structure = {'lighting': [], 'weather': []}
+        for group, folder in (('lighting', '07_lighting'), ('weather', '10_weather')):
+            folder_path = self.project_root / "prompt-library" / folder
+            if not folder_path.exists():
+                continue
+            for txt in sorted(folder_path.glob("*.txt")):
+                tags = self._load_tags_from_file(txt)
+                self._atmosphere_structure[group].append((txt.stem, tags))
+
+    def _make_section_header(self, color: str, title: str) -> QWidget:
+        """Заголовок секции: цветной маркер группы + название."""
+        head = QWidget()
+        hl = QHBoxLayout(head)
+        hl.setContentsMargins(0, 8, 0, 2)
+        hl.setSpacing(8)
+        swatch = QFrame()
+        swatch.setFixedSize(12, 12)
+        swatch.setStyleSheet(f"background-color: {color}; border-radius: 3px;")
+        hl.addWidget(swatch)
+        lab = QLabel(title)
+        lab.setObjectName("CategoryTitle")
+        hl.addWidget(lab)
+        hl.addStretch(1)
+        return head
+
     def _setup_atmosphere_tab(self, widget: QWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
 
         header = QLabel(f"{IconManager.get('cloud')}  Atmosphere Preferences")
         header.setObjectName("SectionTitle")
         layout.addWidget(header)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-        scroll_layout.setSpacing(20)
+        subtitle = QLabel("Lighting and weather preferences that bias generated scenes.")
+        subtitle.setObjectName("Subtitle")
+        layout.addWidget(subtitle)
 
-        # ═══ LIGHTING ═══
-        lighting_group = QGroupBox(f"{IconManager.get('star')}  Lighting Preferences")
-        lighting_layout = QVBoxLayout(lighting_group)
-        lighting_layout.setSpacing(8)
+        # Общий ряд круглых цветных чипов (lighting + weather)
+        self._atmosphere_chips_row = CompactChipRow()
+        self._atmosphere_chips_row.set_empty_text("No atmosphere tags selected")
+        self._atmosphere_chips_row.remove_requested.connect(self._remove_atmosphere_chip)
+        layout.addWidget(self._atmosphere_chips_row)
 
-        # Lighting chips
-        lighting_chips_scroll = QScrollArea()
-        lighting_chips_scroll.setWidgetResizable(True)
-        lighting_chips_scroll.setMaximumHeight(70)
-        lighting_chips_scroll.setFrameShape(QFrame.NoFrame)
-        lighting_chips_widget = QWidget()
-        self.lighting_chips_layout = QHBoxLayout(lighting_chips_widget)
-        self.lighting_chips_layout.setContentsMargins(0, 0, 0, 0)
-        self.lighting_chips_layout.setSpacing(6)
-        self.lighting_chips_layout.addStretch()
-        lighting_chips_scroll.setWidget(lighting_chips_widget)
-        lighting_layout.addWidget(lighting_chips_scroll)
+        # Общий поиск по обеим секциям
+        self._atmosphere_search = QLineEdit()
+        self._atmosphere_search.setPlaceholderText(
+            f"{IconManager.get('search')}  Search atmosphere..."
+        )
+        self._atmosphere_search.textChanged.connect(self._filter_atmosphere_cards)
+        layout.addWidget(self._atmosphere_search)
 
-        # Lighting search
-        self.lighting_search = QLineEdit()
-        self.lighting_search.setPlaceholderText(f"{IconManager.get('search')}  Search lighting...")
-        self.lighting_search.textChanged.connect(self._filter_tree)
-        self.lighting_search.setProperty("target_tree", "lighting")
-        lighting_layout.addWidget(self.lighting_search)
+        # Скролл с двумя секциями полок
+        cards_scroll = QScrollArea()
+        cards_scroll.setWidgetResizable(True)
+        cards_scroll.setFrameShape(QFrame.NoFrame)
+        cards_widget = QWidget()
+        self._atmosphere_cards_layout = QVBoxLayout(cards_widget)
+        self._atmosphere_cards_layout.setContentsMargins(0, 0, 0, 0)
+        self._atmosphere_cards_layout.setSpacing(10)
+        self._atmosphere_cards_layout.addStretch()
+        cards_scroll.setWidget(cards_widget)
+        layout.addWidget(cards_scroll, 1)
 
-        # Lighting tree
-        self.lighting_tree = QTreeWidget()
-        self.lighting_tree.setHeaderHidden(True)
-        self.lighting_tree.setAnimated(True)
-        self.lighting_tree.itemChanged.connect(self._on_lighting_item_changed)
-        lighting_layout.addWidget(self.lighting_tree, 1)
+        self._atmosphere_cards: list = []   # list of (CategoryCard, group)
+        self._build_atmosphere_index()
+        self._build_atmosphere_sections()
+        self._refresh_atmosphere_chips()
 
-        scroll_layout.addWidget(lighting_group)
+    def _build_atmosphere_sections(self):
+        for card, _g in self._atmosphere_cards:
+            card.deleteLater()
+        self._atmosphere_cards.clear()
+        self._clear_layout(self._atmosphere_cards_layout, keep_last=True)
 
-        # ═══ WEATHER ═══
-        weather_group = QGroupBox(f"{IconManager.get('cloud')}  Weather Preferences")
-        weather_layout = QVBoxLayout(weather_group)
-        weather_layout.setSpacing(8)
+        lighting_set = set(self.selected_lighting_tags)
+        weather_set = set(self.selected_weather_tags)
 
-        # Weather chips
-        weather_chips_scroll = QScrollArea()
-        weather_chips_scroll.setWidgetResizable(True)
-        weather_chips_scroll.setMaximumHeight(70)
-        weather_chips_scroll.setFrameShape(QFrame.NoFrame)
-        weather_chips_widget = QWidget()
-        self.weather_chips_layout = QHBoxLayout(weather_chips_widget)
-        self.weather_chips_layout.setContentsMargins(0, 0, 0, 0)
-        self.weather_chips_layout.setSpacing(6)
-        self.weather_chips_layout.addStretch()
-        weather_chips_scroll.setWidget(weather_chips_widget)
-        weather_layout.addWidget(weather_chips_scroll)
+        # --- Lighting ---
+        self._atmosphere_cards_layout.insertWidget(
+            self._atmosphere_cards_layout.count() - 1,
+            self._make_section_header(ATMOSPHERE_COLORS['lighting'], 'Lighting'))
+        for subcat, tags in self._atmosphere_structure.get('lighting', []):
+            card = CategoryCard(
+                subcat.replace('_', ' ').title(), "", tags, lighting_set,
+                color=ATMOSPHERE_COLORS['lighting'])
+            card.toggled.connect(
+                lambda t, s, g='lighting': self._on_atmosphere_toggled(t, s, g))
+            card.expand_toggled.connect(self._single_open_atmosphere)
+            self._atmosphere_cards.append((card, 'lighting'))
+            self._atmosphere_cards_layout.insertWidget(
+                self._atmosphere_cards_layout.count() - 1, card)
 
-        # Weather search
-        self.weather_search = QLineEdit()
-        self.weather_search.setPlaceholderText(f"{IconManager.get('search')}  Search weather...")
-        self.weather_search.textChanged.connect(self._filter_tree)
-        self.weather_search.setProperty("target_tree", "weather")
-        weather_layout.addWidget(self.weather_search)
+        # --- Weather ---
+        self._atmosphere_cards_layout.insertWidget(
+            self._atmosphere_cards_layout.count() - 1,
+            self._make_section_header(ATMOSPHERE_COLORS['weather'], 'Weather'))
+        for subcat, tags in self._atmosphere_structure.get('weather', []):
+            card = CategoryCard(
+                subcat.replace('_', ' ').title(), "", tags, weather_set,
+                color=ATMOSPHERE_COLORS['weather'])
+            card.toggled.connect(
+                lambda t, s, g='weather': self._on_atmosphere_toggled(t, s, g))
+            card.expand_toggled.connect(self._single_open_atmosphere)
+            self._atmosphere_cards.append((card, 'weather'))
+            self._atmosphere_cards_layout.insertWidget(
+                self._atmosphere_cards_layout.count() - 1, card)
 
-        # Weather tree
-        self.weather_tree = QTreeWidget()
-        self.weather_tree.setHeaderHidden(True)
-        self.weather_tree.setAnimated(True)
-        self.weather_tree.itemChanged.connect(self._on_weather_item_changed)
-        weather_layout.addWidget(self.weather_tree, 1)
+        fl = self._atmosphere_search.text()
+        if fl:
+            self._filter_atmosphere_cards(fl)
 
-        scroll_layout.addWidget(weather_group)
+    def _on_atmosphere_toggled(self, tag: str, selected: bool, group: str):
+        lst = self.selected_lighting_tags if group == 'lighting' else self.selected_weather_tags
+        if selected and tag not in lst:
+            lst.append(tag)
+        elif not selected and tag in lst:
+            lst.remove(tag)
+        self._refresh_atmosphere_chips()
 
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_widget)
-        layout.addWidget(scroll, 1)
+    def _filter_atmosphere_cards(self, text: str):
+        for card, _g in self._atmosphere_cards:
+            card.set_filter(text)
 
-        self._build_lighting_tree()
-        self._build_weather_tree()
-        self._refresh_lighting_chips()
-        self._refresh_weather_chips()
-
-    def _build_lighting_tree(self):
-        self.lighting_tree.clear()
-        lighting_dir = self.project_root / "prompt-library" / "07_lighting"
-        if not lighting_dir.exists():
-            return
-        subcats = {}
-        for txt_file in sorted(lighting_dir.rglob("*.txt")):
-            parts = txt_file.relative_to(lighting_dir).parts
-            if len(parts) == 1:
-                sub_cat = parts[0].replace('.txt', '')
-            elif len(parts) >= 2:
-                sub_cat = parts[0]
-            else:
-                continue
-            subcats[sub_cat] = txt_file
-
-        for sub_cat, file_path in sorted(subcats.items()):
-            cat_item = QTreeWidgetItem([sub_cat.replace('_', ' ').title()])
-            cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsSelectable)
-            font = cat_item.font(0)
-            font.setBold(True)
-            cat_item.setFont(0, font)
-            cat_item.setData(0, Qt.UserRole, {'type': 'category', 'name': sub_cat})
-
-            tags = self._load_tags_from_file(file_path)
-            for tag in tags:
-                tag_item = QTreeWidgetItem([tag.replace('_', ' ')])
-                tag_item.setFlags(tag_item.flags() | Qt.ItemIsUserCheckable)
-                tag_item.setCheckState(0, Qt.Unchecked)
-                tag_item.setData(0, Qt.UserRole, {'type': 'tag', 'tag': tag})
-                cat_item.addChild(tag_item)
-            self.lighting_tree.addTopLevelItem(cat_item)
-
-    def _build_weather_tree(self):
-        self.weather_tree.clear()
-        weather_dir = self.project_root / "prompt-library" / "10_weather"
-        if not weather_dir.exists():
-            return
-        subcats = {}
-        for txt_file in sorted(weather_dir.rglob("*.txt")):
-            parts = txt_file.relative_to(weather_dir).parts
-            if len(parts) == 1:
-                sub_cat = parts[0].replace('.txt', '')
-            elif len(parts) >= 2:
-                sub_cat = parts[0]
-            else:
-                continue
-            subcats[sub_cat] = txt_file
-
-        for sub_cat, file_path in sorted(subcats.items()):
-            cat_item = QTreeWidgetItem([sub_cat.replace('_', ' ').title()])
-            cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsSelectable)
-            font = cat_item.font(0)
-            font.setBold(True)
-            cat_item.setFont(0, font)
-            cat_item.setData(0, Qt.UserRole, {'type': 'category', 'name': sub_cat})
-
-            tags = self._load_tags_from_file(file_path)
-            for tag in tags:
-                tag_item = QTreeWidgetItem([tag.replace('_', ' ')])
-                tag_item.setFlags(tag_item.flags() | Qt.ItemIsUserCheckable)
-                tag_item.setCheckState(0, Qt.Unchecked)
-                tag_item.setData(0, Qt.UserRole, {'type': 'tag', 'tag': tag})
-                cat_item.addChild(tag_item)
-            self.weather_tree.addTopLevelItem(cat_item)
-
-    def _on_lighting_item_changed(self, item: QTreeWidgetItem, column: int):
-        if column != 0:
-            return
-        data = item.data(0, Qt.UserRole) or {}
-        if data.get('type') != 'tag':
-            return
-        tag = data['tag']
-        if item.checkState(0) == Qt.Checked:
-            if tag not in self.selected_lighting_tags:
-                self.selected_lighting_tags.append(tag)
-        else:
-            if tag in self.selected_lighting_tags:
-                self.selected_lighting_tags.remove(tag)
-        self._update_category_counter(item.parent())
-        self._refresh_lighting_chips()
-
-    def _on_weather_item_changed(self, item: QTreeWidgetItem, column: int):
-        if column != 0:
-            return
-        data = item.data(0, Qt.UserRole) or {}
-        if data.get('type') != 'tag':
-            return
-        tag = data['tag']
-        if item.checkState(0) == Qt.Checked:
-            if tag not in self.selected_weather_tags:
-                self.selected_weather_tags.append(tag)
-        else:
-            if tag in self.selected_weather_tags:
-                self.selected_weather_tags.remove(tag)
-        self._update_category_counter(item.parent())
-        self._refresh_weather_chips()
-
-    def _refresh_lighting_chips(self):
-        self._clear_layout(self.lighting_chips_layout, keep_last=True)
-        if not self.selected_lighting_tags:
-            ph = QLabel("(No lighting selected)")
-            ph.setObjectName("Subtitle")
-            self.lighting_chips_layout.insertWidget(0, ph)
-            return
+    def _refresh_atmosphere_chips(self):
+        descriptors = []
         for tag in self.selected_lighting_tags:
-            chip = self._create_chip(
-                tag, lambda checked=False, t=tag: self._remove_lighting_chip(t)
-            )
-            self.lighting_chips_layout.insertWidget(
-                self.lighting_chips_layout.count() - 1, chip
-            )
-
-    def _refresh_weather_chips(self):
-        self._clear_layout(self.weather_chips_layout, keep_last=True)
-        if not self.selected_weather_tags:
-            ph = QLabel("(No weather selected)")
-            ph.setObjectName("Subtitle")
-            self.weather_chips_layout.insertWidget(0, ph)
-            return
+            descriptors.append({
+                'text': tag.replace('_', ' '),
+                'color': ATMOSPHERE_COLORS['lighting'],
+                'payload': ('lighting', tag),
+            })
         for tag in self.selected_weather_tags:
-            chip = self._create_chip(
-                tag, lambda checked=False, t=tag: self._remove_weather_chip(t)
-            )
-            self.weather_chips_layout.insertWidget(
-                self.weather_chips_layout.count() - 1, chip
-            )
+            descriptors.append({
+                'text': tag.replace('_', ' '),
+                'color': ATMOSPHERE_COLORS['weather'],
+                'payload': ('weather', tag),
+            })
+        self._atmosphere_chips_row.set_chips(descriptors)
+        self._update_summary_panel()
 
-    def _remove_lighting_chip(self, tag: str):
-        if tag in self.selected_lighting_tags:
-            self.selected_lighting_tags.remove(tag)
-        for i in range(self.lighting_tree.topLevelItemCount()):
-            cat_item = self.lighting_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                tag_item = cat_item.child(j)
-                tag_data = tag_item.data(0, Qt.UserRole) or {}
-                if tag_data.get('tag') == tag:
-                    tag_item.blockSignals(True)
-                    tag_item.setCheckState(0, Qt.Unchecked)
-                    tag_item.blockSignals(False)
-                    self._update_category_counter(cat_item)
-                    break
-        self._refresh_lighting_chips()
+    def _remove_atmosphere_chip(self, payload):
+        group, tag = payload
+        lst = self.selected_lighting_tags if group == 'lighting' else self.selected_weather_tags
+        if tag in lst:
+            lst.remove(tag)
+        self._sync_atmosphere_cards()
+        self._refresh_atmosphere_chips()
 
-    def _remove_weather_chip(self, tag: str):
-        if tag in self.selected_weather_tags:
-            self.selected_weather_tags.remove(tag)
-        for i in range(self.weather_tree.topLevelItemCount()):
-            cat_item = self.weather_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                tag_item = cat_item.child(j)
-                tag_data = tag_item.data(0, Qt.UserRole) or {}
-                if tag_data.get('tag') == tag:
-                    tag_item.blockSignals(True)
-                    tag_item.setCheckState(0, Qt.Unchecked)
-                    tag_item.blockSignals(False)
-                    self._update_category_counter(cat_item)
-                    break
-        self._refresh_weather_chips()
+    def _sync_atmosphere_cards(self):
+        lighting_set = set(self.selected_lighting_tags)
+        weather_set = set(self.selected_weather_tags)
+        for card, group in self._atmosphere_cards:
+            s = lighting_set if group == 'lighting' else weather_set
+            card.set_selected_set(set(card.all_tags()) & s)
+
+    def _single_open_atmosphere(self, source):
+        enabled = self.settings_manager.get('behavior', 'single_open_shelves')
+        if enabled is None:
+            enabled = True
+        if not enabled:
+            return
+        for card, _g in self._atmosphere_cards:
+            if card is not source:
+                card.set_expanded(False, animate=True)
 
     # ═══════════════════════════════════════════════
     # CUSTOM TAB
@@ -1824,10 +1771,8 @@ class ProfilesTab(QWidget):
             atmosphere = profile.get('atmosphere_preferences', {})
             self.selected_lighting_tags = atmosphere.get('lighting', [])
             self.selected_weather_tags = atmosphere.get('weather', [])
-            self._sync_lighting_tree_checkboxes()
-            self._sync_weather_tree_checkboxes()
-            self._refresh_lighting_chips()
-            self._refresh_weather_chips()
+            self._sync_atmosphere_cards()
+            self._refresh_atmosphere_chips()
             self._update_summary_panel()
             QMessageBox.information(self, "Success", "YAML applied.")
         except yaml.YAMLError as e:
@@ -1949,94 +1894,35 @@ class ProfilesTab(QWidget):
         atmosphere = profile.get('atmosphere_preferences', {})
         self.selected_lighting_tags = atmosphere.get('lighting', [])
         self.selected_weather_tags = atmosphere.get('weather', [])
-        self._sync_lighting_tree_checkboxes()
-        self._sync_weather_tree_checkboxes()
-        self._refresh_lighting_chips()
-        self._refresh_weather_chips()
+        self._sync_atmosphere_cards()
+        self._refresh_atmosphere_chips()
 
         self._refresh_yaml_preview()
         self._update_summary_panel()
 
-    def _sync_dna_tree_checkboxes(self):
-        selected_set = {(e['tag'], e['category']) for e in self.selected_dna_tags}
-        for i in range(self.dna_tree.topLevelItemCount()):
-            cat_item = self.dna_tree.topLevelItem(i)
-            cat_data = cat_item.data(0, Qt.UserRole) or {}
-            cat_name = cat_data.get('name', '')
-            for j in range(cat_item.childCount()):
-                tag_item = cat_item.child(j)
-                tag_data = tag_item.data(0, Qt.UserRole) or {}
-                tag = tag_data.get('tag')
-                checked = (tag, cat_name) in selected_set
-                tag_item.blockSignals(True)
-                tag_item.setCheckState(0, Qt.Checked if checked else Qt.Unchecked)
-                tag_item.blockSignals(False)
-            self._update_category_counter(cat_item)
-
-    def _sync_wardrobe_tree_checkboxes(self):
-        selected_set = {(e['tag'], e['subcategory']) for e in self.selected_wardrobe_tags}
-        for i in range(self.wardrobe_tree.topLevelItemCount()):
-            cat_item = self.wardrobe_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                sub_item = cat_item.child(j)
-                sub_data = sub_item.data(0, Qt.UserRole) or {}
-                sub_name = sub_data.get('name', '')
-                for k in range(sub_item.childCount()):
-                    tag_item = sub_item.child(k)
-                    tag_data = tag_item.data(0, Qt.UserRole) or {}
-                    tag = tag_data.get('tag')
-                    checked = (tag, sub_name) in selected_set
-                    tag_item.blockSignals(True)
-                    tag_item.setCheckState(0, Qt.Checked if checked else Qt.Unchecked)
-                    tag_item.blockSignals(False)
-                self._update_wardrobe_subcat_counter(sub_item)
-            self._update_wardrobe_cat_counter(cat_item)
-
     def _sync_personality_tree_checkboxes(self):
         prefer_set = {e['tag'] for e in self.preferred_personality_tags}
         avoid_set = {e['tag'] for e in self.avoided_personality_tags}
-        for i in range(self.personality_tree.topLevelItemCount()):
-            cat_item = self.personality_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                sub_item = cat_item.child(j)
-                for k in range(sub_item.childCount()):
-                    tag_item = sub_item.child(k)
-                    tag_data = tag_item.data(0, Qt.UserRole) or {}
-                    tag = tag_data.get('tag')
-                    tag_item.blockSignals(True)
-                    if tag in prefer_set:
-                        tag_item.setCheckState(0, Qt.Checked)
-                    elif tag in avoid_set:
-                        tag_item.setCheckState(0, Qt.PartiallyChecked)
-                    else:
-                        tag_item.setCheckState(0, Qt.Unchecked)
-                    tag_item.blockSignals(False)
-
-    def _sync_lighting_tree_checkboxes(self):
-        selected_set = set(self.selected_lighting_tags)
-        for i in range(self.lighting_tree.topLevelItemCount()):
-            cat_item = self.lighting_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                tag_item = cat_item.child(j)
-                tag_data = tag_item.data(0, Qt.UserRole) or {}
-                tag = tag_data.get('tag')
-                tag_item.blockSignals(True)
-                tag_item.setCheckState(0, Qt.Checked if tag in selected_set else Qt.Unchecked)
-                tag_item.blockSignals(False)
-            self._update_category_counter(cat_item)
-
-    def _sync_weather_tree_checkboxes(self):
-        selected_set = set(self.selected_weather_tags)
-        for i in range(self.weather_tree.topLevelItemCount()):
-            cat_item = self.weather_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                tag_item = cat_item.child(j)
-                tag_data = tag_item.data(0, Qt.UserRole) or {}
-                tag = tag_data.get('tag')
-                tag_item.blockSignals(True)
-                tag_item.setCheckState(0, Qt.Checked if tag in selected_set else Qt.Unchecked)
-                tag_item.blockSignals(False)
-            self._update_category_counter(cat_item)
+        # Блокируем сигнал на ДЕРЕВЕ (не на элементе!) на всё время синхронизации,
+        # чтобы setCheckState не дёргал _on_personality_item_changed.
+        self.personality_tree.blockSignals(True)
+        try:
+            for i in range(self.personality_tree.topLevelItemCount()):
+                cat_item = self.personality_tree.topLevelItem(i)
+                for j in range(cat_item.childCount()):
+                    sub_item = cat_item.child(j)
+                    for k in range(sub_item.childCount()):
+                        tag_item = sub_item.child(k)
+                        tag_data = tag_item.data(0, Qt.UserRole) or {}
+                        tag = tag_data.get('tag')
+                        if tag in prefer_set:
+                            tag_item.setCheckState(0, Qt.Checked)
+                        elif tag in avoid_set:
+                            tag_item.setCheckState(0, Qt.PartiallyChecked)
+                        else:
+                            tag_item.setCheckState(0, Qt.Unchecked)
+        finally:
+            self.personality_tree.blockSignals(False)
 
     def _create_new_profile(self):
         name, ok = QInputDialog.getText(self, "New Profile", "Enter character name:")
@@ -2126,10 +2012,8 @@ class ProfilesTab(QWidget):
             self._refresh_hair_rules_display()
             self.selected_lighting_tags = []
             self.selected_weather_tags = []
-            self._sync_lighting_tree_checkboxes()
-            self._sync_weather_tree_checkboxes()
-            self._refresh_lighting_chips()
-            self._refresh_weather_chips()
+            self._sync_atmosphere_cards()
+            self._refresh_atmosphere_chips()
             self._refresh_profiles_list()
             self._update_summary_panel()
             QMessageBox.information(self, "Success", "Profile deleted.")

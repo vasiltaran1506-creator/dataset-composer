@@ -1,13 +1,18 @@
 """CategoryCard — accordion-карточка категории (§6.4 + §8.24)
 с вложенным grid кликабельных плиток (§6.7 grid-cell + §8.26).
 
-Используется и в DNA, и в Outfits. Цвет карточки берётся так:
-если передан color — он; иначе category_full(category_name) (поведение DNA).
+Используется и в DNA, и в Outfits, и в Atmosphere.
+Цвет: если передан color — он; иначе category_full(category_name).
 Счётчик 'N selected' — _PillLabel (овальная капсула, рисуется вручную).
+
+Режим «одиночного раскрытия» (single-open accordion):
+карточка шлёт expand_toggled(self) ТОЛЬКО когда пользователь кликом
+раскрывает свёрнутую полку (by_user=True и новое состояние = раскрыто).
+Программные set_expanded(..., by_user=False) сигнал НЕ шлют — поэтому
+поиск и менеджер одиночки не мешают друг другу и не рекурсят.
 """
 from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QPushButton, QSizePolicy)
-# QGraphicsOpacityEffect в PySide6 (Qt6) живёт в QtWidgets, НЕ в QtGui.
 try:
     from PySide6.QtWidgets import QGraphicsOpacityEffect
 except ImportError:
@@ -51,7 +56,6 @@ _CAT_KEY = {
 
 
 def _rgba(hex_color: str, alpha: float) -> str:
-    """#rrggbb + alpha -> rgba(...)"""
     h = hex_color.lstrip('#')
     r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
     return f"rgba({r}, {g}, {b}, {alpha})"
@@ -69,7 +73,6 @@ def category_chip_variant(name: str) -> str:
 # PILL BADGE — счётчик-пилюля 'N selected' (§8.24 counter)
 # ═══════════════════════════════════════════════
 class _PillLabel(QFrame):
-    """Счётчик в виде овальной капсулы. Фон рисуем вручную через QPainterPath."""
     def __init__(self, color: str, parent=None):
         super().__init__(parent)
         self._color = color
@@ -84,9 +87,6 @@ class _PillLabel(QFrame):
         self._text = text
         self.updateGeometry()
         self.update()
-
-    def text(self) -> str:
-        return self._text
 
     def sizeHint(self):
         fm = QFontMetrics(self.font())
@@ -117,7 +117,6 @@ class _PillLabel(QFrame):
 # CHECK CELL — кликабельная плитка тега (§8.26 grid-cell)
 # ═══════════════════════════════════════════════
 class CheckCell(QFrame):
-    """Плитка тега. Кликабельна вся. Выбор = цвет категории/отдела."""
     clicked = Signal(bool)
 
     def __init__(self, tag: str, color_full: str, parent=None):
@@ -133,16 +132,13 @@ class CheckCell(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(10, 8, 10, 8)
         lay.setSpacing(8)
-
         self._indicator = QLabel("○")
         self._indicator.setFixedWidth(14)
         self._indicator.setAlignment(Qt.AlignCenter)
         lay.addWidget(self._indicator)
-
         self._label = QLabel(tag.replace('_', ' '))
         self._label.setWordWrap(False)
         lay.addWidget(self._label, 1)
-
         self._apply_style()
 
     def set_selected(self, selected: bool, emit_signal: bool = False):
@@ -198,8 +194,9 @@ class CheckCell(QFrame):
 # ═══════════════════════════════════════════════
 class CategoryCard(QFrame):
     """Аккордеон-карточка одной категории/полки.
-    color=None => цвет из category_full (DNA); иначе явный цвет (Outfits)."""
-    toggled = Signal(str, bool)
+    color=None => цвет из category_full (DNA); иначе явный цвет (Outfits/Atmosphere)."""
+    toggled = Signal(str, bool)            # выбор тега: (tag, selected)
+    expand_toggled = Signal(object)        # пользователь раскрыл полку: (self)
 
     def __init__(self, category_name: str, description: str,
                  tags: list, selected_tags: set, parent=None, color=None):
@@ -259,7 +256,6 @@ class CategoryCard(QFrame):
         t = QLabel(category_name)
         t.setObjectName("CategoryTitle")
         titles.addWidget(t)
-        # Подзаголовок рисуем только если он непустой (у полок одежды его нет)
         if description:
             d = QLabel(description)
             d.setObjectName("Subtitle")
@@ -325,7 +321,8 @@ class CategoryCard(QFrame):
         self.set_expanded(any_visible, animate=False)
         return any_visible
 
-    def set_expanded(self, expanded: bool, animate: bool = True):
+    def set_expanded(self, expanded: bool, animate: bool = True,
+                     by_user: bool = False):
         if expanded == self._expanded and self._content.isVisible() == expanded:
             return
         self._expanded = expanded
@@ -338,9 +335,15 @@ class CategoryCard(QFrame):
         else:
             self._accent_bar.hide()
             self._collapse(animate)
+        # Сигнал шлём ТОЛЬКО когда человек кликом раскрыл свёрнутую полку.
+        # Программные раскрытия (поиск/загрузка) и любые сворачивания — молчат,
+        # поэтому одиночка не ломает поиск и не рекурсит сама в себя.
+        if by_user and self._expanded:
+            self.expand_toggled.emit(self)
 
     def toggle(self):
-        self.set_expanded(not self._expanded, animate=True)
+        # Клик пользователя => by_user=True (только он активирует одиночку)
+        self.set_expanded(not self._expanded, animate=True, by_user=True)
 
     # ── внутреннее ──
     def _on_cell(self, tag: str, selected: bool):
@@ -367,13 +370,11 @@ class CategoryCard(QFrame):
             return
         target = self._target_height()
         self._stop_anim()
-
         h_anim = QPropertyAnimation(self._content, b"maximumHeight")
         h_anim.setDuration(220)
         h_anim.setStartValue(0)
         h_anim.setEndValue(target)
         h_anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
-
         if self._opacity is not None:
             o_anim = QPropertyAnimation(self._opacity, b"opacity")
             o_anim.setDuration(160)
@@ -389,7 +390,6 @@ class CategoryCard(QFrame):
         else:
             self._anim = QParallelAnimationGroup(self)
             self._anim.addAnimation(h_anim)
-
         self._anim.finished.connect(lambda: self._content.setMaximumHeight(16777215))
         self._anim.start()
 
@@ -401,14 +401,12 @@ class CategoryCard(QFrame):
                 self._opacity.setOpacity(0.0)
             return
         self._stop_anim()
-
         cur = self._content.height()
         h_anim = QPropertyAnimation(self._content, b"maximumHeight")
         h_anim.setDuration(200)
         h_anim.setStartValue(cur)
         h_anim.setEndValue(0)
         h_anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
-
         if self._opacity is not None:
             o_anim = QPropertyAnimation(self._opacity, b"opacity")
             o_anim.setDuration(120)
@@ -421,7 +419,6 @@ class CategoryCard(QFrame):
         else:
             self._anim = QParallelAnimationGroup(self)
             self._anim.addAnimation(h_anim)
-
         self._anim.finished.connect(self._content.hide)
         self._anim.start()
 

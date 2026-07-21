@@ -27,6 +27,7 @@ DEFAULT_SETTINGS = {
     # Поведение приложения
     'behavior': {
         'confirm_delete': True,
+        'single_open_shelves': True,   # одиночная полка-аккордеон (одна открыта)
     },
     
     # Информация о программе
@@ -54,6 +55,11 @@ class SettingsManager:
                     loaded = json.load(f)
                 # Мержим загруженные настройки с дефолтами (глубокое объединение)
                 self.settings = self._deep_merge(DEFAULT_SETTINGS.copy(), loaded)
+                # Если подмешались недостающие дефолты — дописываем их в файл,
+                # чтобы новые ключи настроек сразу появлялись в settings.json
+                # (пользовательские значения при этом не теряются — override побеждает)
+                if self.settings != loaded:
+                    self._save()
             except (json.JSONDecodeError, OSError) as e:
                 print(f"⚠️ Ошибка чтения settings.json: {e}. Используются настройки по умолчанию.")
                 self.settings = DEFAULT_SETTINGS.copy()
