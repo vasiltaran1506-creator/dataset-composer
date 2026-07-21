@@ -16,6 +16,7 @@ from ui_qt.components.category_card import (
     CategoryCard, category_chip_variant, category_full
 )
 from ui_qt.components.compact_chip_row import CompactChipRow
+from ui_qt.components.summary_panel import SummaryPanel
 
 
 # ═══════════════════════════════════════════════
@@ -209,10 +210,16 @@ class ProfilesTab(QWidget):
         self.editor_tabview.currentChanged.connect(self._on_editor_tab_changed)
         right_layout.addWidget(self.editor_tabview)
 
+        # ═══ ПРАВАЯ ПАНЕЛЬ: Context Panel (Summary) ═══
+        self.summary_panel = SummaryPanel()
+        self.summary_panel.scroll_to_category.connect(self._scroll_to_dna_category)
+
         splitter.addWidget(left_widget)
         splitter.addWidget(right_widget)
+        splitter.addWidget(self.summary_panel)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(2, 0)
         main_layout.addWidget(splitter)
 
     # ═══════════════════════════════════════════════
@@ -360,6 +367,7 @@ class ProfilesTab(QWidget):
         elif not selected and entry in self.selected_dna_tags:
             self.selected_dna_tags.remove(entry)
         self._refresh_dna_chips()
+        self._update_summary_panel()
 
     def _refresh_dna_chips(self):
         descriptors = [
@@ -373,6 +381,28 @@ class ProfilesTab(QWidget):
             for entry in self.selected_dna_tags
         ]
         self.dna_chips_row.set_chips(descriptors)
+
+    def _update_summary_panel(self):
+        """Обновляет правую context-панель с разбивкой по категориям."""
+        if hasattr(self, 'summary_panel'):
+            self.summary_panel.set_profile_name(self.current_profile_name or "")
+            self.summary_panel.update_summary(self.selected_dna_tags)
+
+    def _scroll_to_dna_category(self, category_name: str):
+        """Скроллит DNA-вкладку к указанной категории."""
+        if hasattr(self, '_dna_cards'):
+            for card in self._dna_cards:
+                if card.category_name == category_name:
+                    # Раскрываем карточку, если она свёрнута
+                    if not card._expanded:
+                        card.set_expanded(True, animate=True)
+                    # Скроллим к карточке
+                    scroll_area = card.parent()
+                    while scroll_area and not isinstance(scroll_area, QScrollArea):
+                        scroll_area = scroll_area.parent()
+                    if scroll_area:
+                        scroll_area.ensureWidgetVisible(card, 0, 50)
+                    break
 
     def _remove_dna_chip(self, entry: dict):
         if entry in self.selected_dna_tags:
@@ -1849,6 +1879,7 @@ class ProfilesTab(QWidget):
         self.current_profile_name = profile_name
         self.editor_title.setText(f"{IconManager.get('edit')}  Editing: {profile_name}")
         self._load_profile_to_editor(profile_name)
+        self._update_summary_panel()
 
     def _load_profile_to_editor(self, profile_name: str):
         profile_path = self.profiles_directory / f"{profile_name}.yaml"
