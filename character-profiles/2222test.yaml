@@ -1,0 +1,37 @@
+# Character Profile: 2222test
+# Filter over scene-rules
+character:
+  name: 2222test
+  age: 18
+  archetype: custom character
+fixed_traits: []
+outfit_whitelist:
+  default:
+    full_body:
+    - white dress
+    topwear:
+    - white blouse
+    bottomwear:
+    - blue denim jeans
+    legwear:
+    - black pantyhose
+    footwear:
+    - ankle boots
+    underwear:
+    - white panties
+    accessories:
+    - gloves
+underwear_whitelist: {}
+signature_props: []
+hair_rules:
+  default: hair down
+  conditional: []
+expression_filter:
+  prefer: []
+  avoid: []
+pose_filter:
+  prefer: []
+  avoid: []
+atmosphere_preferences:
+  lighting: []
+  weather: []

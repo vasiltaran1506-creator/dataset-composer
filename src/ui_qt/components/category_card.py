@@ -1,8 +1,9 @@
-"""CategoryCard — accordion-карточка категории DNA (§6.4 + §8.24)
+"""CategoryCard — accordion-карточка категории (§6.4 + §8.24)
 с вложенным grid кликабельных плиток (§6.7 grid-cell + §8.26).
-Цвета категории — через _CAT_FULL / _rgba (robust, без жёсткой зависимости от theme.py).
-Статический вид карточки — через variant + theme.qss.
-Счётчик 'N selected' — _PillLabel (капсула рисуется вручную в paintEvent).
+
+Используется и в DNA, и в Outfits. Цвет карточки берётся так:
+если передан color — он; иначе category_full(category_name) (поведение DNA).
+Счётчик 'N selected' — _PillLabel (овальная капсула, рисуется вручную).
 """
 from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QPushButton, QSizePolicy)
@@ -11,17 +12,15 @@ try:
     from PySide6.QtWidgets import QGraphicsOpacityEffect
 except ImportError:
     QGraphicsOpacityEffect = None
-# QRectF / QSize в Qt6 живут в QtCore (НЕ в QtGui!).
 from PySide6.QtCore import (Qt, Signal, QSize, QRectF, QPropertyAnimation,
                             QEasingCurve, QParallelAnimationGroup,
                             QSequentialAnimationGroup, QPauseAnimation)
-# QPainter / QPainterPath / QColor / QFont / QFontMetrics — в QtGui.
 from PySide6.QtGui import QPainter, QPainterPath, QColor, QFont, QFontMetrics
 from ui_qt.components.flow_layout import FlowLayout
 from ui_qt.icon_manager import IconManager
 
 
-# ── Цвета категорий (с безопасным fallback на §11.6) ──
+# ── Цвета DNA-категорий (с безопасным fallback на §11.6) ──
 try:
     from ui_qt.theme import CategoryColors as _CC
     def _g(name, fb):
@@ -70,8 +69,7 @@ def category_chip_variant(name: str) -> str:
 # PILL BADGE — счётчик-пилюля 'N selected' (§8.24 counter)
 # ═══════════════════════════════════════════════
 class _PillLabel(QFrame):
-    """Счётчик в виде овальной капсулы. Фон рисуем вручную через QPainterPath,
-    потому что кастомный tint-фон надёжнее отрисовать самим, чем полагаться на QSS."""
+    """Счётчик в виде овальной капсулы. Фон рисуем вручную через QPainterPath."""
     def __init__(self, color: str, parent=None):
         super().__init__(parent)
         self._color = color
@@ -103,7 +101,7 @@ class _PillLabel(QFrame):
         except Exception:
             pass
         rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        radius = rect.height() / 2.0  # половина высоты => капсула
+        radius = rect.height() / 2.0
         path = QPainterPath()
         path.addRoundedRect(rect, radius, radius)
         bg = QColor(self._color)
@@ -119,7 +117,7 @@ class _PillLabel(QFrame):
 # CHECK CELL — кликабельная плитка тега (§8.26 grid-cell)
 # ═══════════════════════════════════════════════
 class CheckCell(QFrame):
-    """Плитка тега. Кликабельна вся. Выбор = цвет категории."""
+    """Плитка тега. Кликабельна вся. Выбор = цвет категории/отдела."""
     clicked = Signal(bool)
 
     def __init__(self, tag: str, color_full: str, parent=None):
@@ -167,7 +165,7 @@ class CheckCell(QFrame):
                 QFrame#CheckCell {{
                     background-color: {_rgba(self._color, 0.15)};
                     border: 1px solid {_rgba(self._color, 0.50)};
-                    border-radius: 9999px;
+                    border-radius: 8px;
                 }}
                 QFrame#CheckCell:hover {{
                     background-color: {_rgba(self._color, 0.22)};
@@ -181,7 +179,7 @@ class CheckCell(QFrame):
                 QFrame#CheckCell {
                     background-color: #1f2738;
                     border: 1px solid #313a4d;
-                    border-radius: 9999px;
+                    border-radius: 8px;
                 }
                 QFrame#CheckCell:hover {
                     background-color: #283145;
@@ -199,14 +197,15 @@ class CheckCell(QFrame):
 # CATEGORY CARD — аккордеон-карточка (§8.24)
 # ═══════════════════════════════════════════════
 class CategoryCard(QFrame):
-    """Аккордеон-карточка одной DNA-категории."""
+    """Аккордеон-карточка одной категории/полки.
+    color=None => цвет из category_full (DNA); иначе явный цвет (Outfits)."""
     toggled = Signal(str, bool)
 
     def __init__(self, category_name: str, description: str,
-                 tags: list, selected_tags: set, parent=None):
+                 tags: list, selected_tags: set, parent=None, color=None):
         super().__init__(parent)
         self.category_name = category_name
-        self._color = category_full(category_name)
+        self._color = color if color else category_full(category_name)
         self._tags = list(tags)
         self._cells: dict = {}
         self._expanded = False
@@ -260,12 +259,13 @@ class CategoryCard(QFrame):
         t = QLabel(category_name)
         t.setObjectName("CategoryTitle")
         titles.addWidget(t)
-        d = QLabel(description)
-        d.setObjectName("Subtitle")
-        titles.addWidget(d)
+        # Подзаголовок рисуем только если он непустой (у полок одежды его нет)
+        if description:
+            d = QLabel(description)
+            d.setObjectName("Subtitle")
+            titles.addWidget(d)
         hlay.addLayout(titles, 1)
 
-        # Счётчик — овальная пилюля, рисуемая вручную
         self._counter = _PillLabel(self._color)
         self._counter.setText("0 selected")
         hlay.addWidget(self._counter)
@@ -288,7 +288,6 @@ class CategoryCard(QFrame):
             self._cells[tag] = cell
             self._grid.addWidget(cell)
 
-        # Opacity-эффект для fade (если доступен в этой сборке PySide6)
         self._opacity = None
         if QGraphicsOpacityEffect is not None:
             self._opacity = QGraphicsOpacityEffect(self._content)

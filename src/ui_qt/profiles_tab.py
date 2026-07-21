@@ -17,6 +17,8 @@ from ui_qt.components.category_card import (
 )
 from ui_qt.components.compact_chip_row import CompactChipRow
 from ui_qt.components.summary_panel import SummaryPanel
+from ui_qt.components.department_tabs import DepartmentTabs
+from ui_qt.theme import WardrobeColors
 
 
 # ═══════════════════════════════════════════════
@@ -384,9 +386,20 @@ class ProfilesTab(QWidget):
         self._update_summary_panel()   # панель синхронизируется вместе с чипами
 
     def _update_summary_panel(self):
-        """Обновляет правую context-панель с разбивкой по категориям."""
-        if hasattr(self, 'summary_panel'):
-            self.summary_panel.set_profile_name(self.current_profile_name or "")
+        """Правая панель: DNA-сводка или Wardrobe-сводка по активной подвкладке."""
+        if not hasattr(self, 'summary_panel'):
+            return
+        self.summary_panel.set_profile_name(self.current_profile_name or "")
+        active = None
+        if hasattr(self, 'editor_tabview'):
+            idx = self.editor_tabview.currentIndex()
+            if idx >= 0:
+                active = self.editor_tabview.widget(idx)
+        if active is getattr(self, 'outfits_widget', None):
+            self.summary_panel.update_wardrobe_summary(
+                self.selected_wardrobe_tags, self._wardrobe_summary_spec()
+            )
+        else:
             self.summary_panel.update_summary(self.selected_dna_tags)
 
     def _scroll_to_dna_category(self, category_name: str):
@@ -454,8 +467,6 @@ class ProfilesTab(QWidget):
             self._filter_dna_cards(text)
             return
         tree_map = {
-            'dna': self.dna_tree,
-            'wardrobe': getattr(self, 'wardrobe_tree', None),
             'lighting': getattr(self, 'lighting_tree', None),
             'weather': getattr(self, 'weather_tree', None),
         }
@@ -479,8 +490,39 @@ class ProfilesTab(QWidget):
                 cat_item.setExpanded(True)
 
     # ═══════════════════════════════════════════════
-    # OUTFITS TAB
+    # OUTFITS TAB  (department tabs + accordion shelves + grid)
     # ═══════════════════════════════════════════════
+    def _build_wardrobe_index(self):
+        """Строит индексы из prompt-library/02_clothing один раз."""
+        self._wardrobe_structure = {}   # dept -> [(subcat, [tags]), ...]
+        self._subcat_to_dept = {}       # subcat -> dept
+        self._tag_to_dept = {}          # tag -> dept
+        clothing_dir = self.project_root / "prompt-library" / "02_clothing"
+        if not clothing_dir.exists():
+            return
+        for dept_dir in sorted(clothing_dir.iterdir()):
+            if not dept_dir.is_dir():
+                continue
+            dept = dept_dir.name
+            subcats = []
+            for txt in sorted(dept_dir.glob("*.txt")):
+                subcat = txt.stem
+                tags = self._load_tags_from_file(txt)
+                subcats.append((subcat, tags))
+                self._subcat_to_dept[subcat] = dept
+                for t in tags:
+                    self._tag_to_dept[t] = dept
+            self._wardrobe_structure[dept] = subcats
+
+    def _wardrobe_summary_spec(self) -> dict:
+        return {
+            'order': WARDROBE_ORDER,
+            'labels': {d: WardrobeColors.LABELS.get(d, d) for d in WARDROBE_ORDER},
+            'colors': {d: WardrobeColors.get(d) for d in WARDROBE_ORDER},
+            'subcat_to_dept': getattr(self, '_subcat_to_dept', {}),
+            'tag_to_dept': getattr(self, '_tag_to_dept', {}),
+        }
+
     def _setup_outfits_tab(self, widget: QWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -494,167 +536,118 @@ class ProfilesTab(QWidget):
         subtitle.setObjectName("Subtitle")
         layout.addWidget(subtitle)
 
-        # Chips
-        chips_scroll = QScrollArea()
-        chips_scroll.setWidgetResizable(True)
-        chips_scroll.setMaximumHeight(100)
-        chips_scroll.setFrameShape(QFrame.NoFrame)
-        chips_widget = QWidget()
-        self.wardrobe_chips_layout = QHBoxLayout(chips_widget)
-        self.wardrobe_chips_layout.setContentsMargins(0, 0, 0, 0)
-        self.wardrobe_chips_layout.setSpacing(6)
-        self.wardrobe_chips_layout.addStretch()
-        chips_scroll.setWidget(chips_widget)
-        layout.addWidget(chips_scroll)
+        # Круглые цветные чипы одежды
+        self._outfit_chips_row = CompactChipRow()
+        self._outfit_chips_row.set_empty_text("No wardrobe tags selected")
+        self._outfit_chips_row.remove_requested.connect(self._remove_wardrobe_chip)
+        layout.addWidget(self._outfit_chips_row)
 
-        # Поиск
-        self.wardrobe_search = QLineEdit()
-        self.wardrobe_search.setPlaceholderText(f"{IconManager.get('search')}  Search wardrobe...")
-        self.wardrobe_search.textChanged.connect(self._filter_tree)
-        self.wardrobe_search.setProperty("target_tree", "wardrobe")
-        layout.addWidget(self.wardrobe_search)
+        # Ряд отделов-пилюль
+        self._outfit_dept_tabs = DepartmentTabs()
+        self._outfit_dept_tabs.set_departments(WARDROBE_ORDER)
+        self._outfit_dept_tabs.department_changed.connect(self._on_outfit_dept_changed)
+        layout.addWidget(self._outfit_dept_tabs)
 
-        # Дерево
-        self.wardrobe_tree = QTreeWidget()
-        self.wardrobe_tree.setHeaderHidden(True)
-        self.wardrobe_tree.setAnimated(True)
-        self.wardrobe_tree.itemChanged.connect(self._on_wardrobe_item_changed)
-        layout.addWidget(self.wardrobe_tree, 1)
+        # Поиск по активному отделу
+        first_dept = WARDROBE_ORDER[0]
+        self._outfit_search = QLineEdit()
+        self._outfit_search.setPlaceholderText(
+            f"{IconManager.get('search')}  Search in {WardrobeColors.LABELS.get(first_dept, first_dept)}..."
+        )
+        self._outfit_search.textChanged.connect(self._filter_outfit_cards)
+        layout.addWidget(self._outfit_search)
 
-        self._build_wardrobe_tree()
+        # Полки (аккордеон-карточки) активного отдела
+        cards_scroll = QScrollArea()
+        cards_scroll.setWidgetResizable(True)
+        cards_scroll.setFrameShape(QFrame.NoFrame)
+        cards_widget = QWidget()
+        self._outfit_cards_layout = QVBoxLayout(cards_widget)
+        self._outfit_cards_layout.setContentsMargins(0, 0, 0, 0)
+        self._outfit_cards_layout.setSpacing(10)
+        self._outfit_cards_layout.addStretch()
+        cards_scroll.setWidget(cards_widget)
+        layout.addWidget(cards_scroll, 1)
+
+        self._outfit_cards: list = []
+        self._build_wardrobe_index()
+        self._build_outfit_cards(first_dept)
         self._refresh_wardrobe_chips()
 
-    def _build_wardrobe_tree(self):
-        self.wardrobe_tree.clear()
-        clothing_dir = self.project_root / "prompt-library" / "02_clothing"
-        if not clothing_dir.exists():
+    def _on_outfit_dept_changed(self, dept: str):
+        self._outfit_search.blockSignals(True)
+        self._outfit_search.setText("")
+        self._outfit_search.blockSignals(False)
+        self._outfit_search.setPlaceholderText(
+            f"{IconManager.get('search')}  Search in {WardrobeColors.LABELS.get(dept, dept)}..."
+        )
+        self._build_outfit_cards(dept)
+
+    def _build_outfit_cards(self, dept: str):
+        for card in self._outfit_cards:
+            card.deleteLater()
+        self._outfit_cards.clear()
+        self._clear_layout(self._outfit_cards_layout, keep_last=True)
+
+        color = WardrobeColors.get(dept)
+        selected_set = {e['tag'] for e in self.selected_wardrobe_tags
+                        if (e.get('subcategory') == dept)}
+        for subcat, tags in self._wardrobe_structure.get(dept, []):
+            card = CategoryCard(
+                subcat.replace('_', ' ').title(), "", tags, selected_set, color=color
+            )
+            card.toggled.connect(self._on_outfit_toggled)
+            self._outfit_cards.append(card)
+            self._outfit_cards_layout.insertWidget(
+                self._outfit_cards_layout.count() - 1, card
+            )
+        fl = self._outfit_search.text()
+        if fl:
+            self._filter_outfit_cards(fl)
+
+    def _on_outfit_toggled(self, tag: str, selected: bool):
+        dept = self._tag_to_dept.get(tag)
+        if dept is None:
             return
-
-        categories = {}
-        for txt_file in sorted(clothing_dir.rglob("*.txt")):
-            parts = txt_file.relative_to(clothing_dir).parts
-            if len(parts) >= 2:
-                main_cat = parts[0]
-                sub_cat = parts[1].replace('.txt', '')
-            else:
-                continue
-            categories.setdefault(main_cat, {})[sub_cat] = txt_file
-
-        def sort_key(cat):
-            try:
-                return WARDROBE_ORDER.index(cat.lower())
-            except ValueError:
-                return 999
-
-        for main_cat in sorted(categories.keys(), key=sort_key):
-            cat_item = QTreeWidgetItem([main_cat.replace('_', ' ').title()])
-            cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsSelectable)
-            font = cat_item.font(0)
-            font.setBold(True)
-            cat_item.setFont(0, font)
-            cat_item.setData(0, Qt.UserRole, {'type': 'category', 'name': main_cat})
-
-            for sub_cat, file_path in sorted(categories[main_cat].items()):
-                sub_item = QTreeWidgetItem([sub_cat.replace('_', ' ').title()])
-                sub_item.setFlags(sub_item.flags() & ~Qt.ItemIsSelectable)
-                sub_font = sub_item.font(0)
-                sub_font.setItalic(True)
-                sub_item.setFont(0, sub_font)
-                sub_item.setData(0, Qt.UserRole, {'type': 'subcategory', 'name': sub_cat})
-
-                tags = self._load_tags_from_file(file_path)
-                for tag in tags:
-                    tag_item = QTreeWidgetItem([tag.replace('_', ' ')])
-                    tag_item.setFlags(tag_item.flags() | Qt.ItemIsUserCheckable)
-                    tag_item.setCheckState(0, Qt.Unchecked)
-                    tag_item.setData(0, Qt.UserRole, {
-                        'type': 'tag', 'tag': tag, 'subcategory': sub_cat
-                    })
-                    sub_item.addChild(tag_item)
-                cat_item.addChild(sub_item)
-            self.wardrobe_tree.addTopLevelItem(cat_item)
-
-    def _on_wardrobe_item_changed(self, item: QTreeWidgetItem, column: int):
-        if column != 0:
-            return
-        data = item.data(0, Qt.UserRole) or {}
-        if data.get('type') != 'tag':
-            return
-        tag = data['tag']
-        subcategory = data['subcategory']
-        tag_entry = {'tag': tag, 'subcategory': subcategory}
-        if item.checkState(0) == Qt.Checked:
-            if tag_entry not in self.selected_wardrobe_tags:
-                self.selected_wardrobe_tags.append(tag_entry)
-        else:
-            if tag_entry in self.selected_wardrobe_tags:
-                self.selected_wardrobe_tags.remove(tag_entry)
-        # Обновляем счётчики для подкатегории и категории
-        parent_subcat = item.parent()
-        if parent_subcat:
-            self._update_wardrobe_subcat_counter(parent_subcat)
-            parent_cat = parent_subcat.parent()
-            if parent_cat:
-                self._update_wardrobe_cat_counter(parent_cat)
+        entry = {'tag': tag, 'subcategory': dept}
+        if selected and entry not in self.selected_wardrobe_tags:
+            self.selected_wardrobe_tags.append(entry)
+        elif not selected and entry in self.selected_wardrobe_tags:
+            self.selected_wardrobe_tags.remove(entry)
         self._refresh_wardrobe_chips()
 
-    def _update_wardrobe_subcat_counter(self, subcat_item: QTreeWidgetItem):
-        data = subcat_item.data(0, Qt.UserRole) or {}
-        name = data.get('name', '').replace('_', ' ').title()
-        total = subcat_item.childCount()
-        selected = sum(1 for j in range(total) if subcat_item.child(j).checkState(0) == Qt.Checked)
-        subcat_item.setText(0, f"{name}  ({selected}/{total})")
-
-    def _update_wardrobe_cat_counter(self, cat_item: QTreeWidgetItem):
-        data = cat_item.data(0, Qt.UserRole) or {}
-        name = data.get('name', '').replace('_', ' ').title()
-        total = 0
-        selected = 0
-        for j in range(cat_item.childCount()):
-            sub = cat_item.child(j)
-            total += sub.childCount()
-            selected += sum(1 for k in range(sub.childCount()) if sub.child(k).checkState(0) == Qt.Checked)
-        cat_item.setText(0, f"{name}  ({selected}/{total})")
+    def _filter_outfit_cards(self, text: str):
+        for card in self._outfit_cards:
+            card.set_filter(text)
 
     def _refresh_wardrobe_chips(self):
-        self._clear_layout(self.wardrobe_chips_layout, keep_last=True)
-        if not self.selected_wardrobe_tags:
-            placeholder = QLabel("(No wardrobe tags selected)")
-            placeholder.setObjectName("Subtitle")
-            self.wardrobe_chips_layout.insertWidget(0, placeholder)
-            return
-        for entry in self.selected_wardrobe_tags:
-            chip = self._create_chip(
-                entry['tag'],
-                lambda checked=False, e=entry: self._remove_wardrobe_chip(e)
-            )
-            self.wardrobe_chips_layout.insertWidget(
-                self.wardrobe_chips_layout.count() - 1, chip
-            )
+        descriptors = [
+            {
+                'text': e['tag'].replace('_', ' '),
+                'color': WardrobeColors.get(e.get('subcategory', '')),
+                'payload': e,
+            }
+            for e in self.selected_wardrobe_tags
+        ]
+        self._outfit_chips_row.set_chips(descriptors)
+        self._update_summary_panel()
 
     def _remove_wardrobe_chip(self, entry: dict):
         if entry in self.selected_wardrobe_tags:
             self.selected_wardrobe_tags.remove(entry)
-        # Найти и снять чекбокс
-        for i in range(self.wardrobe_tree.topLevelItemCount()):
-            cat_item = self.wardrobe_tree.topLevelItem(i)
-            for j in range(cat_item.childCount()):
-                sub_item = cat_item.child(j)
-                sub_data = sub_item.data(0, Qt.UserRole) or {}
-                if sub_data.get('name') != entry['subcategory']:
-                    continue
-                for k in range(sub_item.childCount()):
-                    tag_item = sub_item.child(k)
-                    tag_data = tag_item.data(0, Qt.UserRole) or {}
-                    if tag_data.get('tag') == entry['tag']:
-                        tag_item.blockSignals(True)
-                        tag_item.setCheckState(0, Qt.Unchecked)
-                        tag_item.blockSignals(False)
-                        break
-                self._update_wardrobe_subcat_counter(sub_item)
-                self._update_wardrobe_cat_counter(cat_item)
-                break
+        for card in self._outfit_cards:
+            card_tags = set(card.all_tags())
+            card.set_selected_set(
+                {e['tag'] for e in self.selected_wardrobe_tags if e['tag'] in card_tags}
+            )
         self._refresh_wardrobe_chips()
+
+    def _sync_wardrobe_cards(self):
+        for card in self._outfit_cards:
+            card_tags = set(card.all_tags())
+            card.set_selected_set(
+                {e['tag'] for e in self.selected_wardrobe_tags if e['tag'] in card_tags}
+            )
 
     # ═══════════════════════════════════════════════
     # PERSONALITY TAB (Tri-state: Unchecked / Prefer / Avoid)
@@ -1709,6 +1702,7 @@ class ProfilesTab(QWidget):
         if hasattr(self, 'preview_widget') and hasattr(self, 'yaml_textbox'):
             if self.editor_tabview.widget(index) is self.preview_widget:
                 self._refresh_yaml_preview()
+        self._update_summary_panel()
 
     def _refresh_yaml_preview(self):
         if not hasattr(self, 'yaml_textbox') or self.yaml_textbox is None:
@@ -1790,15 +1784,16 @@ class ProfilesTab(QWidget):
                 if other_traits:
                     self.other_traits_text.setPlainText(", ".join(other_traits))
 
-            # Outfits
+            # Outfits (нормализуем второй уровень yaml в отдел)
             self.selected_wardrobe_tags = []
             for outfit_name, subcats in profile.get('outfit_whitelist', {}).items():
                 if isinstance(subcats, dict):
                     for subcategory, tags in subcats.items():
                         if isinstance(tags, list):
+                            dept = self._subcat_to_dept.get(subcategory, subcategory)
                             for tag in tags:
-                                self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': subcategory})
-            self._sync_wardrobe_tree_checkboxes()
+                                self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': dept})
+            self._sync_wardrobe_cards()
             self._refresh_wardrobe_chips()
 
             # Personality
@@ -1911,16 +1906,17 @@ class ProfilesTab(QWidget):
                 self.other_traits_text.setPlainText(", ".join(other_traits))
         self._log(f"[LOAD] Profile loaded: {profile_name}\n")
 
-        # Outfits
+        # Outfits (нормализуем второй уровень yaml в отдел)
         self.selected_wardrobe_tags = []
         outfit_whitelist = profile.get('outfit_whitelist', {})
         for outfit_name, subcats in outfit_whitelist.items():
             if isinstance(subcats, dict):
                 for subcategory, tags in subcats.items():
                     if isinstance(tags, list):
+                        dept = self._subcat_to_dept.get(subcategory, subcategory)
                         for tag in tags:
-                            self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': subcategory})
-        self._sync_wardrobe_tree_checkboxes()
+                            self.selected_wardrobe_tags.append({'tag': tag, 'subcategory': dept})
+        self._sync_wardrobe_cards()
         self._refresh_wardrobe_chips()
 
         # Personality
@@ -2118,7 +2114,7 @@ class ProfilesTab(QWidget):
             if self.other_traits_text:
                 self.other_traits_text.clear()
             self.selected_wardrobe_tags = []
-            self._sync_wardrobe_tree_checkboxes()
+            self._sync_wardrobe_cards()
             self._refresh_wardrobe_chips()
             self.preferred_personality_tags = []
             self.avoided_personality_tags = []

@@ -88,6 +88,51 @@ class CategoryColors:
         }
         return mapping.get(category_name, (cls.FACE, cls.FACE_SUBTLE))
 
+# ═══════════════════════════════════════════════════════════════
+# §11.6 (расширение) WARDROBE / OUTFIT CATEGORY COLORS
+# Цвета отделов гардероба (Profiles → Outfits). Единый источник
+# истины: department_tabs.py и profiles_tab.py берут цвета отсюда.
+# ═══════════════════════════════════════════════════════════════
+class WardrobeColors:
+    FULL_BODY   = "#a78bfa"   # violet
+    TOPWEAR     = "#38bdf8"   # sky
+    BOTTOMWEAR  = "#34d399"   # emerald
+    LEGWEAR     = "#fbbf24"   # amber
+    FOOTWEAR    = "#fb923c"   # orange
+    UNDERWEAR   = "#f472b6"   # pink
+    ACCESSORIES = "#22d3ee"   # cyan
+
+    # Порядок отделов слева направо в ряде пилюль
+    ORDER = [
+        "full_body", "topwear", "bottomwear", "legwear",
+        "footwear", "underwear", "accessories",
+    ]
+
+    # Человекочитаемые подписи отделов
+    LABELS = {
+        "full_body":   "Full Body",
+        "topwear":     "Topwear",
+        "bottomwear":  "Bottomwear",
+        "legwear":     "Legwear",
+        "footwear":    "Footwear",
+        "underwear":   "Underwear",
+        "accessories": "Accessories",
+    }
+
+    _MAP = {
+        "full_body":   FULL_BODY,
+        "topwear":     TOPWEAR,
+        "bottomwear":  BOTTOMWEAR,
+        "legwear":     LEGWEAR,
+        "footwear":    FOOTWEAR,
+        "underwear":   UNDERWEAR,
+        "accessories": ACCESSORIES,
+    }
+
+    @classmethod
+    def get(cls, department_key: str) -> str:
+        """Цвет отдела по ключу; fallback — общий accent."""
+        return cls._MAP.get(department_key, "#4f6df5")
 
 # ═══════════════════════════════════════════════════════════════
 # §11.2 TYPOGRAPHY TOKENS
