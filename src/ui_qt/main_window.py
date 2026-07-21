@@ -40,6 +40,7 @@ class MainWindowQt(QMainWindow):
 
         # --- Центральный виджет и Layout ---
         central_widget = QWidget()
+        central_widget.setObjectName("WorkspaceSurface")
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -102,11 +103,6 @@ class MainWindowQt(QMainWindow):
 
         layout.addWidget(self.tab_widget)
 
-        # --- Статус-бар ---
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Core Engine initialized. Ready.")
-
         # --- Центрирование + тема ---
         self.center_on_screen()
         self.apply_theme()
@@ -119,16 +115,19 @@ class MainWindowQt(QMainWindow):
         self.move(x, y)
 
     def apply_theme(self):
-        """Загружает глобальный QSS из файла theme.qss (VS Code Dark)."""
+        """Загружает глобальный QSS из theme.qss (graphite-blue palette)"""
+        from pathlib import Path
         qss_path = Path(__file__).parent / "theme.qss"
+
         if qss_path.exists():
             try:
                 with open(qss_path, "r", encoding="utf-8") as f:
                     self.setStyleSheet(f.read())
+                self._log("[THEME] Graphite-blue theme loaded\n")
             except Exception as e:
-                print(f"Theme load error: {e}")
+                print(f"[THEME ERROR] Failed to load theme.qss: {e}")
         else:
-            print(f"Theme file not found: {qss_path}")
+            print(f"[THEME ERROR] theme.qss not found at: {qss_path}")
 
     def _log(self, message):
         """Глобальный лог (в консоль)."""
