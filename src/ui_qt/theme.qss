@@ -635,3 +635,39 @@ QPushButton:focus, QLineEdit:focus, QComboBox:focus, QCheckBox:focus {
     outline: 2px solid rgba(79, 109, 245, 0.45);
     outline-offset: 2px;
 }
+
+/* === COMPACT CHIP ROW internals (§8.25) === */
+QPushButton[variant="chip-remove"] {
+    background: transparent;
+    border: none;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+    color: #9aa3b8;
+    font-size: 12px;
+}
+QPushButton[variant="chip-remove"]:hover {
+    color: #f5475b;
+    background: transparent;
+}
+
+QPushButton[variant="chip-overflow"] {
+    background: rgba(79, 109, 245, 0.15);
+    border: 1px solid rgba(79, 109, 245, 0.30);
+    color: #818cf8;
+    border-radius: 9999px;
+    padding: 0px;
+    min-width: 0px;
+    min-height: 0px;
+    font-size: 11px;
+    font-weight: 600;
+}
+QPushButton[variant="chip-overflow"]:hover {
+    background: rgba(79, 109, 245, 0.25);
+}
+
+QWidget#ChipOverflowPopup {
+    background-color: #232138;
+    border: 1px solid #443f63;
+    border-radius: 12px;
+}

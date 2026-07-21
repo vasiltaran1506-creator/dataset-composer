@@ -13,8 +13,9 @@ import yaml
 import shutil
 from ui_qt.icon_manager import IconManager
 from ui_qt.components.category_card import (
-    CategoryCard, category_chip_variant
+    CategoryCard, category_chip_variant, category_full
 )
+from ui_qt.components.compact_chip_row import CompactChipRow
 
 
 # ═══════════════════════════════════════════════
@@ -297,18 +298,13 @@ class ProfilesTab(QWidget):
         subtitle.setObjectName("Subtitle")
         layout.addWidget(subtitle)
 
-        # Chips (category-colored)
-        chips_scroll = QScrollArea()
-        chips_scroll.setWidgetResizable(True)
-        chips_scroll.setMaximumHeight(80)
-        chips_scroll.setFrameShape(QFrame.NoFrame)
-        chips_widget = QWidget()
-        self.dna_chips_layout = QHBoxLayout(chips_widget)
-        self.dna_chips_layout.setContentsMargins(0, 0, 0, 0)
-        self.dna_chips_layout.setSpacing(6)
-        self.dna_chips_layout.addStretch()
-        chips_scroll.setWidget(chips_widget)
-        layout.addWidget(chips_scroll)
+        # Chips container — Compact single-line row with overflow (§8.25)
+        self.dna_chips_row = CompactChipRow()
+        self.dna_chips_row.set_empty_text(
+            "No DNA tags selected — expand categories and check tags"
+        )
+        self.dna_chips_row.remove_requested.connect(self._remove_dna_chip)
+        layout.addWidget(self.dna_chips_row)
 
         # Поиск
         self.dna_search = QLineEdit()
@@ -366,21 +362,17 @@ class ProfilesTab(QWidget):
         self._refresh_dna_chips()
 
     def _refresh_dna_chips(self):
-        self._clear_layout(self.dna_chips_layout, keep_last=True)
-        if not self.selected_dna_tags:
-            placeholder = QLabel("(No DNA tags selected — expand categories and check tags)")
-            placeholder.setObjectName("Subtitle")
-            self.dna_chips_layout.insertWidget(0, placeholder)
-            return
-        for entry in self.selected_dna_tags:
-            chip = self._create_chip(
-                entry['tag'],
-                lambda checked=False, e=entry: self._remove_dna_chip(e),
-                variant=category_chip_variant(entry['category'])
-            )
-            self.dna_chips_layout.insertWidget(
-                self.dna_chips_layout.count() - 1, chip
-            )
+        descriptors = [
+            {
+                'text': entry['tag'].replace('_', ' '),
+                'variant': category_chip_variant(entry['category']),
+                'color': category_full(entry['category']),
+                'draw_bar': True,
+                'payload': entry,
+            }
+            for entry in self.selected_dna_tags
+        ]
+        self.dna_chips_row.set_chips(descriptors)
 
     def _remove_dna_chip(self, entry: dict):
         if entry in self.selected_dna_tags:
