@@ -150,7 +150,7 @@ class ProfilesTab(QWidget):
         title_layout.setContentsMargins(0, 0, 0, 0)
         title_layout.setSpacing(8)
 
-        self.editor_title = QLabel(f"{IconManager.get('edit')}  Editing: (no selection)")
+        self.editor_title = QLabel(f"Editing: (no selection)")
         self.editor_title.setObjectName("PageTitle")
         title_layout.addWidget(self.editor_title)
 
@@ -381,6 +381,7 @@ class ProfilesTab(QWidget):
             for entry in self.selected_dna_tags
         ]
         self.dna_chips_row.set_chips(descriptors)
+        self._update_summary_panel()   # панель синхронизируется вместе с чипами
 
     def _update_summary_panel(self):
         """Обновляет правую context-панель с разбивкой по категориям."""
@@ -1769,7 +1770,7 @@ class ProfilesTab(QWidget):
                 if old_path.exists() and not new_path.exists():
                     shutil.move(str(old_path), str(new_path))
                 self.current_profile_name = new_name
-                self.editor_title.setText(f"{IconManager.get('edit')}  Editing: {new_name}")
+                self.editor_title.setText(f"Editing: {new_name}")
                 self._refresh_profiles_list()
 
             # DNA
@@ -1832,6 +1833,7 @@ class ProfilesTab(QWidget):
             self._sync_weather_tree_checkboxes()
             self._refresh_lighting_chips()
             self._refresh_weather_chips()
+            self._update_summary_panel()
             QMessageBox.information(self, "Success", "YAML applied.")
         except yaml.YAMLError as e:
             QMessageBox.critical(self, "YAML Error", str(e))
@@ -1877,7 +1879,7 @@ class ProfilesTab(QWidget):
 
     def _select_profile(self, profile_name: str):
         self.current_profile_name = profile_name
-        self.editor_title.setText(f"{IconManager.get('edit')}  Editing: {profile_name}")
+        self.editor_title.setText(f"Editing: {profile_name}")
         self._load_profile_to_editor(profile_name)
         self._update_summary_panel()
 
@@ -1957,6 +1959,7 @@ class ProfilesTab(QWidget):
         self._refresh_weather_chips()
 
         self._refresh_yaml_preview()
+        self._update_summary_panel()
 
     def _sync_dna_tree_checkboxes(self):
         selected_set = {(e['tag'], e['category']) for e in self.selected_dna_tags}
@@ -2107,7 +2110,7 @@ class ProfilesTab(QWidget):
             self._log(f"[DEL] Profile deleted: {self.current_profile_name}\n")
             self.current_profile_name = None
             self.profile_character_data = {}
-            self.editor_title.setText(f"{IconManager.get('edit')}  Editing: (no selection)")
+            self.editor_title.setText(f"Editing: (no selection)")
             # Reset all state
             self.selected_dna_tags = []
             self._sync_dna_cards()
@@ -2132,6 +2135,7 @@ class ProfilesTab(QWidget):
             self._refresh_lighting_chips()
             self._refresh_weather_chips()
             self._refresh_profiles_list()
+            self._update_summary_panel()
             QMessageBox.information(self, "Success", "Profile deleted.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed: {e}")
@@ -2164,7 +2168,7 @@ class ProfilesTab(QWidget):
                 shutil.move(str(old_path), str(new_path))
             old_name = self.current_profile_name
             self.current_profile_name = new_name
-            self.editor_title.setText(f"{IconManager.get('edit')}  Editing: {new_name}")
+            self.editor_title.setText(f"Editing: {new_name}")
             self._refresh_profiles_list()
             self._log(f"[RENAME] Profile renamed: {old_name} -> {new_name}\n")
             QMessageBox.information(self, "Success", f"Profile renamed to '{new_name}'.")
