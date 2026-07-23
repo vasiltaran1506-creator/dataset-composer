@@ -1,7 +1,7 @@
 # Character Profile: 1111test
 # Filter over scene-rules
 character:
-  name: 1111test
+  name: 2222test
   age: 18
   archetype: custom character
 fixed_traits:
@@ -53,22 +53,6 @@ signature_props: []
 hair_rules:
   default: hair down
   conditional: []
-expression_filter:
-  prefer:
-  - blush
-  - sad
-  - scared
-  - smug
-  avoid:
-  - depressed
-  - anxious
-  - mischievous
-  - worried
-  - gloomy
-  - light blush
-pose_filter:
-  prefer: []
-  avoid: []
 atmosphere_preferences:
   lighting:
   - front lighting
@@ -86,3 +70,20 @@ atmosphere_preferences:
   - gloomy
   - winter breath
   - cold
+personality:
+  modes:
+  - id: default
+    weight: 1.0
+    axes:
+      expression:
+        mood:
+          blush: 5.0
+          sad: 5.0
+          scared: 5.0
+          smug: 5.0
+          depressed: 0.0
+          anxious: 0.0
+          mischievous: 0.0
+          worried: 0.0
+          gloomy: 0.0
+          light blush: 0.0

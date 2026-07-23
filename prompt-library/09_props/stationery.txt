@@ -1,38 +1,38 @@
 pen
 pencil
-mechanical_pencil
-fountain_pen
-ballpoint_pen
-gel_pen
+mechanical pencil
+fountain pen
+ballpoint pen
+gel pen
 marker
 highlighter
-colored_pencils
+colored pencils
 crayons
 eraser
 ruler
 protractor
 compass
 calculator
-scientific_calculator
+scientific calculator
 notebook
-spiral_notebook
-composition_book
-loose_leaf_paper
-graph_paper
-sticky_notes
-post_it_notes
+spiral notebook
+composition book
+loose leaf paper
+graph paper
+sticky notes
+post it notes
 binder
 folder
-paper_clip
+paper clip
 stapler
 scissors
-glue_stick
+glue stick
 tape
-washi_tape
-desk_organizer
-pencil_case
-pencil_holder
+washi tape
+desk organizer
+pencil case
+pencil holder
 backpack
-school_bag
-lunch_box
-water_bottle
+school bag
+lunch box
+water bottle

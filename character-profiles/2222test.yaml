@@ -26,13 +26,18 @@ signature_props: []
 hair_rules:
   default: hair down
   conditional: []
-expression_filter:
-  prefer: []
-  avoid: []
-pose_filter:
-  prefer: []
-  avoid: []
 atmosphere_preferences:
   lighting:
   - soft lighting
   weather: []
+personality:
+  modes:
+  - id: default
+    weight: 1.0
+    axes:
+      expression:
+        mood:
+          blush: 5.0
+          heavy blush: 5.0
+          light blush: 0.0
+          shy: 0.0

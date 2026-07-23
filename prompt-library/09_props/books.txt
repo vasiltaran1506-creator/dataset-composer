@@ -7,36 +7,35 @@ textbook
 notebook
 journal
 diary
-comic_book
-art_book
+comic book
+art book
 cookbook
 encyclopedia
 dictionary
 paperback
-hardcover_book
-open_book
-closed_book
-stack_of_books
-pile_of_books
-book_on_table
-book_in_hand
-reading_book
+hardcover book
+open book
+closed book
+stack of books
+pile of books
+book on table
+book in hand
+reading book
 bookmark
-book_cover
-old_book
-leather_bound_book
-fantasy_book
-science_book
-poetry_book
+book cover
+old book
+leather bound book
+fantasy book
+science book
+poetry book
 anthology
-graphic_novel
-light_novel
-bookshelf_full
-library_books
-bookstore
-book_in_lap
-holding_book
-flipping_pages
-bookmark_between_pages
-book_with_glasses
-book_and_tea
+graphic novel
+light novel
+bookshelf full
+library books
+book in lap
+holding book
+flipping pages
+bookmark between pages
+book with glasses
+book and tea

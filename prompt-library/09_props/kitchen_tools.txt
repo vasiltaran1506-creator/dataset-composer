@@ -1,41 +1,41 @@
-frying_pan
+frying pan
 pot
 saucepan
 wok
-cutting_board
+cutting board
 knife
-chef_knife
-bread_knife
+chef knife
+bread knife
 spatula
 ladle
-wooden_spoon
+wooden spoon
 whisk
 tongs
 grater
 peeler
-can_opener
-bottle_opener
-measuring_cup
-measuring_spoons
-mixing_bowl
+can opener
+bottle opener
+measuring cup
+measuring spoons
+mixing bowl
 colander
 strainer
-rolling_pin
-baking_sheet
-cake_pan
-muffin_tin
-oven_mitt
-pot_holder
+rolling pin
+baking sheet
+cake pan
+muffin tin
+oven mitt
+pot holder
 apron
-chef_apron
-kitchen_timer
-recipe_book
-food_processor
+chef apron
+kitchen timer
+recipe book
+food processor
 blender
-stand_mixer
+stand mixer
 toaster
-rice_cooker
-pressure_cooker
+rice cooker
+pressure cooker
 steamer
 skillet
-dutch_oven
+dutch oven

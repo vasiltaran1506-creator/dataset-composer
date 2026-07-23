@@ -92,42 +92,6 @@ hair_rules:
     - brushing hair
     style: ponytail
     probability: 0.4
-expression_filter:
-  prefer:
-  - blush
-  - light blush
-  - shy
-  - thoughtful
-  - gentle smile
-  - looking away
-  - downcast eyes
-  - dreamy
-  - fascinated
-  avoid:
-  - smirk
-  - confident
-  - arrogant
-  - aggressive
-  - seductive
-  - evil smile
-  - wide grin
-  - angry
-pose_filter:
-  prefer:
-  - sitting
-  - lying on bed
-  - standing quietly
-  - head tilt
-  - hands in lap
-  - holding own arm
-  - hugging pillow
-  - hugging teddy bear
-  avoid:
-  - hands on hips
-  - arms spread
-  - power pose
-  - confident stance
-  - spread legs
 atmosphere_preferences:
   lighting:
   - sunset
@@ -141,3 +105,34 @@ atmosphere_preferences:
   - clear_sky
 wardrobe:
   whitelist: []
+personality:
+  modes:
+  - id: default
+    weight: 1.0
+    axes:
+      expression:
+        mood:
+          blush: 5.0
+          light blush: 5.0
+          shy: 5.0
+          thoughtful: 5.0
+          confident: 0.0
+          evil smile: 0.0
+          angry: 0.0
+        mouth:
+          gentle smile: 5.0
+          smirk: 0.0
+        eyes:
+          looking away: 5.0
+      pose:
+        base:
+          sitting: 5.0
+        head:
+          head tilt: 5.0
+        arms:
+          hands in lap: 5.0
+          holding own arm: 5.0
+          hands on hips: 0.0
+          arms spread: 0.0
+        legs:
+          spread legs: 0.0

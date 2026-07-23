@@ -23,5 +23,5 @@ head resting on arm
 head resting on table
 head on pillow
 face in hands
-looking_into_distance
-looking_down_at_viewer
+looking into distance
+looking down at viewer

@@ -1,39 +1,39 @@
 fog
 mist
-dense_fog
-light_fog
-morning_mist
-evening_mist
+dense fog
+light fog
+morning mist
+evening mist
 haze
 smog
 steam
 smoke
-chimney_smoke
-campfire_smoke
+chimney smoke
+campfire smoke
 dust
-dust_particles
-floating_dust
+dust particles
+floating dust
 pollen
-cherry_blossom_petals_falling
-autumn_leaves_falling
-snowflakes_falling
-light_snow_falling
-heavy_snow_falling
-rain_drops
-rain_splashes
-puddle_reflections
-wet_ground
-wet_street
-wet_pavement
+cherry blossom petals falling
+autumn leaves falling
+snowflakes falling
+light snow falling
+heavy snow falling
+rain drops
+rain splashes
+puddle reflections
+wet ground
+wet street
+wet pavement
 frost
-ice_crystals
-breath_visible
-visible_breath
+ice crystals
+breath visible
+visible breath
 sparkles
 glitter
 fireflies
-floating_lights
-lens_flare
-sun_rays
-god_rays
-light_beams
+floating lights
+lens flare
+sun rays
+god rays
+light beams

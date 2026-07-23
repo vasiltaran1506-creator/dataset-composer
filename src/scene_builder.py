@@ -18,6 +18,9 @@ class SceneBuilder:
     _FACE_FILE2SLOT = {'mood': 'mood', 'eyes_expr': 'eyes', 'mouth': 'mouth'}
     _PREFER_BOOST = 3.0     # множитель для prefers_* из мира (как preferred-одежда)
     _AVOID_PENALTY = 0.1    # множитель для avoid_* из мира
+    # Вес неупомянутого тега в «характерном» слоте (слот, про который характер
+    # высказался хотя бы одним тегом). Делает prefer доминирующим над фоном.
+    _CHAR_NEUTRAL_SLOT = 0.03
 
     def __init__(self, library: PromptLibrary, scene_rules: dict, character_profile: dict, location_types: dict, generation_weights: dict | None = None):
         self.library = library
@@ -43,9 +46,18 @@ class SceneBuilder:
     # ═══════════════════════════════════════════════════════════════
     @staticmethod
     def _char_weight(mode, slot: str, tag: str) -> float:
-        """Вес тега в слоте по режиму характера. 0.0 = мягкий бан, >1 = буст,
-        отсутствующий тег = 1.0 (нейтрально, не меняет произведение)."""
-        return mode.slot_weights.get(slot, {}).get(tag, 1.0)
+        """Вес тега в слоте по режиму характера.
+        - тег упомянут явно (prefer/avoid) -> его вес (буст или 0.0=бан);
+        - тег НЕ упомянут, но слот «характерный» (характер имеет мнение про
+          слот) -> _CHAR_NEUTRAL_SLOT (фон приглушён, prefer доминирует);
+        - слот нейтральный (характер про него молчит) -> 1.0 (равномерный фон,
+          поведение как у персонажа без характера => нет регрессии)."""
+        slot_map = mode.slot_weights.get(slot, {})
+        if tag in slot_map:
+            return slot_map[tag]
+        if slot_map:  # слот характерный: есть хоть одно мнение характера
+            return SceneBuilder._CHAR_NEUTRAL_SLOT
+        return 1.0
 
     @staticmethod
     def _choose_slot_tag(slot: str, mode, slot_index: dict,

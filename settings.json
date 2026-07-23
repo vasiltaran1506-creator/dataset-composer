@@ -1,10 +1,10 @@
 {
   "directories": {
-    "output_directory": "D:/VASILY/MY GENERATION/Test Generation 2",
+    "output_directory": "D:/VASILY/MY GENERATION/Test Generations",
     "profiles_path": ""
   },
   "generation_defaults": {
-    "num_scenes": 5,
+    "num_scenes": 30,
     "force_deficit_closure": false,
     "balance_locations": true,
     "balance_actions": true,

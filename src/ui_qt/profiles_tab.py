@@ -44,6 +44,18 @@ PERSONALITY_CATEGORIES = [
 WARDROBE_ORDER = ['full_body', 'topwear', 'bottomwear', 'legwear',
                   'footwear', 'underwear', 'accessories']
 
+# ── Personality → блок 'personality' (Character Behavior Model, путь А) ──
+# tri-state UI = частный случай весов: prefer=PREFER_WEIGHT, avoid=0.0,
+# neutral = не пишем (в движке отсутствующий тег = 1.0).
+PREFER_WEIGHT = 5.0
+AVOID_WEIGHT = 0.0
+_UI_SUBCAT_TO_SLOT = {'eyes_expr': 'eyes'}      # UI subcat -> слот модели/движка
+_SLOT_TO_UI_SUBCAT = {'eyes': 'eyes_expr'}      # слот -> UI subcat
+_SLOT_TO_UI_CATEGORY = {                         # слот -> UI category
+    'mood': 'Expressions', 'eyes': 'Expressions', 'mouth': 'Expressions',
+    'base': 'Poses', 'head': 'Poses', 'arms': 'Poses', 'legs': 'Poses',
+}
+
 # Цвета групп Atmosphere (§11.6 расшир.): освещение / погода
 ATMOSPHERE_COLORS = {
     'lighting': '#f59e0b',   # amber
@@ -1631,14 +1643,15 @@ class ProfilesTab(QWidget):
         for entry in self.selected_wardrobe_tags:
             wardrobe_by_subcat.setdefault(entry['subcategory'], []).append(entry['tag'])
         profile['outfit_whitelist'] = {'default': wardrobe_by_subcat}
-        profile['expression_filter'] = {
-            'prefer': [t['tag'] for t in self.preferred_personality_tags if t.get('category') == 'Expressions'],
-            'avoid': [t['tag'] for t in self.avoided_personality_tags if t.get('category') == 'Expressions']
-        }
-        profile['pose_filter'] = {
-            'prefer': [t['tag'] for t in self.preferred_personality_tags if t.get('category') == 'Poses'],
-            'avoid': [t['tag'] for t in self.avoided_personality_tags if t.get('category') == 'Poses']
-        }
+        # Новый блок характера (Character Behavior Model). Устаревшие ключи
+        # expression_filter / pose_filter больше не пишутся.
+        _pblock = self._personality_to_yaml_block()
+        if _pblock is not None:
+            profile['personality'] = _pblock
+        else:
+            profile.pop('personality', None)
+        profile.pop('expression_filter', None)
+        profile.pop('pose_filter', None)
         profile['signature_props'] = self.signature_props
         profile['hair_rules'] = {
             'default': self.hair_rules_data.get('default', 'hair down'),
@@ -1704,17 +1717,13 @@ class ProfilesTab(QWidget):
             self._sync_wardrobe_cards()
             self._refresh_wardrobe_chips()
 
-            # Personality
-            self.preferred_personality_tags = []
-            self.avoided_personality_tags = []
-            for t in profile.get('expression_filter', {}).get('prefer', []):
-                self.preferred_personality_tags.append({'tag': t, 'category': 'Expressions'})
-            for t in profile.get('expression_filter', {}).get('avoid', []):
-                self.avoided_personality_tags.append({'tag': t, 'category': 'Expressions'})
-            for t in profile.get('pose_filter', {}).get('prefer', []):
-                self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
-            for t in profile.get('pose_filter', {}).get('avoid', []):
-                self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
+            # Personality (новый блок 'personality'; fallback на устаревший формат)
+            if profile.get('personality'):
+                self.preferred_personality_tags, self.avoided_personality_tags = \
+                    self._personality_from_yaml_block(profile.get('personality'))
+            else:
+                self.preferred_personality_tags, self.avoided_personality_tags = \
+                    self._load_personality_legacy(profile)
             self._sync_personality_cards()
             self._refresh_personality_chips()
 
@@ -1825,19 +1834,13 @@ class ProfilesTab(QWidget):
         self._sync_wardrobe_cards()
         self._refresh_wardrobe_chips()
 
-        # Personality
-        self.preferred_personality_tags = []
-        self.avoided_personality_tags = []
-        expr = profile.get('expression_filter', {})
-        for t in expr.get('prefer', []):
-            self.preferred_personality_tags.append({'tag': t, 'category': 'Expressions'})
-        for t in expr.get('avoid', []):
-            self.avoided_personality_tags.append({'tag': t, 'category': 'Expressions'})
-        pose = profile.get('pose_filter', {})
-        for t in pose.get('prefer', []):
-            self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
-        for t in pose.get('avoid', []):
-            self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
+        # Personality (новый блок 'personality'; fallback на устаревший формат)
+        if profile.get('personality'):
+            self.preferred_personality_tags, self.avoided_personality_tags = \
+                self._personality_from_yaml_block(profile.get('personality'))
+        else:
+            self.preferred_personality_tags, self.avoided_personality_tags = \
+                self._load_personality_legacy(profile)
         self._sync_personality_cards()
         self._refresh_personality_chips()
 
@@ -2016,6 +2019,118 @@ class ProfilesTab(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to rename: {e}")
 
+    # ═══════════════════════════════════════════════
+    # PERSONALITY ↔ YAML 'personality' (Character Behavior Model, путь А)
+    # ═══════════════════════════════════════════════
+    def _build_personality_tag_index(self):
+        """Ленивый индекс {tag: (ui_category, ui_subcategory)} из библиотеки.
+        Нужен, чтобы для тегов без subcategory (старый формат) знать слот."""
+        if getattr(self, '_personality_tag_index', None) is not None:
+            return self._personality_tag_index
+        idx = {}
+        for cat_name, cat_dir, _order in PERSONALITY_CATEGORIES:
+            dir_path = self.project_root / "prompt-library" / cat_dir
+            if not dir_path.exists():
+                continue
+            for txt_file in sorted(dir_path.rglob("*.txt")):
+                parts = txt_file.relative_to(dir_path).parts
+                sub_cat = parts[0] if len(parts) >= 2 else txt_file.stem
+                for tag in self._load_tags_from_file(txt_file):
+                    idx.setdefault(tag, (cat_name, sub_cat))
+        self._personality_tag_index = idx
+        return idx
+
+    def _personality_to_yaml_block(self):
+        """Собирает блок 'personality' (один режим) из preferred/avoided.
+        None, если ничего не отмечено (нейтральный характер)."""
+        idx = self._build_personality_tag_index()
+        axes = {}
+
+        def place(entry, weight):
+            tag = entry.get('tag', '')
+            sub = entry.get('subcategory', '')
+            cat = entry.get('category', '')
+            if sub:
+                slot = _UI_SUBCAT_TO_SLOT.get(sub, sub)
+            else:
+                info = idx.get(tag)
+                if not info:
+                    self._log(f"[WARN] personality tag not in library, skipped: {tag}\n")
+                    return
+                slot = _UI_SUBCAT_TO_SLOT.get(info[1], info[1])
+            axis = 'expression' if cat == 'Expressions' else 'pose'
+            axes.setdefault(axis, {}).setdefault(slot, {})[tag] = weight
+
+        for e in self.preferred_personality_tags:
+            place(e, PREFER_WEIGHT)
+        for e in self.avoided_personality_tags:
+            place(e, AVOID_WEIGHT)   # avoid перекрывает prefer при конфликте
+        if not axes:
+            return None
+        return {'modes': [{'id': 'default', 'weight': 1.0, 'axes': axes}]}
+
+    def _personality_from_yaml_block(self, block):
+        """Блок 'personality' -> (prefer_list, avoid_list) UI-формата.
+        Базовый UI не знает режимов => объединяет все режимы: тег = avoid,
+        если вес 0.0 хоть в одном режиме (бан сильнее); иначе prefer, если
+        вес > 1.0 хоть в одном; иначе neutral. Ось atmosphere игнорируется."""
+        prefer, avoid = [], []
+        if not block or not isinstance(block, dict):
+            return prefer, avoid
+        eff = {}  # (axis, slot, tag) -> {'min':..,'max':..}
+        for md in (block.get('modes') or []):
+            if not isinstance(md, dict):
+                continue
+            axes = md.get('axes') or {}
+            if not isinstance(axes, dict):
+                continue
+            for axis, slots in axes.items():
+                if not isinstance(slots, dict):
+                    continue
+                for slot, tags in slots.items():
+                    if not isinstance(tags, dict):
+                        continue
+                    for tag, w in tags.items():
+                        try:
+                            w = float(w)
+                        except (TypeError, ValueError):
+                            continue
+                        d = eff.setdefault((axis, slot, tag), {'min': w, 'max': w})
+                        d['min'] = min(d['min'], w)
+                        d['max'] = max(d['max'], w)
+        for (axis, slot, tag), d in eff.items():
+            cat = _SLOT_TO_UI_CATEGORY.get(slot)
+            if cat is None:
+                continue  # atmosphere и неизвестные оси — мимо базового UI
+            entry = {'tag': tag, 'category': cat,
+                     'subcategory': _SLOT_TO_UI_SUBCAT.get(slot, slot)}
+            if d['min'] <= 0.0:
+                avoid.append(entry)
+            elif d['max'] > 1.0:
+                prefer.append(entry)
+        return prefer, avoid
+
+    def _load_personality_legacy(self, profile):
+        """Read-only fallback: устаревший expression_filter/pose_filter
+        (теги без subcategory) + обогащение subcategory через индекс."""
+        idx = self._build_personality_tag_index()
+        prefer, avoid = [], []
+        expr = profile.get('expression_filter', {}) or {}
+        pose = profile.get('pose_filter', {}) or {}
+        for t in expr.get('prefer', []):
+            prefer.append({'tag': t, 'category': 'Expressions',
+                           'subcategory': idx.get(t, ('Expressions', ''))[1]})
+        for t in expr.get('avoid', []):
+            avoid.append({'tag': t, 'category': 'Expressions',
+                          'subcategory': idx.get(t, ('Expressions', ''))[1]})
+        for t in pose.get('prefer', []):
+            prefer.append({'tag': t, 'category': 'Poses',
+                           'subcategory': idx.get(t, ('Poses', ''))[1]})
+        for t in pose.get('avoid', []):
+            avoid.append({'tag': t, 'category': 'Poses',
+                          'subcategory': idx.get(t, ('Poses', ''))[1]})
+        return prefer, avoid
+
     def _save_profile(self):
         if not self.current_profile_name:
             QMessageBox.warning(self, "Warning", "No profile selected.")
@@ -2042,14 +2157,15 @@ class ProfilesTab(QWidget):
         for entry in self.selected_wardrobe_tags:
             wardrobe_by_subcat.setdefault(entry['subcategory'], []).append(entry['tag'])
         profile['outfit_whitelist'] = {'default': wardrobe_by_subcat}
-        profile['expression_filter'] = {
-            'prefer': [t['tag'] for t in self.preferred_personality_tags if t.get('category') == 'Expressions'],
-            'avoid': [t['tag'] for t in self.avoided_personality_tags if t.get('category') == 'Expressions']
-        }
-        profile['pose_filter'] = {
-            'prefer': [t['tag'] for t in self.preferred_personality_tags if t.get('category') == 'Poses'],
-            'avoid': [t['tag'] for t in self.avoided_personality_tags if t.get('category') == 'Poses']
-        }
+        # Новый блок характера (Character Behavior Model). Устаревшие ключи
+        # expression_filter / pose_filter больше не пишутся.
+        _pblock = self._personality_to_yaml_block()
+        if _pblock is not None:
+            profile['personality'] = _pblock
+        else:
+            profile.pop('personality', None)
+        profile.pop('expression_filter', None)
+        profile.pop('pose_filter', None)
         profile['signature_props'] = self.signature_props
         profile['hair_rules'] = {
             'default': self.hair_rules_data.get('default', 'hair down'),
@@ -2074,7 +2190,7 @@ class ProfilesTab(QWidget):
             'underwear_whitelist': {},
             'signature_props': [],
             'hair_rules': {'default': 'hair down', 'conditional': []},
-            'expression_filter': {'prefer': [], 'avoid': []},
-            'pose_filter': {'prefer': [], 'avoid': []},
+        # expression_filter / pose_filter устарели; характер живёт в блоке
+        # 'personality', который _save_profile добавляет сам при наличии отметок.
             'atmosphere_preferences': {'lighting': [], 'weather': []}
         }
