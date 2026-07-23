@@ -1,0 +1,119 @@
+# Character Profile: Luna
+# Filter over scene-rules
+character:
+  name: Luna
+  age: 18
+  archetype: custom character
+fixed_traits:
+- brown eyes
+- loose hair
+- round face
+- soft features
+- petite
+- pale skin
+- slender
+- curvy
+- soft figure
+- fit
+- small nose
+- round eyes
+- light blue hair
+- long hair
+- fair skin
+- small breasts
+- narrow shoulders
+- narrow waist
+outfit_whitelist:
+  default:
+    topwear:
+    - white cotton shirt
+    - white shirt
+    - white oversized t-shirt
+    - white t-shirt
+    - casual t-shirt
+    - oversized t-shirt
+    - white blouse
+    bottomwear:
+    - black skirt
+    - pleated skirt
+    - black pleated skirt
+    - green shorts
+    - athletic shorts
+    - short shorts
+    - cotton shorts
+    legwear:
+    - white ankle socks
+    - black knee-high socks
+    footwear:
+    - white sneakers
+    - white sneakers
+    full_body:
+    - pink pajamas
+    - silk pajamas
+    - pink silk pajamas
+    - cute pajamas
+    swimsuit:
+    - bikini
+    - two-piece swimsuit
+underwear_whitelist:
+  bras:
+  - white cotton bra
+  - simple bra
+  - plain bra
+  - cotton bra
+  panties:
+  - plain white panties
+  - white cotton panties
+  - simple panties
+  - plain panties
+signature_props:
+- name: teddy bear
+  tags:
+  - teddy bear
+  - plush teddy bear
+  - stuffed animal
+  - holding teddy bear
+- name: book
+  tags:
+  - book
+  - novel
+  - reading book
+- name: teacup
+  tags:
+  - teacup
+  - cup of tea
+  - mug
+hair_rules:
+  default: hair down
+  conditional:
+  - if_action:
+    - reading
+    - studying
+    - brushing hair
+    style: ponytail
+    probability: 0.4
+personality:
+  modes:
+    - id: default
+      weight: 1.0
+      axes:
+        expression:
+          mood:  {shy: 5.0, blush: 4.0, smirk: 0.0, arrogant: 0.0}
+          mouth: {gentle smile: 3.0, wide grin: 0.0}
+        pose:
+          base: {sitting: 4.0, lying on bed: 3.0}
+          arms: {hands in lap: 3.0, hands on hips: 0.0}
+        action: {reading: 4.0, studying: 3.0, shouting: 0.0, running: 0.0}
+atmosphere_preferences:
+  lighting:
+  - sunset
+  - golden_hour
+  - warm_lighting
+  - window_light
+  - soft_lighting
+  weather:
+  - rain
+  - light_rain
+  - clear_sky
+wardrobe:
+  whitelist: []
