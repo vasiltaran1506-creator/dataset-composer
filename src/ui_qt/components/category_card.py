@@ -1,15 +1,13 @@
 """CategoryCard — accordion-карточка категории (§6.4 + §8.24)
 с вложенным grid кликабельных плиток (§6.7 grid-cell + §8.26).
-
-Используется и в DNA, и в Outfits, и в Atmosphere.
+Используется и в DNA, и в Outfits, и в Atmosphere, и в Personality.
 Цвет: если передан color — он; иначе category_full(category_name).
-Счётчик 'N selected' — _PillLabel (овальная капсула, рисуется вручную).
+Счётчик 'N selected'/'N marked' — _PillLabel (овальная капсула, вручную).
 
-Режим «одиночного раскрытия» (single-open accordion):
-карточка шлёт expand_toggled(self) ТОЛЬКО когда пользователь кликом
-раскрывает свёрнутую полку (by_user=True и новое состояние = раскрыто).
-Программные set_expanded(..., by_user=False) сигнал НЕ шлют — поэтому
-поиск и менеджер одиночки не мешают друг другу и не рекурсят.
+Personality: TriStateCell — плитка prefer/avoid/neutral. Состояние меняется
+ТОЛЬКО кнопками + и -. Кнопки — честные квадраты 20x20 с крупным символом:
+их стиль задан инлайн на самой кнопке с полным сбросом глобального QPushButton
+QSS (padding/min-*), поэтому theme.qss не может их исказить.
 """
 from PySide6.QtWidgets import (QFrame, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QPushButton, QSizePolicy)
@@ -54,6 +52,15 @@ _CAT_KEY = {
     "Skin Tone": "skin",
 }
 
+# Цвета отношений Personality (§11.1 semantic)
+PREFER_COLOR = "#3dd68c"
+AVOID_COLOR = "#f5475b"
+_PREFER_TINT = "rgba(61, 214, 140, 0.25)"
+_PREFER_TINT_H = "rgba(61, 214, 140, 0.38)"
+_AVOID_TINT = "rgba(245, 71, 91, 0.25)"
+_AVOID_TINT_H = "rgba(245, 71, 91, 0.38)"
+_NEUTRAL_BTN_H = "#313b52"
+
 
 def _rgba(hex_color: str, alpha: float) -> str:
     h = hex_color.lstrip('#')
@@ -70,7 +77,7 @@ def category_chip_variant(name: str) -> str:
 
 
 # ═══════════════════════════════════════════════
-# PILL BADGE — счётчик-пилюля 'N selected' (§8.24 counter)
+# PILL BADGE — счётчик-пилюля (§8.24 counter)
 # ═══════════════════════════════════════════════
 class _PillLabel(QFrame):
     def __init__(self, color: str, parent=None):
@@ -114,9 +121,10 @@ class _PillLabel(QFrame):
 
 
 # ═══════════════════════════════════════════════
-# CHECK CELL — кликабельная плитка тега (§8.26 grid-cell)
+# CHECK CELL — плитка вкл/выкл (§8.26 grid-cell)
 # ═══════════════════════════════════════════════
 class CheckCell(QFrame):
+    """Плитка тега. Кликабельна вся. Выбор = цвет категории."""
     clicked = Signal(bool)
 
     def __init__(self, tag: str, color_full: str, parent=None):
@@ -151,6 +159,9 @@ class CheckCell(QFrame):
             self.clicked.emit(selected)
 
     def is_selected(self) -> bool:
+        return self._selected
+
+    def is_marked(self) -> bool:
         return self._selected
 
     def _apply_style(self):
@@ -190,19 +201,194 @@ class CheckCell(QFrame):
 
 
 # ═══════════════════════════════════════════════
+# TRI-STATE CELL — плитка prefer / avoid / neutral
+# ═══════════════════════════════════════════════
+class TriStateCell(QFrame):
+    """Плитка с тремя состояниями. Состояние меняется ТОЛЬКО кнопками + и -.
+    Кнопки — квадраты 20x20 с крупным символом 16px; их стиль задан инлайн
+    на самой кнопке (padding:0 + min/max:0), поэтому глобальный QPushButton
+    QSS не искажает форму. neutral: кнопки скрыты, проявляются при наведении;
+    prefer: горит +; avoid: горит -."""
+    state_changed = Signal(str)
+
+    _CELL_H = 30
+    _BTN = 20
+
+    def __init__(self, tag: str, parent=None):
+        super().__init__(parent)
+        self.tag = tag
+        self._state = "neutral"
+        self.setObjectName("TriStateCell")
+        self.setFixedHeight(self._CELL_H)
+        self.setMinimumWidth(150)
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(10, 4, 8, 4)
+        lay.setSpacing(6)
+
+        self._indicator = QLabel("○")
+        self._indicator.setFixedWidth(14)
+        self._indicator.setAlignment(Qt.AlignCenter)
+        self._indicator.setStyleSheet(
+            "color: #98a0b3; font-size: 12px; background: transparent;")
+        lay.addWidget(self._indicator, 0, Qt.AlignVCenter)
+
+        self._label = QLabel(tag.replace('_', ' '))
+        self._label.setWordWrap(False)
+        lay.addWidget(self._label, 1, Qt.AlignVCenter)
+
+        self._plus = QPushButton("+")
+        self._plus.setFixedSize(self._BTN, self._BTN)
+        self._plus.setCursor(Qt.PointingHandCursor)
+        self._plus.clicked.connect(self._click_plus)
+        lay.addWidget(self._plus, 0, Qt.AlignVCenter)
+
+        self._minus = QPushButton("−")
+        self._minus.setFixedSize(self._BTN, self._BTN)
+        self._minus.setCursor(Qt.PointingHandCursor)
+        self._minus.clicked.connect(self._click_minus)
+        lay.addWidget(self._minus, 0, Qt.AlignVCenter)
+
+        self._apply_style()
+
+    # ── публичный API ──
+    def set_state(self, state: str, emit: bool = False):
+        if state == self._state:
+            return
+        self._state = state
+        self._apply_style()
+        if emit:
+            self.state_changed.emit(state)
+
+    def is_marked(self) -> bool:
+        return self._state != "neutral"
+
+    # ── клики кнопок (взаимоисключающий toggle) ──
+    def _click_plus(self):
+        self.set_state("neutral" if self._state == "prefer" else "prefer", emit=True)
+
+    def _click_minus(self):
+        self.set_state("neutral" if self._state == "avoid" else "avoid", emit=True)
+
+    # ── hover: проявляем скрытую кнопку ──
+    def enterEvent(self, event):
+        if self._state == "neutral":
+            self._plus.show()
+            self._minus.show()
+        elif self._state == "prefer":
+            self._minus.show()
+        else:
+            self._plus.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        if self._state == "neutral":
+            self._plus.hide()
+            self._minus.hide()
+        elif self._state == "prefer":
+            self._minus.hide()
+        else:
+            self._plus.hide()
+        super().leaveEvent(event)
+
+    # ── отрисовка по состоянию ──
+    def _apply_style(self):
+        if self._state == "prefer":
+            c = PREFER_COLOR
+            body = f"""
+                QFrame#TriStateCell {{
+                    background-color: {_rgba(c, 0.15)};
+                    border: 1px solid {_rgba(c, 0.50)};
+                    border-radius: 8px;
+                }}
+                QFrame#TriStateCell:hover {{ background-color: {_rgba(c, 0.22)}; }}
+                QLabel {{ color: #e6e9f0; background: transparent; }}
+            """
+        elif self._state == "avoid":
+            c = AVOID_COLOR
+            body = f"""
+                QFrame#TriStateCell {{
+                    background-color: {_rgba(c, 0.15)};
+                    border: 1px solid {_rgba(c, 0.50)};
+                    border-radius: 8px;
+                }}
+                QFrame#TriStateCell:hover {{ background-color: {_rgba(c, 0.22)}; }}
+                QLabel {{ color: #e6e9f0; background: transparent; }}
+            """
+        else:
+            body = """
+                QFrame#TriStateCell {
+                    background-color: #1f2738;
+                    border: 1px solid #313a4d;
+                    border-radius: 8px;
+                }
+                QFrame#TriStateCell:hover {
+                    background-color: #283145;
+                    border: 1px solid rgba(79, 109, 245, 0.50);
+                }
+                QLabel { color: #e6e9f0; background: transparent; }
+            """
+        self.setStyleSheet(body)
+        self._style_buttons()
+        self._sync_visibility()
+
+    def _style_buttons(self):
+        """Инлайн-стиль кнопок: полный сброс глобального QPushButton QSS
+        (padding/min-*) => честный квадрат; крупный символ 16px."""
+        if self._state == "prefer":
+            plus_bg, plus_h = _PREFER_TINT, _PREFER_TINT_H
+        else:
+            plus_bg, plus_h = "transparent", _NEUTRAL_BTN_H
+        if self._state == "avoid":
+            minus_bg, minus_h = _AVOID_TINT, _AVOID_TINT_H
+        else:
+            minus_bg, minus_h = "transparent", _NEUTRAL_BTN_H
+        self._plus.setStyleSheet(self._btn_qss(PREFER_COLOR, plus_bg, plus_h))
+        self._minus.setStyleSheet(self._btn_qss(AVOID_COLOR, minus_bg, minus_h))
+
+    @staticmethod
+    def _btn_qss(symbol_color: str, bg: str, hover_bg: str) -> str:
+        # % форматирование, чтобы литеральные {} правил не конфликтовали
+        return (
+            "QPushButton { padding: 0px; min-width: 0px; min-height: 0px; "
+            "max-width: 20px; max-height: 20px; border: none; border-radius: 5px; "
+            "font-size: 16px; font-weight: 700; color: %s; background: %s; } "
+            "QPushButton:hover { background: %s; }"
+        ) % (symbol_color, bg, hover_bg)
+
+    def _sync_visibility(self):
+        if self._state == "prefer":
+            self._plus.show()
+            self._minus.hide()
+        elif self._state == "avoid":
+            self._minus.show()
+            self._plus.hide()
+        else:
+            self._plus.hide()
+            self._minus.hide()
+
+
+# ═══════════════════════════════════════════════
 # CATEGORY CARD — аккордеон-карточка (§8.24)
 # ═══════════════════════════════════════════════
 class CategoryCard(QFrame):
-    """Аккордеон-карточка одной категории/полки.
-    color=None => цвет из category_full (DNA); иначе явный цвет (Outfits/Atmosphere)."""
-    toggled = Signal(str, bool)            # выбор тега: (tag, selected)
-    expand_toggled = Signal(object)        # пользователь раскрыл полку: (self)
+    """Аккордеон-карточка категории/полки.
+    color=None => цвет из category_full (DNA); иначе явный цвет.
+    tristate=True => плитки TriStateCell (Personality); иначе CheckCell.
+    counter_word => слово в счётчике ('selected' / 'marked')."""
+    toggled = Signal(str, bool)
+    state_changed = Signal(str, str)
+    expand_toggled = Signal(object)
 
     def __init__(self, category_name: str, description: str,
-                 tags: list, selected_tags: set, parent=None, color=None):
+                 tags: list, selected_tags: set, parent=None,
+                 color=None, tristate: bool = False,
+                 counter_word: str = "selected"):
         super().__init__(parent)
         self.category_name = category_name
         self._color = color if color else category_full(category_name)
+        self._tristate = tristate
+        self._counter_word = counter_word
         self._tags = list(tags)
         self._cells: dict = {}
         self._expanded = False
@@ -263,7 +449,7 @@ class CategoryCard(QFrame):
         hlay.addLayout(titles, 1)
 
         self._counter = _PillLabel(self._color)
-        self._counter.setText("0 selected")
+        self._counter.setText(f"0 {self._counter_word}")
         hlay.addWidget(self._counter)
 
         self._chevron = QLabel(IconManager.get('chevron-right'))
@@ -279,8 +465,14 @@ class CategoryCard(QFrame):
 
         self._grid = FlowLayout(self._content, margin=16, h_spacing=8, v_spacing=8)
         for tag in self._tags:
-            cell = CheckCell(tag, self._color)
-            cell.clicked.connect(lambda sel, tg=tag: self._on_cell(tg, sel))
+            if self._tristate:
+                cell = TriStateCell(tag)
+                cell.state_changed.connect(
+                    lambda st, tg=tag: self._on_state(tg, st))
+            else:
+                cell = CheckCell(tag, self._color)
+                cell.clicked.connect(
+                    lambda sel, tg=tag: self._on_cell(tg, sel))
             self._cells[tag] = cell
             self._grid.addWidget(cell)
 
@@ -302,7 +494,21 @@ class CategoryCard(QFrame):
 
     def set_selected_set(self, tags: set):
         for tag, cell in self._cells.items():
-            cell.set_selected(tag in tags, emit_signal=False)
+            if self._tristate:
+                pass  # tri-режим синхронизируется через set_tristate_sets
+            else:
+                cell.set_selected(tag in tags, emit_signal=False)
+        if not self._tristate:
+            self._update_counter()
+
+    def set_tristate_sets(self, prefer_set: set, avoid_set: set):
+        for tag, cell in self._cells.items():
+            if tag in prefer_set:
+                cell.set_state("prefer", emit=False)
+            elif tag in avoid_set:
+                cell.set_state("avoid", emit=False)
+            else:
+                cell.set_state("neutral", emit=False)
         self._update_counter()
 
     def set_filter(self, text: str) -> bool:
@@ -335,14 +541,10 @@ class CategoryCard(QFrame):
         else:
             self._accent_bar.hide()
             self._collapse(animate)
-        # Сигнал шлём ТОЛЬКО когда человек кликом раскрыл свёрнутую полку.
-        # Программные раскрытия (поиск/загрузка) и любые сворачивания — молчат,
-        # поэтому одиночка не ломает поиск и не рекурсит сама в себя.
         if by_user and self._expanded:
             self.expand_toggled.emit(self)
 
     def toggle(self):
-        # Клик пользователя => by_user=True (только он активирует одиночку)
         self.set_expanded(not self._expanded, animate=True, by_user=True)
 
     # ── внутреннее ──
@@ -350,9 +552,13 @@ class CategoryCard(QFrame):
         self._update_counter()
         self.toggled.emit(tag, selected)
 
+    def _on_state(self, tag: str, state: str):
+        self._update_counter()
+        self.state_changed.emit(tag, state)
+
     def _update_counter(self):
-        n = sum(1 for c in self._cells.values() if c.is_selected())
-        self._counter.setText(f"{n} selected" if n else "0 selected")
+        n = sum(1 for c in self._cells.values() if c.is_marked())
+        self._counter.setText(f"{n} {self._counter_word}" if n else f"0 {self._counter_word}")
 
     def _target_height(self) -> int:
         w = self._content.width()

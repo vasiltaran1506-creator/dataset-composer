@@ -50,6 +50,11 @@ ATMOSPHERE_COLORS = {
     'weather':  '#60a5fa',   # sky blue
 }
 
+# Personality: цвета отношений + нейтральный акцент секций/карточек
+PREFER_COLOR = "#3dd68c"
+AVOID_COLOR = "#f5475b"
+PERSONALITY_ACCENT = "#4f6df5"
+
 
 class ProfilesTab(QWidget):
     """Вкладка редактирования профилей персонажей (Qt версия, v2 — редизайн)"""
@@ -428,6 +433,10 @@ class ProfilesTab(QWidget):
             self.summary_panel.update_atmosphere_summary(
                 self.selected_lighting_tags, self.selected_weather_tags
             )
+        elif active is getattr(self, 'personality_widget', None):
+            self.summary_panel.update_personality_summary(
+                self.preferred_personality_tags, self.avoided_personality_tags
+            )
         else:
             self.summary_panel.update_summary(self.selected_dna_tags)
 
@@ -680,7 +689,7 @@ class ProfilesTab(QWidget):
             )
 
     # ═══════════════════════════════════════════════
-    # PERSONALITY TAB (Tri-state: Unchecked / Prefer / Avoid)
+    # PERSONALITY TAB  (tri-state плитки: prefer / avoid / neutral)
     # ═══════════════════════════════════════════════
     def _setup_personality_tab(self, widget: QWidget):
         layout = QVBoxLayout(widget)
@@ -691,99 +700,67 @@ class ProfilesTab(QWidget):
         header.setObjectName("SectionTitle")
         layout.addWidget(header)
 
-        # Легенда
-        legend = QLabel(
-            f"{IconManager.get('check')} Checked = Prefer    "
-            f"{IconManager.get('minus')} Dashed = Avoid    "
-            f"Unchecked = Neutral"
+        subtitle = QLabel(
+            "Mark expressions and poses to prefer or avoid. "
+            "Hover a tag to reveal  +  (prefer) and  −  (avoid)."
         )
-        legend.setObjectName("Subtitle")
-        layout.addWidget(legend)
+        subtitle.setObjectName("Subtitle")
+        layout.addWidget(subtitle)
 
-        # Prefer chips
-        prefer_frame = QWidget()
-        prefer_layout = QVBoxLayout(prefer_frame)
-        prefer_layout.setContentsMargins(0, 0, 0, 0)
-        prefer_layout.setSpacing(4)
-        prefer_label = QLabel(f"{IconManager.get('check')}  Preferred")
-        prefer_label.setObjectName("Subtitle")
-        prefer_layout.addWidget(prefer_label)
-        prefer_scroll = QScrollArea()
-        prefer_scroll.setWidgetResizable(True)
-        prefer_scroll.setMaximumHeight(70)
-        prefer_scroll.setFrameShape(QFrame.NoFrame)
-        prefer_widget = QWidget()
-        self.prefer_chips_layout = QHBoxLayout(prefer_widget)
-        self.prefer_chips_layout.setContentsMargins(0, 0, 0, 0)
-        self.prefer_chips_layout.setSpacing(6)
-        self.prefer_chips_layout.addStretch()
-        prefer_scroll.setWidget(prefer_widget)
-        prefer_layout.addWidget(prefer_scroll)
-        layout.addWidget(prefer_frame)
+        # Один общий ряд круглых чипов (prefer зелёные + avoid красные)
+        self._personality_chips_row = CompactChipRow()
+        self._personality_chips_row.set_empty_text("No personality filters set")
+        self._personality_chips_row.remove_requested.connect(self._remove_personality_chip)
+        layout.addWidget(self._personality_chips_row)
 
-        # Avoid chips
-        avoid_frame = QWidget()
-        avoid_layout = QVBoxLayout(avoid_frame)
-        avoid_layout.setContentsMargins(0, 0, 0, 0)
-        avoid_layout.setSpacing(4)
-        avoid_label = QLabel(f"{IconManager.get('close')}  Avoided")
-        avoid_label.setObjectName("Subtitle")
-        avoid_layout.addWidget(avoid_label)
-        avoid_scroll = QScrollArea()
-        avoid_scroll.setWidgetResizable(True)
-        avoid_scroll.setMaximumHeight(70)
-        avoid_scroll.setFrameShape(QFrame.NoFrame)
-        avoid_widget = QWidget()
-        self.avoid_chips_layout = QHBoxLayout(avoid_widget)
-        self.avoid_chips_layout.setContentsMargins(0, 0, 0, 0)
-        self.avoid_chips_layout.setSpacing(6)
-        self.avoid_chips_layout.addStretch()
-        avoid_scroll.setWidget(avoid_widget)
-        avoid_layout.addWidget(avoid_scroll)
-        layout.addWidget(avoid_frame)
+        # Общий поиск по всем подкатегориям
+        self._personality_search = QLineEdit()
+        self._personality_search.setPlaceholderText(
+            f"{IconManager.get('search')}  Search expressions / poses..."
+        )
+        self._personality_search.textChanged.connect(self._filter_personality_cards)
+        layout.addWidget(self._personality_search)
 
-        # Поиск
-        self.personality_search = QLineEdit()
-        self.personality_search.setPlaceholderText(f"{IconManager.get('search')}  Search expressions / poses...")
-        self.personality_search.textChanged.connect(self._filter_tree)
-        self.personality_search.setProperty("target_tree", "personality")
-        layout.addWidget(self.personality_search)
+        # Скролл с секциями Expressions / Poses
+        cards_scroll = QScrollArea()
+        cards_scroll.setWidgetResizable(True)
+        cards_scroll.setFrameShape(QFrame.NoFrame)
+        cards_widget = QWidget()
+        self._personality_cards_layout = QVBoxLayout(cards_widget)
+        self._personality_cards_layout.setContentsMargins(0, 0, 0, 0)
+        self._personality_cards_layout.setSpacing(10)
+        self._personality_cards_layout.addStretch()
+        cards_scroll.setWidget(cards_widget)
+        layout.addWidget(cards_scroll, 1)
 
-        # Дерево с tri-state чекбоксами
-        self.personality_tree = QTreeWidget()
-        self.personality_tree.setHeaderHidden(True)
-        self.personality_tree.setAnimated(True)
-        self.personality_tree.itemChanged.connect(self._on_personality_item_changed)
-        layout.addWidget(self.personality_tree, 1)
-
-        self._build_personality_tree()
+        self._personality_cards: list = []   # list of (CategoryCard, raw_subcat)
+        self._build_personality_sections()
         self._refresh_personality_chips()
 
-    def _build_personality_tree(self):
-        self.personality_tree.clear()
+    def _build_personality_sections(self):
+        for card, _s in self._personality_cards:
+            card.deleteLater()
+        self._personality_cards.clear()
+        self._clear_layout(self._personality_cards_layout, keep_last=True)
+
         for cat_name, cat_dir, subcat_order in PERSONALITY_CATEGORIES:
-            cat_item = QTreeWidgetItem([cat_name])
-            cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsSelectable)
-            font = cat_item.font(0)
-            font.setBold(True)
-            cat_item.setFont(0, font)
-            cat_item.setData(0, Qt.UserRole, {'type': 'category', 'name': cat_name})
+            # Заголовок секции (нейтральный акцент — цвет занят под prefer/avoid)
+            self._personality_cards_layout.insertWidget(
+                self._personality_cards_layout.count() - 1,
+                self._make_section_header(PERSONALITY_ACCENT, cat_name))
 
             dir_path = self.project_root / "prompt-library" / cat_dir
-            if not dir_path.exists():
-                self.personality_tree.addTopLevelItem(cat_item)
-                continue
-
             subcats = {}
-            for txt_file in sorted(dir_path.rglob("*.txt")):
-                parts = txt_file.relative_to(dir_path).parts
-                if len(parts) == 1:
-                    sub_cat = parts[0].replace('.txt', '')
-                elif len(parts) >= 2:
-                    sub_cat = parts[0]
-                else:
-                    continue
-                subcats[sub_cat] = txt_file
+            if dir_path.exists():
+                for txt_file in sorted(dir_path.rglob("*.txt")):
+                    parts = txt_file.relative_to(dir_path).parts
+                    if len(parts) == 1:
+                        sub_cat = parts[0].replace('.txt', '')
+                    elif len(parts) >= 2:
+                        sub_cat = parts[0]
+                    else:
+                        continue
+                    subcats[sub_cat] = txt_file
 
             def sort_key(sc):
                 try:
@@ -792,104 +769,88 @@ class ProfilesTab(QWidget):
                     return 999
 
             for sub_cat in sorted(subcats.keys(), key=sort_key):
-                sub_item = QTreeWidgetItem([sub_cat.replace('_', ' ').title()])
-                sub_item.setFlags(sub_item.flags() & ~Qt.ItemIsSelectable)
-                sub_font = sub_item.font(0)
-                sub_font.setItalic(True)
-                sub_item.setFont(0, sub_font)
-                sub_item.setData(0, Qt.UserRole, {'type': 'subcategory', 'name': sub_cat, 'category': cat_name})
-
                 tags = self._load_tags_from_file(subcats[sub_cat])
-                for tag in tags:
-                    tag_item = QTreeWidgetItem([tag.replace('_', ' ')])
-                    tag_item.setFlags(tag_item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsUserTristate)
-                    tag_item.setCheckState(0, Qt.Unchecked)
-                    tag_item.setData(0, Qt.UserRole, {
-                        'type': 'tag', 'tag': tag,
-                        'category': cat_name, 'subcategory': sub_cat
-                    })
-                    sub_item.addChild(tag_item)
-                cat_item.addChild(sub_item)
-            self.personality_tree.addTopLevelItem(cat_item)
+                card = CategoryCard(
+                    sub_cat.replace('_', ' ').title(), "", tags, set(),
+                    color=PERSONALITY_ACCENT, tristate=True, counter_word="marked"
+                )
+                card.state_changed.connect(
+                    lambda t, st, c=cat_name, s=sub_cat:
+                        self._on_personality_state(t, st, c, s))
+                card.expand_toggled.connect(self._single_open_personality)
+                self._personality_cards.append((card, sub_cat))
+                self._personality_cards_layout.insertWidget(
+                    self._personality_cards_layout.count() - 1, card)
 
-    def _on_personality_item_changed(self, item: QTreeWidgetItem, column: int):
-        if column != 0:
-            return
-        data = item.data(0, Qt.UserRole) or {}
-        if data.get('type') != 'tag':
-            return
-        tag = data['tag']
-        category = data['category']
-        subcategory = data['subcategory']
-        tag_entry = {'tag': tag, 'category': category, 'subcategory': subcategory}
+        fl = self._personality_search.text()
+        if fl:
+            self._filter_personality_cards(fl)
+        self._sync_personality_cards()
 
-        state = item.checkState(0)
-        # Удаляем из обоих списков
-        self.preferred_personality_tags = [t for t in self.preferred_personality_tags if t['tag'] != tag]
-        self.avoided_personality_tags = [t for t in self.avoided_personality_tags if t['tag'] != tag]
-
-        if state == Qt.Checked:
-            self.preferred_personality_tags.append(tag_entry)
-        elif state == Qt.PartiallyChecked:
-            self.avoided_personality_tags.append(tag_entry)
-        # Qt.Unchecked → ничего не добавляем
-
+    def _on_personality_state(self, tag: str, state: str,
+                              category: str, subcategory: str):
+        # убираем тег из обоих списков, затем кладём в нужный по состоянию
+        self.preferred_personality_tags = [
+            t for t in self.preferred_personality_tags if t['tag'] != tag]
+        self.avoided_personality_tags = [
+            t for t in self.avoided_personality_tags if t['tag'] != tag]
+        if state != "neutral":
+            entry = {'tag': tag, 'category': category, 'subcategory': subcategory}
+            if state == "prefer":
+                self.preferred_personality_tags.append(entry)
+            else:
+                self.avoided_personality_tags.append(entry)
         self._refresh_personality_chips()
+
+    def _filter_personality_cards(self, text: str):
+        for card, _s in self._personality_cards:
+            card.set_filter(text)
 
     def _refresh_personality_chips(self):
-        self._clear_layout(self.prefer_chips_layout, keep_last=True)
-        self._clear_layout(self.avoid_chips_layout, keep_last=True)
+        descriptors = []
+        for e in self.preferred_personality_tags:
+            descriptors.append({
+                'text': e['tag'].replace('_', ' '),
+                'color': PREFER_COLOR,
+                'payload': ('prefer', e),
+            })
+        for e in self.avoided_personality_tags:
+            descriptors.append({
+                'text': e['tag'].replace('_', ' '),
+                'color': AVOID_COLOR,
+                'payload': ('avoid', e),
+            })
+        self._personality_chips_row.set_chips(descriptors)
+        self._update_summary_panel()
 
-        if not self.preferred_personality_tags:
-            ph = QLabel("(empty)")
-            ph.setObjectName("Subtitle")
-            self.prefer_chips_layout.insertWidget(0, ph)
-        else:
-            for entry in self.preferred_personality_tags:
-                chip = self._create_chip(
-                    entry['tag'],
-                    lambda checked=False, t=entry['tag']: self._remove_personality_tag(t),
-                    variant="chip-success"
-                )
-                self.prefer_chips_layout.insertWidget(
-                    self.prefer_chips_layout.count() - 1, chip
-                )
-
-        if not self.avoided_personality_tags:
-            ph = QLabel("(empty)")
-            ph.setObjectName("Subtitle")
-            self.avoid_chips_layout.insertWidget(0, ph)
-        else:
-            for entry in self.avoided_personality_tags:
-                chip = self._create_chip(
-                    entry['tag'],
-                    lambda checked=False, t=entry['tag']: self._remove_personality_tag(t),
-                    variant="chip-danger"
-                )
-                self.avoid_chips_layout.insertWidget(
-                    self.avoid_chips_layout.count() - 1, chip
-                )
-
-    def _remove_personality_tag(self, tag: str):
-        # Удаляем из списков
-        self.preferred_personality_tags = [t for t in self.preferred_personality_tags if t['tag'] != tag]
-        self.avoided_personality_tags = [t for t in self.avoided_personality_tags if t['tag'] != tag]
-        # Сбрасываем чекбокс в дереве (сигнал блокируем на ДЕРЕВЕ, не на элементе)
-        self.personality_tree.blockSignals(True)
-        try:
-            for i in range(self.personality_tree.topLevelItemCount()):
-                cat_item = self.personality_tree.topLevelItem(i)
-                for j in range(cat_item.childCount()):
-                    sub_item = cat_item.child(j)
-                    for k in range(sub_item.childCount()):
-                        tag_item = sub_item.child(k)
-                        tag_data = tag_item.data(0, Qt.UserRole) or {}
-                        if tag_data.get('tag') == tag:
-                            tag_item.setCheckState(0, Qt.Unchecked)
-                            break
-        finally:
-            self.personality_tree.blockSignals(False)
+    def _remove_personality_chip(self, payload):
+        group, entry = payload
+        lst = (self.preferred_personality_tags if group == 'prefer'
+               else self.avoided_personality_tags)
+        if entry in lst:
+            lst.remove(entry)
+        self._sync_personality_cards()
         self._refresh_personality_chips()
+
+    def _sync_personality_cards(self):
+        # Матчим тег к карточке по принадлежности к её тегам — без опоры на
+        # subcategory (его нет у тегов, загруженных из yaml), поэтому не падает
+        # и корректно проставляет состояния плиток при выборе профиля.
+        prefer_tags = {e['tag'] for e in self.preferred_personality_tags}
+        avoid_tags = {e['tag'] for e in self.avoided_personality_tags}
+        for card, _subcat in self._personality_cards:
+            card_tags = set(card.all_tags())
+            card.set_tristate_sets(prefer_tags & card_tags, avoid_tags & card_tags)
+
+    def _single_open_personality(self, source):
+        enabled = self.settings_manager.get('behavior', 'single_open_shelves')
+        if enabled is None:
+            enabled = True
+        if not enabled:
+            return
+        for card, _s in self._personality_cards:
+            if card is not source:
+                card.set_expanded(False, animate=True)
 
     # ═══════════════════════════════════════════════
     # SIGNATURE TAB
@@ -1754,7 +1715,7 @@ class ProfilesTab(QWidget):
                 self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
             for t in profile.get('pose_filter', {}).get('avoid', []):
                 self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
-            self._sync_personality_tree_checkboxes()
+            self._sync_personality_cards()
             self._refresh_personality_chips()
 
             # Signature
@@ -1877,7 +1838,7 @@ class ProfilesTab(QWidget):
             self.preferred_personality_tags.append({'tag': t, 'category': 'Poses'})
         for t in pose.get('avoid', []):
             self.avoided_personality_tags.append({'tag': t, 'category': 'Poses'})
-        self._sync_personality_tree_checkboxes()
+        self._sync_personality_cards()
         self._refresh_personality_chips()
 
         # Signature
@@ -2004,7 +1965,7 @@ class ProfilesTab(QWidget):
             self._refresh_wardrobe_chips()
             self.preferred_personality_tags = []
             self.avoided_personality_tags = []
-            self._sync_personality_tree_checkboxes()
+            self._sync_personality_cards()
             self._refresh_personality_chips()
             self.signature_props = []
             self.hair_rules_data = {'default': 'hair down', 'conditional': []}

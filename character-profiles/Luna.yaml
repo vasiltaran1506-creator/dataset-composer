@@ -1,5 +1,5 @@
 # Character Profile: Luna
-# Фильтр поверх scene-rules
+# Filter over scene-rules
 character:
   name: Luna
   age: 18
@@ -32,6 +32,7 @@ outfit_whitelist:
     - white t-shirt
     - casual t-shirt
     - oversized t-shirt
+    - white blouse
     bottomwear:
     - black skirt
     - pleated skirt

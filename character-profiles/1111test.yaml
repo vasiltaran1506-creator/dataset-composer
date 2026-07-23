@@ -54,8 +54,18 @@ hair_rules:
   default: hair down
   conditional: []
 expression_filter:
-  prefer: []
-  avoid: []
+  prefer:
+  - blush
+  - sad
+  - scared
+  - smug
+  avoid:
+  - depressed
+  - anxious
+  - mischievous
+  - worried
+  - gloomy
+  - light blush
 pose_filter:
   prefer: []
   avoid: []

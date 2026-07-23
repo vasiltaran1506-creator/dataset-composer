@@ -1,16 +1,18 @@
 """SummaryPanel — правая context-панель Profiles workspace (§7.4, §8.31).
-Два режима: update_summary (DNA) и update_wardrobe_summary (Outfits).
-Оба рендерят группы через общий _render_group_list: цветная буллета +
-название группы + поток пилюль конкретных тегов (НЕ счётчики).
-Wardrobe-режим определяет отдел робастно: по ключу, иначе полка→отдел,
-иначе тег→отдел — поэтому сводка собирается при любом состоянии модели.
+Четыре режима сводки, общий рендерер _render_group_list:
+  update_summary             -> DNA (Body/Eyes/Face/Hair/Skin)
+  update_wardrobe_summary    -> Outfits (по отделам)
+  update_atmosphere_summary  -> Atmosphere (Lighting/Weather)
+  update_personality_summary -> Personality (Preferred/Avoided)
+Каждая группа = цветная буллета + название + поток пилюль конкретных тегов.
 """
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                               QPushButton, QScrollArea, QFrame, QSizePolicy)
+                               QScrollArea, QFrame, QSizePolicy)
 from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPainter, QPainterPath, QColor, QFont, QFontMetrics
+from PySide6.QtGui import QPainter, QPainterPath, QColor
 from ui_qt.components.flow_layout import FlowLayout
 from ui_qt.icon_manager import IconManager
+
 
 # ── Цвета DNA-групп (с fallback на §11.6) ──
 try:
@@ -35,6 +37,10 @@ _DNA_GROUPS = [
     ("Skin", _SKIN, ["Skin Tone"]),
 ]
 
+# Цвета отношений Personality
+_PREFER = "#3dd68c"
+_AVOID = "#f5475b"
+
 
 def _rgba(hex_color: str, alpha: float) -> QColor:
     h = hex_color.lstrip('#')
@@ -55,7 +61,9 @@ class _MiniTag(QFrame):
         lay.setContentsMargins(9, 0, 9, 0)
         lay.setSpacing(0)
         label = QLabel(text)
-        label.setStyleSheet("color: #e6e9f0; background: transparent; font-size: 11px;")
+        label.setStyleSheet(
+            "color: #e6e9f0; background: transparent; font-size: 11px;"
+        )
         lay.addWidget(label)
 
     def paintEvent(self, event):
@@ -89,11 +97,15 @@ class _PortraitPlaceholder(QFrame):
         lay.setContentsMargins(16, 16, 16, 16)
         lay.setAlignment(Qt.AlignCenter)
         icon = QLabel(IconManager.get('user'))
-        icon.setStyleSheet("font-size: 48px; color: #5a6378; background: transparent; border: none;")
+        icon.setStyleSheet(
+            "font-size: 48px; color: #5a6378; background: transparent; border: none;"
+        )
         icon.setAlignment(Qt.AlignCenter)
         lay.addWidget(icon)
         text = QLabel("Add portrait")
-        text.setStyleSheet("color: #98a0b3; font-size: 12px; background: transparent; border: none;")
+        text.setStyleSheet(
+            "color: #98a0b3; font-size: 12px; background: transparent; border: none;"
+        )
         text.setAlignment(Qt.AlignCenter)
         lay.addWidget(text)
 
@@ -162,24 +174,6 @@ class SummaryPanel(QWidget):
         scroll.setWidget(self._groups_widget)
         layout.addWidget(scroll, 1)
 
-        # View Full Summary link
-
-        # self.full_summary_link = QPushButton("View Full Summary ›")
-        # self.full_summary_link.setCursor(Qt.PointingHandCursor)
-        # self.full_summary_link.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: transparent;
-        #         color: #4f6df5;
-        #         border: none;
-        #         font-size: 12px;
-        #         font-weight: 600;
-        #         text-align: left;
-        #         padding: 8px 0;
-        #     }
-        #     QPushButton:hover { color: #6b85f7; }
-        # """)
-        # layout.addWidget(self.full_summary_link)
-
         self._render_group_list([])
 
     # ── публичный API ──
@@ -200,19 +194,16 @@ class SummaryPanel(QWidget):
         self._render_group_list(groups)
 
     def update_wardrobe_summary(self, selected_tags: list, spec: dict):
-        """Outfits-сводка по отделам. Отдел определяется робастно:
-        ключ напрямую → иначе subcat_to_dept → иначе tag_to_dept."""
+        """Outfits-сводка по отделам (отдел определяется робастно)."""
         self.section_label.setText("WARDROBE SUMMARY")
         total = len(selected_tags)
         self.total_badge.setText(f"{total} items" if total else "0 items")
-
         order = spec.get('order', [])
         order_set = set(order)
         colors = spec.get('colors', {})
         labels = spec.get('labels', {})
         subcat_to_dept = spec.get('subcat_to_dept', {})
         tag_to_dept = spec.get('tag_to_dept', {})
-
         by_dept = {}
         for e in selected_tags:
             key = e.get('department') or e.get('subcategory') or ''
@@ -222,12 +213,39 @@ class SummaryPanel(QWidget):
                 dept = subcat_to_dept.get(key) or tag_to_dept.get(e.get('tag', '')) or ''
             if dept:
                 by_dept.setdefault(dept, []).append(e.get('tag', '').replace('_', ' '))
-
         groups = []
         for dept in order:
             tags = by_dept.get(dept)
             if tags:
                 groups.append((labels.get(dept, dept), colors.get(dept, '#4f6df5'), tags))
+        self._render_group_list(groups)
+
+    def update_atmosphere_summary(self, lighting_tags: list, weather_tags: list):
+        """Atmosphere-сводка: группы Lighting / Weather."""
+        self.section_label.setText("ATMOSPHERE SUMMARY")
+        total = len(lighting_tags) + len(weather_tags)
+        self.total_badge.setText(f"{total} selected" if total else "0 selected")
+        groups = []
+        if lighting_tags:
+            groups.append(("Lighting", "#f59e0b",
+                           [t.replace('_', ' ') for t in lighting_tags]))
+        if weather_tags:
+            groups.append(("Weather", "#60a5fa",
+                           [t.replace('_', ' ') for t in weather_tags]))
+        self._render_group_list(groups)
+
+    def update_personality_summary(self, preferred: list, avoided: list):
+        """Personality-сводка: группы Preferred (зелёная) / Avoided (красная)."""
+        self.section_label.setText("PERSONALITY SUMMARY")
+        total = len(preferred) + len(avoided)
+        self.total_badge.setText(f"{total} marked" if total else "0 marked")
+        groups = []
+        pref_tags = [e.get('tag', '').replace('_', ' ') for e in preferred]
+        avoid_tags = [e.get('tag', '').replace('_', ' ') for e in avoided]
+        if pref_tags:
+            groups.append(("Preferred", _PREFER, pref_tags))
+        if avoid_tags:
+            groups.append(("Avoided", _AVOID, avoid_tags))
         self._render_group_list(groups)
 
     # ── общий рендерер списка групп (name, color, [tag...]) ──
@@ -239,7 +257,8 @@ class SummaryPanel(QWidget):
         if not groups:
             empty = QLabel("No traits selected yet")
             empty.setStyleSheet(
-                "color: #5a6378; font-size: 12px; font-style: italic; background: transparent;"
+                "color: #5a6378; font-size: 12px; font-style: italic; "
+                "background: transparent;"
             )
             empty.setAlignment(Qt.AlignCenter)
             self._groups_layout.addWidget(empty)
@@ -248,37 +267,6 @@ class SummaryPanel(QWidget):
         for group_name, color, tags in groups:
             self._groups_layout.addWidget(self._build_group(group_name, color, tags))
         self._groups_layout.addStretch(1)
-
-    def update_atmosphere_summary(self, lighting_tags: list, weather_tags: list):
-        """Atmosphere-сводка: группы Lighting / Weather с конкретными тегами."""
-        self.section_label.setText("ATMOSPHERE SUMMARY")
-        total = len(lighting_tags) + len(weather_tags)
-        self.total_badge.setText(f"{total} selected" if total else "0 selected")
-        # очистка layout (самодостаточно)
-        while self._groups_layout.count():
-            it = self._groups_layout.takeAt(0)
-            if it.widget():
-                it.widget().deleteLater()
-        groups = []
-        if lighting_tags:
-            groups.append(("Lighting", "#f59e0b",
-                           [t.replace('_', ' ') for t in lighting_tags]))
-        if weather_tags:
-            groups.append(("Weather", "#60a5fa",
-                           [t.replace('_', ' ') for t in weather_tags]))
-        if not groups:
-            empty = QLabel("No atmosphere tags selected yet")
-            empty.setStyleSheet(
-                "color: #5a6378; font-size: 12px; font-style: italic; "
-                "background: transparent;"
-            )
-            empty.setAlignment(Qt.AlignCenter)
-            self._groups_layout.addWidget(empty)
-        else:
-            for name, color, tags in groups:
-                self._groups_layout.addWidget(self._build_group(name, color, tags))
-        self._groups_layout.addStretch(1)
-
 
     def _build_group(self, group_name: str, color: str, tags: list) -> QWidget:
         wrap = QWidget()
@@ -290,7 +278,9 @@ class SummaryPanel(QWidget):
         head.setContentsMargins(0, 0, 0, 0)
         head.setSpacing(8)
         bullet = QLabel("●")
-        bullet.setStyleSheet(f"color: {color}; font-size: 10px; background: transparent;")
+        bullet.setStyleSheet(
+            f"color: {color}; font-size: 10px; background: transparent;"
+        )
         head.addWidget(bullet)
         title = QLabel(group_name)
         title.setStyleSheet(
