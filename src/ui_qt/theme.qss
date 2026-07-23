@@ -670,4 +670,4 @@ QWidget#ChipOverflowPopup {
     background-color: #232138;
     border: 1px solid #443f63;
     border-radius: 12px;
-}
+}   

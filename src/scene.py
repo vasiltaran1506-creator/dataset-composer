@@ -32,6 +32,15 @@ class Scene:
     # Реквизит и эффекты
     props: List[str] = field(default_factory=list)
     effects: List[str] = field(default_factory=list)
+    # Composite pose (слоты; заполняется на фазе 2, на фазе 1 пусты => не влияют)
+    pose_base: str = ""
+    pose_head: str = ""
+    pose_arms: str = ""
+    pose_legs: str = ""
+    # Composite face (слоты; имеют приоритет над старым полем expression)
+    face_mood: str = ""
+    face_eyes: str = ""
+    face_mouth: str = ""
     
     def to_prompt(self, fixed_traits: List[str]) -> str:
         """Экспортирует сцену в текстовый промпт (сериализация)"""
@@ -41,7 +50,15 @@ class Scene:
         if self.location: tags.append(self.location)
         if self.weather: tags.append(self.weather)
         if self.action: tags.append(self.action)
-        if self.expression: tags.append(self.expression)
+        # Composite pose (base → legs → arms → head). На фазе 1 всё пусто.
+        for _p in (self.pose_base, self.pose_legs, self.pose_arms, self.pose_head):
+            if _p: tags.append(_p)
+        # Composite face имеет приоритет над старым полем expression.
+        _face = [x for x in (self.face_mood, self.face_eyes, self.face_mouth) if x]
+        if _face:
+            tags.extend(_face)
+        elif self.expression:
+            tags.append(self.expression)
         
         # Одежда
         if self.outfit_full: tags.append(self.outfit_full)
@@ -91,19 +108,23 @@ class Scene:
         if block2:
             blocks.append(block2)
         
-        # BLOCK 3: ACTION & POSE
+        # BLOCK 3: ACTION & POSE (composite pose: base → legs → arms → head)
         block3 = []
         if self.action:
             block3.append(self.action)
-        # TODO: добавить pose, когда будет реализовано
+        for _p in (self.pose_base, self.pose_legs, self.pose_arms, self.pose_head):
+            if _p:
+                block3.append(_p)
         if block3:
             blocks.append(block3)
         
-        # BLOCK 4: EXPRESSION & MOOD
+        # BLOCK 4: EXPRESSION & MOOD (composite face имеет приоритет над expression)
         block4 = []
-        if self.expression:
+        _face = [x for x in (self.face_mood, self.face_eyes, self.face_mouth) if x]
+        if _face:
+            block4.extend(_face)
+        elif self.expression:
             block4.append(self.expression)
-        # TODO: добавить mood, когда будет реализовано
         if block4:
             blocks.append(block4)
         
